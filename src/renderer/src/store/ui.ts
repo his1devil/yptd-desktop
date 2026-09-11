@@ -107,7 +107,9 @@ export const useUI = create<UIState>()(
         const isAgent = opts?.agent ?? false
         set((s) => ({
           conversationId,
-          section: opts?.section ?? s.section,
+          // 会话区和 Agent 区都能显示会话，留在原地；从收件箱/设置打开就得回到会话区，
+          // 否则主区还是设置页，什么都没发生
+          section: opts?.section ?? (s.section === 'chat' || s.section === 'agent' ? s.section : 'chat'),
           lastChannelId: isAgent ? s.lastChannelId : conversationId,
         }))
       },

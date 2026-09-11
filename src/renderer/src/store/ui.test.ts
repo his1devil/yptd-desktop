@@ -38,6 +38,18 @@ describe('区段与会话解耦', () => {
     expect(s.conversationId).toBe('ch:mkt')
   })
 
+  it('从收件箱或设置里打开会话，回到会话区；在 Agent 区打开则留在 Agent 区', () => {
+    useUI.getState().go('inbox')
+    useUI.getState().open('ch:mkt')
+    expect(useUI.getState().section).toBe('chat')
+    useUI.getState().go('set')
+    useUI.getState().open('ag:triage', { agent: true })
+    expect(useUI.getState().section).toBe('chat')
+    useUI.getState().go('agent')
+    useUI.getState().open('ag:quant', { agent: true })
+    expect(useUI.getState().section).toBe('agent')
+  })
+
   it('agent 会话不会成为"最后一个非 agent 会话"', () => {
     useUI.getState().open('ag:quant', { agent: true })
     expect(useUI.getState().lastChannelId).toBe('ch:eng')
