@@ -1,6 +1,39 @@
-import { app, BrowserWindow, ipcMain, session, shell } from 'electron'
+import { app, BrowserWindow, ipcMain, safeStorage, session, shell } from 'electron'
+import { mkdirSync, readFileSync, unlinkSync, writeFileSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { IPC } from '../shared/ipc'
+import { attachOpenIM, disposeOpenIM } from './openim'
+
+// ---- 凭据 --------------------------------------------------------------------
+// 设备 token 用 safeStorage 加密后落在 userData 下。macOS 上 safeStorage 的密钥在
+// 钥匙串里，只有这个签名的 app 能解——效果等同上一版直接写钥匙串，但不会再撞上
+// "命令行建的条目 app 读不到" 那种 ACL 问题。
+const secretsDir = (): string => {
+  const dir = join(app.getPath('userData'), 'secrets')
+  mkdirSync(dir, { recursive: true })
+  return dir
+}
+const secretFile = (key: string): string => join(secretsDir(), key.replace(/[^a-zA-Z0-9._-]/g, '_'))
+
+ipcMain.handle(IPC.secretGet, (_e, key: string) => {
+  const file = secretFile(key)
+  if (!existsSync(file)) return null
+  if (!safeStorage.isEncryptionAvailable()) return null
+  try { return safeStorage.decryptString(readFileSync(file)) } catch { return null }
+})
+ipcMain.handle(IPC.secretSet, (_e, key: string, value: string) => {
+  if (!safeStorage.isEncryptionAvailable()) throw new Error('这台机器上没有可用的安全存储')
+  writeFileSync(secretFile(key), safeStorage.encryptString(value), { mode: 0o600 })
+})
+ipcMain.handle(IPC.secretDelete, (_e, key: string) => {
+  const file = secretFile(key)
+  if (existsSync(file)) unlinkSync(file)
+})
+ipcMain.handle(IPC.appDataDir, () => {
+  const dir = join(app.getPath('userData'), 'openim')
+  mkdirSync(dir, { recursive: true })
+  return dir
+})
 
 // 设计窗口尺寸 1440×900，最小 1100×700（README §Screens）。
 const DESIGN = { width: 1440, height: 900, minWidth: 1100, minHeight: 700 }
@@ -44,6 +77,9 @@ function createWindow(): BrowserWindow {
     return { action: 'deny' }
   })
 
+  // OpenIM 核心挂到这个窗口：SDK 调用从渲染进程经 preload 到这里，事件从这里回推
+  attachOpenIM(win.webContents)
+
   if (process.env.ELECTRON_RENDERER_URL) {
     void win.loadURL(process.env.ELECTRON_RENDERER_URL)
   } else {
@@ -51,6 +87,8 @@ function createWindow(): BrowserWindow {
   }
   return win
 }
+
+app.on('before-quit', () => disposeOpenIM())
 
 ipcMain.handle(IPC.appVersion, () => app.getVersion())
 ipcMain.on(IPC.windowMinimize, (e) => BrowserWindow.fromWebContents(e.sender)?.minimize())

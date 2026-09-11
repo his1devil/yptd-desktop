@@ -12,6 +12,12 @@ export const IPC = {
   windowFullscreen: 'window:fullscreen',
   /** 应用信息 */
   appVersion: 'app:version',
+  /** 凭据：设备 token 用 safeStorage 加密后落盘（macOS 背后是钥匙串） */
+  secretGet: 'secret:get',
+  secretSet: 'secret:set',
+  secretDelete: 'secret:delete',
+  /** 数据目录，给 OpenIM 的 initSDK 用 */
+  appDataDir: 'app:dataDir',
 } as const
 
 export type Theme = 'light' | 'dark'
@@ -21,10 +27,16 @@ export interface DesktopBridge {
   /** 渲染进程没有 Node 类型，这里只列它真正会遇到的三个值 */
   platform: 'darwin' | 'win32' | 'linux'
   version(): Promise<string>
+  dataDir(): Promise<string>
   window: {
     minimize(): void
     toggleMaximize(): void
     close(): void
     onFullscreen(listener: (full: boolean) => void): () => void
+  }
+  secret: {
+    get(key: string): Promise<string | null>
+    set(key: string, value: string): Promise<void>
+    delete(key: string): Promise<void>
   }
 }
