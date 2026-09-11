@@ -12,6 +12,8 @@ cd "$(dirname "$0")/.."
 
 VER=$(node -p "require('./package.json').version")
 export APPLE_KEYCHAIN_PROFILE=${APPLE_KEYCHAIN_PROFILE:-yptd}
+# Electron 二进制从 GitHub 下在这边动不了，走 npmmirror（和 npm install 一样）
+export ELECTRON_MIRROR=${ELECTRON_MIRROR:-https://npmmirror.com/mirrors/electron/}
 HOST=${YPTD_DIST_HOST:-root@8.160.186.31}
 DIR=${YPTD_DIST_DIR:-/var/www/yptd/dl/desktop}
 ARCHES="arm64 x64"
