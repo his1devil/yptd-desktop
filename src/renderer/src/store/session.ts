@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import type { Conversation, ConversationId, ConversationKind, Member, Message, MessageId, Person, Reaction } from '../../../shared/model'
 import { plainText } from '../../../shared/model'
-import { DEFAULT_SERVER, clearCredential, loadCredential, login, register, roster, saveCredential, AuthError, type ServerConfig } from '../im/auth'
+import { DEFAULT_SERVER, clearCredential, loadCredential, login, register, roster, saveCredential, setServerAuth, AuthError, type ServerConfig } from '../im/auth'
 import { im, SdkEvent, type ConversationItem, type GroupMemberItem, type MessageItem } from '../im/client'
 import { Translator, directId, reactionData } from '../im/translate'
 import { Timeline } from '../im/timeline'
@@ -113,8 +113,9 @@ export const useSession = create<SessionState>()((set, get) => ({
     useUI.getState().open(id, { agent: kindOf(id, get()) === 'agent_session' })
     const t = timeline(id)
     if (t.length === 0) await loadPage(set, get, id, '')
-    void im.markRead(id).then(() => refreshConversations(set, get))
     const c = get().conversations.find((x) => x.id === id)
+    // 还没聊过的会话（从名册点开的 agent）在 SDK 里不存在，标已读会报错
+    if (c) void im.markRead(id).then(() => refreshConversations(set, get)).catch(() => {})
     if (c?.groupID && !get().members[c.groupID]) void get().loadMembers(c.groupID)
   },
 
@@ -202,7 +203,12 @@ export const useSession = create<SessionState>()((set, get) => ({
 
   async loadMembers(groupID) {
     try {
-      const list = await im.members(groupID)
+      let list = await im.members(groupID)
+      // 刚登录同步没完，SDK 会先给一个空表；等一下再要一次
+      if (list.length === 0) {
+        await new Promise((r) => setTimeout(r, 1500))
+        list = await im.members(groupID)
+      }
       const agents = new Set(agentsOf(get().roster).map((a) => a.userID))
       const members: Member[] = list.map((m: GroupMemberItem) => ({
         id: m.userID, name: m.nickname || m.userID, avatar: m.faceURL || null,
@@ -228,6 +234,7 @@ async function connect(set: Set, get: Get, authenticate: () => Promise<{ userID:
   try {
     const auth = await authenticate()
     const token = auth.deviceToken || knownToken || ''
+    setServerAuth(cfg.server, token)
     translator = new Translator(auth.userID)
 
     // 花名册先于连接：它说明谁是 agent、谁叫什么，翻译历史时就要知道
@@ -274,7 +281,14 @@ function subscribe(set: Set, get: Get): void {
     im.on(SdkEvent.OnKickedOffline, () => set({ connected: false, notice: '这个账号在别处登录了' })),
     im.on(SdkEvent.OnUserTokenExpired, () => set({ connected: false, notice: '登录过期了，重开一下 app' })),
     im.on(SdkEvent.OnSyncServerStart, () => set({ syncing: true })),
-    im.on(SdkEvent.OnSyncServerFinish, () => { set({ syncing: false }); void refreshConversations(set, get) }),
+    im.on(SdkEvent.OnSyncServerFinish, () => {
+      set({ syncing: false })
+      void refreshConversations(set, get)
+      // 刚登录时成员表可能还没同步下来，拉到的是空的；同步完了再拉一次正看着的群
+      const current = useUI.getState().conversationId
+      const c = current ? get().conversations.find((x) => x.id === current) : undefined
+      if (c?.groupID) void get().loadMembers(c.groupID)
+    }),
     im.on(SdkEvent.OnSyncServerFailed, () => set({ syncing: false })),
     im.on(SdkEvent.OnConversationChanged, () => void refreshConversations(set, get)),
     im.on(SdkEvent.OnNewConversation, () => void refreshConversations(set, get)),

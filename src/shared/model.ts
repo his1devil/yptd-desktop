@@ -73,6 +73,8 @@ export interface Message {
   agentTag: string | null
   /** 发送者标记为将被替换的占位，如 agent 的“正在处理…” */
   transient: boolean
+  /** 这条消息背后的 agent 运行（占位和最终回答都带着它），没有就是普通消息 */
+  runID: string | null
   /** 正文里的 @名字，人和 agent 分开，渲染时各自上色 */
   mentions: string[]
   agentMentions: string[]

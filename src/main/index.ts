@@ -1,7 +1,7 @@
 import { app, BrowserWindow, dialog, ipcMain, net, safeStorage, session, shell } from 'electron'
 import { mkdirSync, readFileSync, unlinkSync, writeFileSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
-import { IPC, type HttpRequest, type HttpResponse } from '../shared/ipc'
+import { IPC, type HttpRequest, type HttpResponse, type StreamBatch } from '../shared/ipc'
 import { attachOpenIM, disposeOpenIM } from './openim'
 
 // ---- 凭据 --------------------------------------------------------------------
@@ -45,6 +45,69 @@ ipcMain.handle(IPC.httpFetch, async (_e, req: HttpRequest): Promise<HttpResponse
   const res = await net.fetch(req.url, { method: req.method ?? 'GET', headers: req.headers, body: req.body })
   return { status: res.status, ok: res.ok, text: await res.text() }
 })
+
+// ---- SSE --------------------------------------------------------------------
+// agent 运行的实时流。同样从主进程发出去（CORS），事件按 30ms 攒一批送渲染进程：
+// 模型一秒吐几十个 token，逐个 IPC 会把渲染进程的消息循环占满。
+const streams = new Map<number, AbortController>()
+let nextStream = 1
+
+ipcMain.handle(IPC.streamOpen, (e, url: string, headers: Record<string, string>) => {
+  const id = nextStream++
+  const ctl = new AbortController()
+  streams.set(id, ctl)
+  const wc = e.sender
+  void pumpStream(id, url, headers, ctl.signal, (batch) => { if (!wc.isDestroyed()) wc.send(IPC.streamEvent, batch) })
+    .finally(() => streams.delete(id))
+  return id
+})
+ipcMain.on(IPC.streamClose, (_e, id: number) => {
+  streams.get(id)?.abort()
+  streams.delete(id)
+})
+
+async function pumpStream(id: number, url: string, headers: Record<string, string>, signal: AbortSignal, emit: (b: StreamBatch) => void): Promise<void> {
+  let pending: StreamBatch['events'] = []
+  let timer: ReturnType<typeof setTimeout> | null = null
+  const flush = (): void => {
+    timer = null
+    if (pending.length) { emit({ id, events: pending }); pending = [] }
+  }
+  const queue = (event: string, data: string): void => {
+    pending.push({ event, data })
+    if (!timer) timer = setTimeout(flush, 30)
+  }
+  try {
+    const res = await net.fetch(url, { headers: { Accept: 'text/event-stream', ...headers }, signal })
+    if (!res.ok || !res.body) { flush(); emit({ id, events: [], closed: true, error: `HTTP ${res.status}` }); return }
+    const reader = res.body.getReader()
+    const decoder = new TextDecoder()
+    let buf = ''
+    let event = 'message'
+    let data: string[] = []
+    for (;;) {
+      const { value, done } = await reader.read()
+      if (done) break
+      buf += decoder.decode(value, { stream: true })
+      let nl: number
+      while ((nl = buf.indexOf('\n')) >= 0) {
+        const line = buf.slice(0, nl).replace(/\r$/, '')
+        buf = buf.slice(nl + 1)
+        if (line === '') {
+          if (data.length) queue(event, data.join('\n'))
+          event = 'message'; data = []
+        } else if (line.startsWith('event:')) event = line.slice(6).trim()
+        else if (line.startsWith('data:')) data.push(line.slice(5).replace(/^ /, ''))
+        // 以冒号开头的是心跳注释，跳过
+      }
+    }
+    flush()
+    emit({ id, events: [], closed: true })
+  } catch (err) {
+    flush()
+    if (!signal.aborted) emit({ id, events: [], closed: true, error: err instanceof Error ? err.message : String(err) })
+  }
+}
 
 // ---- 文件 --------------------------------------------------------------------
 // SDK 建图片/文件消息只认本机路径：选文件走系统对话框，粘贴板里的图片先落成临时文件。

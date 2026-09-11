@@ -12,6 +12,7 @@ import { useUI } from '../store/ui'
 import { composerBus } from './composerBus'
 import { Lightbox } from './Lightbox'
 import { Rich } from './rich'
+import { RunBody, RunCard } from './Run'
 import styles from './Stream.module.css'
 
 /**
@@ -47,9 +48,10 @@ function buildRows(messages: readonly Message[]): Row[] {
 // 估高只用于第一次布局，量过之后按真实高度
 function estimate(row: Row): number {
   if (row.kind === 'day') return 44
-  if (row.kind === 'pending') return 46
+  if (row.kind === 'pending') return row.message.runID ? 170 : 46
   const m = row.message
   let h = 52
+  if (m.runID) h += 96
   if (m.body.kind === 'text') h += Math.ceil(m.body.text.length / 70) * 22
   else if (m.body.kind === 'picture') h += (fit(m.body.natural)?.height ?? 220) + 6
   else h += 56
@@ -191,7 +193,7 @@ export function Stream({ place }: { place: Place }) {
                 >
                   {row.kind === 'day' ? (
                     <DaySep label={row.label} />
-                  ) : row.kind === 'pending' ? (
+                  ) : row.kind === 'pending' && !row.message.runID ? (
                     <Pending message={row.message} harness={harness} />
                   ) : harness ? (
                     <Turn message={row.message} mine={row.message.sender === me} flash={flash === row.message.id} onCopy={copy} onQuote={quote} onImage={setShot} />
@@ -268,7 +270,7 @@ const MessageRow = memo(function MessageRow({ message: m, pinned, flash, onReact
   const cls = [styles.row, pinned && styles.pinned, flash && styles.flash, m.mentionsMe && styles.mentioned].filter(Boolean).join(' ')
   return (
     <div className={cls}>
-      <div className={styles.bar}>
+      {!m.transient && <div className={styles.bar}>
         {QUICK.map((e) => (
           <button key={e} className={styles.barEmoji} title={e === '👍' ? '赞' : e === '✅' ? '搞定' : '在看'} onClick={() => onReact(m.id, e)}>{e}</button>
         ))}
@@ -277,7 +279,7 @@ const MessageRow = memo(function MessageRow({ message: m, pinned, flash, onReact
         <button className={styles.barBtn} title="引用回复" onClick={() => onQuote(m.id)}><IconQuote /></button>
         <button className={`${styles.barBtn} ${styles.barAgent}`} title="转交给 agent" onClick={() => onHandoff(m.id)}><IconHandoff /></button>
         <button className={styles.barBtn} title="更多" onClick={(e) => onPopover(m.id, 'menu', e.currentTarget.getBoundingClientRect())}><IconMore /></button>
-      </div>
+      </div>}
 
       <SenderAvatar id={m.sender} name={m.senderName} fallback={m.senderAvatar} size={30} agent={m.isAgent} style={{ marginTop: 1 }} />
       <div className={styles.content}>
@@ -289,7 +291,11 @@ const MessageRow = memo(function MessageRow({ message: m, pinned, flash, onReact
           {m.sendState === 'failed' && <span className={`${styles.state} ${styles.stateBad}`}>· 没发出去</span>}
         </div>
         {m.quote && <QuoteBlock quote={m.quote} onJump={onJump} />}
-        <Body message={m} onImage={onImage} />
+        {m.runID ? (
+          <RunCard message={m} live={m.transient} final={m.transient ? undefined : <Body message={m} onImage={onImage} />} />
+        ) : (
+          <Body message={m} onImage={onImage} />
+        )}
         {m.reactions.length > 0 && (
           <div className={styles.rx}>
             {m.reactions.map((r) => (
@@ -380,12 +386,12 @@ const Turn = memo(function Turn({ message: m, mine, flash, onCopy, onQuote, onIm
         <span className={`${styles.time} mono`}>{hhmm(m.sentAt)}</span>
       </div>
       <div className={styles.turnBody}>
-        <Body message={m} onImage={onImage} large />
+        {m.runID ? <RunBody message={m} live={m.transient} /> : <Body message={m} onImage={onImage} large />}
       </div>
-      <div className={styles.turnActions}>
+      {!m.transient && <div className={styles.turnActions}>
         <button className={styles.turnBtn} title="复制" onClick={() => onCopy(m.id)}><IconCopy /></button>
         <button className={styles.turnBtn} title="引用" onClick={() => onQuote(m.id)}><IconQuote size={14} /></button>
-      </div>
+      </div>}
     </div>
   )
 })

@@ -1,0 +1,95 @@
+/* 公用 */
+.body { display: flex; flex-direction: column; gap: 10px; max-width: 760px; }
+.text { font-size: 14px; line-height: 1.8; color: var(--ink); white-space: pre-wrap; text-wrap: pretty; overflow-wrap: anywhere; user-select: text; }
+.caret { display: inline-block; width: 2px; height: 15px; background: var(--agent); margin-left: 3px; vertical-align: -2px; animation: rl-pulse .9s steps(2) infinite; }
+.pulse { animation: rl-pulse 1.4s ease-in-out infinite; }
+.line { flex: 1; height: 1px; background: var(--line); }
+.chev { font-size: 9.5px; color: var(--ink3); flex: none; }
+.waiting { color: var(--ink3); font-size: 13px; }
+.err { font-size: 12.5px; color: var(--danger); background: var(--dtint); border-left: 2px solid var(--danger); padding: 7px 10px; border-radius: 0 6px 6px 0; }
+.usage { font-size: 10.5px; color: var(--ink3); }
+
+/* 思考折叠框 */
+.think { border: 1px solid var(--line); border-radius: 9px; background: var(--surface); overflow: hidden; }
+.thinkHead { width: 100%; display: flex; align-items: center; gap: 8px; padding: 8px 12px; color: var(--ink2); }
+.thinkHead:hover { background: var(--surface2); color: var(--ink); }
+.thinkLabel { font-size: 12.5px; font-weight: 600; white-space: nowrap; }
+.thinkBody { padding: 2px 12px 12px; background: var(--surface2); border-top: 1px solid var(--line); }
+.thinkText {
+  border-left: 2px solid var(--line2); padding-left: 12px; margin-top: 10px;
+  font-size: 12.5px; line-height: 1.8; color: var(--ink2);
+  white-space: pre-wrap; text-wrap: pretty; overflow-wrap: anywhere;
+  max-height: 260px; overflow-y: auto; user-select: text;
+}
+
+/* 工具芯片 */
+.tools { display: flex; flex-wrap: wrap; gap: 6px; }
+.tool { display: flex; align-items: center; gap: 7px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); padding: 3px 9px; flex: none; }
+.tool:hover, .toolOpen { border-color: var(--line2); background: var(--surface2); }
+.dot { width: 5px; height: 5px; border-radius: 1.5px; background: var(--ok); flex: none; }
+.dot_running, .dot_pending { background: var(--agent); animation: rl-pulse 1s ease-in-out infinite; }
+.dot_error { background: var(--danger); }
+.toolName { font-size: 10.5px; color: var(--ink2); white-space: nowrap; }
+.toolDur { font-size: 10.5px; color: var(--ink3); white-space: nowrap; }
+
+.detail { border: 1px solid var(--line); border-radius: 9px; background: var(--surface2); padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
+.detailHead { display: flex; align-items: baseline; gap: 8px; }
+.detailName { font-size: 11px; font-weight: 600; color: var(--agent); }
+.detailTitle { font-size: 12px; color: var(--ink2); }
+.pre {
+  margin: 0; padding: 8px 10px; border-radius: 7px;
+  background: var(--bg); border: 1px solid var(--line);
+  font-family: var(--mono); font-size: 11px; line-height: 1.6; color: var(--ink2);
+  white-space: pre-wrap; overflow-wrap: anywhere; max-height: 240px; overflow: auto; user-select: text;
+}
+.preOut { color: var(--ink); }
+.preErr { color: var(--danger); border-color: var(--danger); }
+
+/* 停止 / 断流 */
+.stop {
+  align-self: flex-start; display: flex; align-items: center; gap: 7px; height: 29px; padding: 0 12px;
+  border-radius: 8px; border: 1px solid var(--line2); background: var(--surface);
+  font-size: 12px; font-weight: 500; color: var(--ink2); margin-top: 4px;
+}
+.stop:hover { background: var(--surface2); color: var(--ink); }
+.stop:disabled { opacity: .6; cursor: default; }
+.stopDot { width: 8px; height: 8px; border-radius: 2px; background: var(--danger); flex: none; }
+.detached { display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--ink3); }
+.relink { height: 24px; padding: 0 9px; border-radius: 6px; border: 1px solid var(--line2); font-size: 11.5px; color: var(--ink2); }
+.relink:hover { background: var(--surface2); color: var(--ink); }
+.copy { width: 28px; height: 26px; border-radius: 6px; display: flex; align-items: center; justify-content: center; color: var(--ink3); }
+.copy:hover { background: var(--surface2); color: var(--ink); }
+
+/* 运行卡（IM 形态） */
+.card {
+  max-width: 760px; margin-top: 3px;
+  border: 1px solid var(--line); border-left: 2px solid var(--agent); border-radius: 9px;
+  background: var(--surface); overflow: hidden; box-shadow: var(--sh);
+}
+.cardHead { display: flex; align-items: center; gap: 10px; padding: 10px 13px; border-bottom: 1px solid var(--line); background: var(--atint); }
+.runId { font-size: 10.5px; font-weight: 600; color: var(--agent); letter-spacing: .04em; white-space: nowrap; flex: none; }
+.cardTitle { font-size: 12.5px; font-weight: 600; flex: 1; min-width: 0; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cardMeta { font-size: 10.5px; color: var(--ink2); white-space: nowrap; flex: none; }
+.pill { font-size: 10.5px; font-weight: 700; color: var(--ok); background: var(--bg); border: 1px solid var(--line); border-radius: 99px; padding: 1px 8px; white-space: nowrap; flex: none; }
+.pill_running { color: var(--agent); animation: rl-pulse 1.4s ease-in-out infinite; }
+.pill_error { color: var(--danger); }
+.pill_cancelled { color: var(--ink3); }
+
+.toggle { width: 100%; display: flex; align-items: center; gap: 8px; padding: 7px 13px; border-bottom: 1px solid var(--line); color: var(--ink2); font-size: 11px; letter-spacing: .02em; }
+.toggle:hover { background: var(--surface2); color: var(--ink); }
+.stepCount { font-size: 10.5px; color: var(--ink3); }
+
+.steps { padding: 12px 13px 4px; background: var(--surface2); border-bottom: 1px solid var(--line); }
+.step { display: flex; gap: 11px; padding-bottom: 11px; }
+.stepRail { width: 14px; flex: none; display: flex; flex-direction: column; align-items: center; }
+.stepDot { width: 7px; height: 7px; border-radius: 1.5px; background: var(--ok); margin-top: 4px; flex: none; }
+.stepLine { width: 1px; flex: 1; background: var(--line2); margin-top: 3px; }
+.stepBody { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.stepHead { display: flex; align-items: baseline; gap: 8px; text-align: left; }
+.stepAt { font-size: 10.5px; color: var(--ink3); flex: none; }
+.stepKind { font-size: 10.5px; font-weight: 700; letter-spacing: .05em; color: var(--agent); flex: none; }
+.stepLabel { font-size: 12.5px; color: var(--ink); font-weight: 500; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.stepMeta { font-size: 11px; color: var(--ink2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.result { padding: 11px 13px 12px; display: flex; flex-direction: column; gap: 10px; }
+.result .text { font-size: 13.5px; line-height: 1.66; }

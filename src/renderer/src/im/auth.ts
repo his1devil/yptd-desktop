@@ -72,6 +72,12 @@ function check(res: HttpResponse): void {
   throw new AuthError(detail.message ?? detail.error ?? `HTTP ${res.status}`, detail.error)
 }
 
+// ---- 当前服务端与凭据（给运行流这类直连服务端的模块） ----------------------------------
+
+let current = { base: DEFAULT_SERVER.server, token: '' }
+export const setServerAuth = (base: string, token: string): void => { current = { base, token } }
+export const serverAuth = (): { base: string; token: string } => current
+
 // ---- 凭据存取（主进程 safeStorage） ----------------------------------------------
 
 const KEY = 'device-credential'

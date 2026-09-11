@@ -94,6 +94,7 @@ export class Translator {
       isAgent: !!agent,
       agentTag: agent?.tag ?? null,
       transient: isTransient(raw.ex),
+      runID: runOf(raw.ex),
       mentions: mentions.filter((m) => !agentMentions.includes(m)),
       agentMentions,
       dayIndex: dayIndex(raw.sendTime),
@@ -213,8 +214,18 @@ export function directId(a: string, b: string): ConversationId {
 }
 
 export function isTransient(ex: string | undefined): boolean {
-  if (!ex) return false
-  try { return (JSON.parse(ex) as { yptd?: string }).yptd === 'pending' } catch { return false }
+  return parseEx(ex)?.yptd === 'pending'
+}
+
+/** 占位和最终回答的 ex 里都带 run id：`{"yptd":"pending"|"run","run":"run_…"}` */
+export function runOf(ex: string | undefined): string | null {
+  const p = parseEx(ex)
+  return p && (p.yptd === 'pending' || p.yptd === 'run') && p.run ? p.run : null
+}
+
+function parseEx(ex: string | undefined): { yptd?: string; run?: string } | null {
+  if (!ex) return null
+  try { return JSON.parse(ex) as { yptd?: string; run?: string } } catch { return null }
 }
 
 export function parseReaction(data: string | undefined): ReactionPayload | null {

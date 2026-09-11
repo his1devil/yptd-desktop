@@ -23,7 +23,20 @@ export const IPC = {
   fileStash: 'file:stash',
   /** yptd-server 的 HTTP 走主进程：渲染进程的 origin（localhost / file://）过不了 CORS */
   httpFetch: 'http:fetch',
+  /** SSE 也走主进程：开一条流、收事件、关掉 */
+  streamOpen: 'stream:open',
+  streamClose: 'stream:close',
+  streamEvent: 'stream:event',
 } as const
+
+/** 一批 SSE 事件。主进程按 ~30ms 攒一批再发，几百个 token 的 delta 不会变成几百次 IPC */
+export interface StreamBatch {
+  id: number
+  events: { event: string; data: string }[]
+  /** 流结束了（服务端关了或断了），之后不会再有事件 */
+  closed?: boolean
+  error?: string
+}
 
 export interface HttpRequest { url: string; method?: string; headers?: Record<string, string>; body?: string }
 export interface HttpResponse { status: number; ok: boolean; text: string }
@@ -48,6 +61,12 @@ export interface DesktopBridge {
     delete(key: string): Promise<void>
   }
   http(req: HttpRequest): Promise<HttpResponse>
+  stream: {
+    /** 打开一条 SSE，返回流 id；事件通过 onBatch 回来 */
+    open(url: string, headers?: Record<string, string>): Promise<number>
+    close(id: number): void
+    onBatch(listener: (batch: StreamBatch) => void): () => void
+  }
   files: {
     /** 系统对话框选文件，返回绝对路径；取消返回空数组 */
     pick(kind: 'image' | 'any'): Promise<string[]>
