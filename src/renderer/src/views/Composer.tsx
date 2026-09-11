@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ClipboardEvent, type KeyboardEvent } from 'react'
 import { plainText } from '../../../shared/model'
 import { Avatar, glyphOf, pairOf } from '../components/Avatar'
-import { IconClose, IconImage, IconPaperclip } from '../components/Icons'
+import { IconClose, IconFile, IconImage, IconPaperclip } from '../components/Icons'
 import { mentionables, type Mentionable, type Place } from '../store/selectors'
 import { agentsOf, timeline, useSession } from '../store/session'
 import { useUI } from '../store/ui'
@@ -20,6 +20,12 @@ const LINE = 22
 
 interface Menu { start: number; query: string; index: number }
 
+/** 附件栏里的一项：图片带缩略图，文件带名字和大小；都已经有本机路径，发送时交给 SDK */
+interface Attachment { id: string; kind: 'image' | 'file'; name: string; path: string; bytes: number; preview: string | null }
+let nextAttachment = 1
+const IMAGE_EXT = /\.(png|jpe?g|gif|webp|bmp|heic)$/i
+const fmtBytes = (n: number): string => (n < 1024 ? `${n} B` : n < 1024 * 1024 ? `${(n / 1024).toFixed(0)} KB` : `${(n / 1024 / 1024).toFixed(1)} MB`)
+
 export function Composer({ place }: { place: Place }) {
   const id = place.id
   const roster = useSession((s) => s.roster)
@@ -32,7 +38,38 @@ export function Composer({ place }: { place: Place }) {
 
   const [draft, setDraft] = useState(() => drafts.get(id) ?? '')
   const [menu, setMenu] = useState<Menu | null>(null)
+  const [attachments, setAttachments] = useState<Attachment[]>([])
+  const [sending, setSending] = useState(false)
   const ref = useRef<HTMLTextAreaElement>(null)
+
+  // ---- 附件：先进栏，看一眼、配上字再发 ----
+  const addPaths = useCallback(async (paths: string[]) => {
+    const items: Attachment[] = []
+    for (const path of paths) {
+      const name = path.split('/').pop() ?? path
+      const image = IMAGE_EXT.test(name)
+      const thumb = image ? await window.desktop.files.thumbnail(path) : null
+      items.push({ id: `a${nextAttachment++}`, kind: image && thumb ? 'image' : 'file', name, path, bytes: thumb?.bytes ?? 0, preview: thumb?.dataURL ?? null })
+    }
+    setAttachments((cur) => [...cur, ...items])
+  }, [])
+  const addFiles = useCallback(async (files: File[]) => {
+    const items: Attachment[] = []
+    for (const f of files) {
+      // 拖进来的有真实路径；粘贴板里的没有，先落成临时文件
+      let path = window.desktop.files.pathFor(f)
+      if (!path) path = await window.desktop.files.stash(f.name || `pasted-${Date.now()}.png`, await f.arrayBuffer())
+      const image = f.type.startsWith('image/')
+      items.push({ id: `a${nextAttachment++}`, kind: image ? 'image' : 'file', name: f.name || (path.split('/').pop() ?? '文件'), path, bytes: f.size, preview: image ? URL.createObjectURL(f) : null })
+    }
+    setAttachments((cur) => [...cur, ...items])
+  }, [])
+  const removeAttachment = (aid: string): void => setAttachments((cur) => {
+    const gone = cur.find((a) => a.id === aid)
+    if (gone?.preview?.startsWith('blob:')) URL.revokeObjectURL(gone.preview)
+    return cur.filter((a) => a.id !== aid)
+  })
+  useEffect(() => composerBus.onAttach((files) => { void addFiles(files) }), [addFiles])
 
   useEffect(() => { drafts.set(id, draft) }, [id, draft])
 
@@ -82,16 +119,29 @@ export function Composer({ place }: { place: Place }) {
 
   const pick = useCallback((c: Mentionable) => { if (menu) insertAt(`@${c.name} `, menu.start) }, [menu, insertAt])
 
+  // 文字和附件一起发：文字一条，图片和文件各一条，按栏里的顺序依次发，连着的图会并成一行
   const send = useCallback(() => {
     const text = draft.replace(/\s+$/, '').replace(/^\n+/, '')
-    if (!text.trim()) return
+    if (!text.trim() && attachments.length === 0) return
+    if (sending) return
     const ids = candidates.filter((c) => text.includes(`@${c.name}`)).map((c) => c.id)
-    void useSession.getState().send(id, text, { quote: quoteId ?? undefined, mentions: ids.length ? ids : undefined })
+    const batch = attachments
     setDraft('')
     drafts.delete(id)
+    setAttachments([])
     if (quoteId) setQuote(id, null)
     setMenu(null)
-  }, [draft, candidates, id, quoteId, setQuote])
+    setSending(true)
+    void (async () => {
+      const s = useSession.getState()
+      if (text.trim()) await s.send(id, text, { quote: quoteId ?? undefined, mentions: ids.length ? ids : undefined })
+      for (const a of batch) {
+        if (a.kind === 'image') await s.sendPicture(id, a.path)
+        else await s.sendFile(id, a.path, a.name)
+        if (a.preview?.startsWith('blob:')) URL.revokeObjectURL(a.preview)
+      }
+    })().finally(() => setSending(false))
+  }, [draft, attachments, sending, candidates, id, quoteId, setQuote])
 
   const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>): void => {
     if (menu && filtered.length) {
@@ -105,23 +155,15 @@ export function Composer({ place }: { place: Place }) {
   }
 
   const onPaste = (e: ClipboardEvent<HTMLTextAreaElement>): void => {
-    const files = [...e.clipboardData.files].filter((f) => f.type.startsWith('image/'))
+    const files = [...e.clipboardData.files]
     if (!files.length) return
     e.preventDefault()
-    for (const f of files) {
-      void f.arrayBuffer()
-        .then((buf) => window.desktop.files.stash(f.name || `pasted-${Date.now()}.png`, buf))
-        .then((path) => useSession.getState().sendPicture(id, path))
-    }
+    void addFiles(files)
   }
 
   const attach = async (kind: 'image' | 'any'): Promise<void> => {
     const paths = await window.desktop.files.pick(kind)
-    for (const p of paths) {
-      const name = p.split('/').pop() ?? p
-      if (/\.(png|jpe?g|gif|webp|bmp)$/i.test(name)) void useSession.getState().sendPicture(id, p)
-      else void useSession.getState().sendFile(id, p, name)
-    }
+    if (paths.length) await addPaths(paths)
   }
 
   const agents = place.kind === 'channel' ? agentsOf(roster) : []
@@ -154,6 +196,32 @@ export function Composer({ place }: { place: Place }) {
               <div className={styles.quoteExcerpt}>{plainText(quoted.body).replace(/\s*\n\s*/g, ' ')}</div>
             </div>
             <button className={styles.quoteClose} title="取消引用" onClick={() => setQuote(id, null)}><IconClose /></button>
+          </div>
+        )}
+
+        {attachments.length > 0 && (
+          <div className={styles.tray}>
+            {attachments.map((a) => (
+              <div key={a.id} className={a.kind === 'image' ? styles.thumb : styles.fileChip} title={a.name}>
+                {a.kind === 'image' && a.preview ? (
+                  <img src={a.preview} alt={a.name} draggable={false} />
+                ) : (
+                  <>
+                    <span className={styles.fileIcon}><IconFile size={16} /></span>
+                    <span className={styles.fileText}>
+                      <span className={styles.fileName}>{a.name}</span>
+                      {a.bytes > 0 && <span className={`${styles.fileMeta} mono`}>{fmtBytes(a.bytes)}</span>}
+                    </span>
+                  </>
+                )}
+                <button className={styles.remove} title="去掉" onClick={() => removeAttachment(a.id)}><IconClose size={9} /></button>
+              </div>
+            ))}
+            <span className={styles.trayHint}>
+              {attachments.filter((a) => a.kind === 'image').length ? `${attachments.filter((a) => a.kind === 'image').length} 张图` : ''}
+              {attachments.some((a) => a.kind === 'file') ? `${attachments.filter((a) => a.kind === 'image').length ? ' · ' : ''}${attachments.filter((a) => a.kind === 'file').length} 个文件` : ''}
+              {' · 和文字一起发'}
+            </span>
           </div>
         )}
 
@@ -195,7 +263,7 @@ export function Composer({ place }: { place: Place }) {
           <button className={styles.footBtn} title="发文件" onClick={() => void attach('any')}><IconPaperclip /></button>
           <span className={styles.spacer} />
           <span className={`${styles.footHint} mono`}>Enter 发送 · Shift+Enter 换行</span>
-          <button className={styles.send} disabled={!draft.trim()} onClick={send}>发送</button>
+          <button className={styles.send} disabled={(!draft.trim() && attachments.length === 0) || sending} onClick={send}>{sending ? '发送中…' : '发送'}</button>
         </div>
       </div>
     </div>

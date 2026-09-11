@@ -11,7 +11,7 @@
   overflow: hidden;
 }
 .head { display: flex; align-items: center; justify-content: space-between; padding: 16px 18px 12px; }
-.title { font-size: 15px; font-weight: 600; letter-spacing: -.015em; }
+.title { font-size: 15px; font-weight: 600; letter-spacing: -.006em; }
 .close { width: 26px; height: 26px; border-radius: 7px; display: flex; align-items: center; justify-content: center; color: var(--ink3); }
 .close:hover { background: var(--surface2); color: var(--ink); }
 .body { padding: 4px 18px 16px; display: flex; flex-direction: column; gap: 14px; overflow-y: auto; min-height: 0; }

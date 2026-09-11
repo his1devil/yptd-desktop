@@ -6,6 +6,7 @@ import { usePlace, type Place } from '../store/selectors'
 import { agentsOf, useSession } from '../store/session'
 import { useUI } from '../store/ui'
 import { Composer } from '../views/Composer'
+import { composerBus } from '../views/composerBus'
 import { Inbox } from '../views/Inbox'
 import { Settings } from '../views/Settings'
 import { Stream } from '../views/Stream'
@@ -33,12 +34,8 @@ export function MainArea() {
     e.preventDefault()
     setDragging(false)
     if (!place) return
-    for (const f of e.dataTransfer.files) {
-      const path = window.desktop.files.pathFor(f)
-      if (!path) continue
-      if (f.type.startsWith('image/')) void useSession.getState().sendPicture(place.id, path)
-      else void useSession.getState().sendFile(place.id, path, f.name)
-    }
+    // 先进输入框的附件栏，让人看一眼、配上文字再发
+    composerBus.attach([...e.dataTransfer.files])
   }
 
   if (!place) return <main className={styles.main}><Landing /></main>
@@ -48,7 +45,7 @@ export function MainArea() {
       <Head place={place} />
       <Stream key={`stream-${place.id}`} place={place} />
       <Composer key={`composer-${place.id}`} place={place} />
-      {dragging && <div className={styles.drop}><span>放开就发到 {place.kind === 'channel' ? `#${place.title}` : place.title}</span></div>}
+      {dragging && <div className={styles.drop}><span>放开，先放进输入框</span></div>}
     </main>
   )
 }

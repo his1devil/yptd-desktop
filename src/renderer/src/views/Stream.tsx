@@ -4,7 +4,6 @@ import type { Message, MessageId, PixelSize, QuotePreview } from '../../../share
 import { plainText } from '../../../shared/model'
 import { Avatar, glyphOf, pairOf } from '../components/Avatar'
 import { IconCopy, IconEmoji, IconFile, IconHandoff, IconMore, IconQuote, IconUndo } from '../components/Icons'
-import { dayLabel } from '../im/translate'
 import { visible } from '../im/timeline'
 import type { Place } from '../store/selectors'
 import { timeline, useSession } from '../store/session'
@@ -12,6 +11,7 @@ import { useUI } from '../store/ui'
 import { composerBus } from './composerBus'
 import { Lightbox } from './Lightbox'
 import { Rich } from './rich'
+import { buildRows, rowHas, type Row } from './rows'
 import { RunBody, RunCard } from './Run'
 import styles from './Stream.module.css'
 
@@ -23,32 +23,15 @@ import styles from './Stream.module.css'
  * 真高时滚动位置跟着补，往上翻历史不跳；贴底时新消息、图片加载都保持贴底。
  */
 
-type Row =
-  | { key: string; kind: 'day'; label: string }
-  | { key: string; kind: 'msg'; message: Message }
-  | { key: string; kind: 'pending'; message: Message }
-
 const QUICK = ['👍', '✅', '👀'] as const
 export const EMOJI = ['👍', '✅', '👀', '🎯', '🙏', '🔥', '🚀', '⚡', '😂', '🤔', '👏', '❤️', '🎉', '😮', '😢', '💯', '🫡', '👌', '🤝', '🧐', '☕', '🐛', '✨', '📌']
 const TOP_PAD = 14
-
-function buildRows(messages: readonly Message[]): Row[] {
-  const rows: Row[] = []
-  let day = -1
-  for (const m of messages) {
-    if (m.dayIndex !== day) {
-      day = m.dayIndex
-      rows.push({ key: `d${day}`, kind: 'day', label: dayLabel(day) })
-    }
-    rows.push({ key: m.id, kind: m.transient ? 'pending' : 'msg', message: m })
-  }
-  return rows
-}
 
 // 估高只用于第一次布局，量过之后按真实高度
 function estimate(row: Row): number {
   if (row.kind === 'day') return 44
   if (row.kind === 'pending') return row.message.runID ? 170 : 46
+  if (row.kind === 'gallery') return 52 + 180 * Math.ceil(row.messages.length / 4)
   const m = row.message
   let h = 52
   if (m.runID) h += 96
@@ -103,7 +86,10 @@ export function Stream({ place }: { place: Place }) {
   if (rows.length > 0 && initial.current === null) {
     firstRowsAt.current = performance.now()
     let newestAt = 0
-    for (const r of rows) if (r.kind !== 'day' && r.message.sentAt > newestAt) newestAt = r.message.sentAt
+    for (const r of rows) {
+      const at = r.kind === 'day' ? 0 : r.kind === 'gallery' ? r.messages[r.messages.length - 1]!.sentAt : r.message.sentAt
+      if (at > newestAt) newestAt = at
+    }
     initial.current = { keys: new Set(rows.map((r) => r.key)), newestAt }
   }
   const entering = firstRowsAt.current !== null && performance.now() - firstRowsAt.current < 600
@@ -115,7 +101,8 @@ export function Stream({ place }: { place: Place }) {
       return delay === undefined ? { cls: '', style: {} } : { cls: styles.enter ?? '', style: { animationDelay: `${delay}ms` } }
     }
     // 不在第一批里：比第一批都新的才是"新消息"，旧的是翻出来的历史
-    const fresh = row.kind !== 'day' && init !== null && row.message.sentAt >= init.newestAt
+    const at = row.kind === 'day' ? 0 : row.kind === 'gallery' ? row.messages[0]!.sentAt : row.message.sentAt
+    const fresh = row.kind !== 'day' && init !== null && at >= init.newestAt
     return { cls: fresh ? styles.fresh ?? '' : '', style: {} }
   }
 
@@ -186,7 +173,7 @@ export function Stream({ place }: { place: Place }) {
   const openPopover = useCallback<Anchor>((mid, kind, rect) => setPopover({ id: mid, kind, anchor: rect }), [])
   const closePopover = useCallback(() => setPopover(null), [])
   const jump = useCallback((mid: MessageId) => {
-    const i = rows.findIndex((r) => r.kind === 'msg' && r.message.id === mid)
+    const i = rows.findIndex((r) => rowHas(r, mid))
     if (i < 0) return
     atBottom.current = false
     virtualizer.scrollToIndex(i, { align: 'center' })
@@ -200,7 +187,7 @@ export function Stream({ place }: { place: Place }) {
   const jumpTries = useRef(0)
   useEffect(() => {
     if (!jumpTo || jumpTo.conversationId !== id) return
-    const i = rows.findIndex((r) => r.kind === 'msg' && r.message.id === jumpTo.messageId)
+    const i = rows.findIndex((r) => rowHas(r, jumpTo.messageId))
     if (i >= 0) {
       jumpTries.current = 0
       setJumpTo(null)
@@ -245,6 +232,19 @@ export function Stream({ place }: { place: Place }) {
                     <DaySep label={row.label} />
                   ) : row.kind === 'pending' && !row.message.runID ? (
                     <Pending message={row.message} harness={harness} />
+                  ) : row.kind === 'gallery' ? (
+                    harness ? (
+                      <Turn message={row.messages[0]!} gallery={row.messages} mine={row.messages[0]!.sender === me} flash={row.messages.some((m) => m.id === flash)} onCopy={copy} onQuote={quote} onImage={setShot} />
+                    ) : (
+                      <MessageRow
+                        message={row.messages[0]!}
+                        gallery={row.messages}
+                        mine={row.messages[0]!.sender === me}
+                        pinned={popover?.id === row.messages[0]!.id}
+                        flash={row.messages.some((m) => m.id === flash)}
+                        onReact={react} onQuote={quote} onHandoff={handoff} onJump={jump} onImage={setShot} onPopover={openPopover}
+                      />
+                    )
                   ) : harness ? (
                     <Turn message={row.message} mine={row.message.sender === me} flash={flash === row.message.id} onCopy={copy} onQuote={quote} onImage={setShot} />
                   ) : (
@@ -331,6 +331,8 @@ function Pending({ message: m, harness }: { message: Message; harness: boolean }
 
 interface RowProps {
   message: Message
+  /** 同一个人连着发的几张图：并成一行画廊 */
+  gallery?: Message[]
   mine: boolean
   pinned: boolean
   flash: boolean
@@ -342,7 +344,7 @@ interface RowProps {
   onPopover: Anchor
 }
 
-const MessageRow = memo(function MessageRow({ message: m, pinned, flash, onReact, onQuote, onHandoff, onJump, onImage, onPopover }: RowProps) {
+const MessageRow = memo(function MessageRow({ message: m, gallery, pinned, flash, onReact, onQuote, onHandoff, onJump, onImage, onPopover }: RowProps) {
   const cls = [styles.row, pinned && styles.pinned, flash && styles.flash, m.mentionsMe && styles.mentioned].filter(Boolean).join(' ')
   return (
     <div className={cls}>
@@ -367,7 +369,9 @@ const MessageRow = memo(function MessageRow({ message: m, pinned, flash, onReact
           {m.sendState === 'failed' && <span className={`${styles.state} ${styles.stateBad}`}>· 没发出去</span>}
         </div>
         {m.quote && <QuoteBlock quote={m.quote} onJump={onJump} />}
-        {m.runID ? (
+        {gallery ? (
+          <Gallery messages={gallery} onImage={onImage} />
+        ) : m.runID ? (
           <RunCard message={m} live={m.transient} final={m.transient ? undefined : <Body message={m} onImage={onImage} />} />
         ) : (
           <Body message={m} onImage={onImage} />
@@ -430,10 +434,31 @@ function Body({ message: m, onImage, large }: { message: Message; onImage(shot: 
   }
 }
 
+/** 几张图并排：统一 180 高，按各自比例给宽，装不下就换行。点开全屏。 */
+function Gallery({ messages, onImage }: { messages: Message[]; onImage(shot: Shot): void }) {
+  // 越多越小：两张 200 高，三张以上 150 高，一般一批能排在一行里
+  const h = messages.length <= 2 ? 200 : 150
+  return (
+    <div className={styles.gallery}>
+      {messages.map((m) => {
+        if (m.body.kind !== 'picture') return null
+        const b = m.body
+        const w = b.natural && b.natural.height > 0 ? Math.min(h * 2, Math.max(Math.round(h * 0.55), Math.round(h * b.natural.width / b.natural.height))) : h
+        return (
+          <button key={m.id} className={styles.galleryItem} style={{ width: w, height: h }} onClick={() => onImage({ url: b.url, name: b.name })} title={b.name}>
+            <img src={b.url} alt={b.name} draggable={false} loading="lazy" />
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
 // ---- harness 形态 ---------------------------------------------------------------------
 
 interface TurnProps {
   message: Message
+  gallery?: Message[]
   mine: boolean
   flash: boolean
   onCopy(id: MessageId): void
@@ -441,13 +466,13 @@ interface TurnProps {
   onImage(shot: Shot): void
 }
 
-const Turn = memo(function Turn({ message: m, mine, flash, onCopy, onQuote, onImage }: TurnProps) {
+const Turn = memo(function Turn({ message: m, gallery, mine, flash, onCopy, onQuote, onImage }: TurnProps) {
   if (mine) {
     return (
       <div className={`${styles.turnUser} ${flash ? styles.flash : ''}`}>
-        <div className={styles.bubble}>
+        <div className={`${styles.bubble} ${gallery ? styles.bubbleGallery : ''}`}>
           {m.quote && <div className={styles.bubbleQuote}>{m.quote.senderName}：{m.quote.excerpt}</div>}
-          <Body message={m} onImage={onImage} />
+          {gallery ? <Gallery messages={gallery} onImage={onImage} /> : <Body message={m} onImage={onImage} />}
           {m.sendState === 'failed' && <div className={styles.stateBad}>没发出去</div>}
         </div>
       </div>
@@ -462,7 +487,7 @@ const Turn = memo(function Turn({ message: m, mine, flash, onCopy, onQuote, onIm
         <span className={`${styles.time} mono`}>{hhmm(m.sentAt)}</span>
       </div>
       <div className={styles.turnBody}>
-        {m.runID ? <RunBody message={m} live={m.transient} /> : <Body message={m} onImage={onImage} large />}
+        {gallery ? <Gallery messages={gallery} onImage={onImage} /> : m.runID ? <RunBody message={m} live={m.transient} /> : <Body message={m} onImage={onImage} large />}
       </div>
       {!m.transient && <div className={styles.turnActions}>
         <button className={styles.turnBtn} title="复制" onClick={() => onCopy(m.id)}><IconCopy /></button>

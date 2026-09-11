@@ -53,8 +53,10 @@
   --sh: 0 1px 2px rgba(20, 25, 22, .05), 0 10px 30px rgba(20, 25, 22, .08);
   --shwin: 0 30px 90px rgba(20, 25, 22, .26), 0 2px 8px rgba(20, 25, 22, .13);
 
-  --font: 'Instrument Sans', 'PingFang SC', 'Noto Sans SC', system-ui, sans-serif;
-  --mono: 'IBM Plex Mono', ui-monospace, Menlo, monospace;
+  /* gg sans 的 x 高比 Instrument Sans 大，同样字号看着大半号，字重也是真的：
+     标题不再需要收字距，600 就是 600 而不是 400 加粗。 */
+  --font: 'gg sans', 'PingFang SC', 'Noto Sans SC', system-ui, sans-serif;
+  --mono: 'gg mono', 'gg sans', ui-monospace, Menlo, monospace;
 
   /* 图标栏与标题栏红绿灯区同宽。原生红绿灯 52px 宽，放在 x=10 正好居中，58px 装不下。 */
   --rail-w: 72px;

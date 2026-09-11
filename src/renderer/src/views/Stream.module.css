@@ -4,7 +4,7 @@
 .vrow { position: absolute; top: 0; left: 0; width: 100%; }
 
 .empty { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 0 40px; text-align: center; }
-.emptyTitle { font-size: 14px; font-weight: 600; letter-spacing: -.01em; }
+.emptyTitle { font-size: 14px; font-weight: 600; letter-spacing: 0; }
 .emptyDesc { font-size: 12.5px; color: var(--ink3); }
 
 /* 日期分隔：线 + 等宽药丸 + 线 */
@@ -40,7 +40,7 @@
 
 .content { flex: 1; min-width: 0; }
 .meta { display: flex; align-items: baseline; gap: 7px; margin-bottom: 2px; }
-.who { font-size: 13px; font-weight: 600; letter-spacing: -.01em; }
+.who { font-size: 13px; font-weight: 600; letter-spacing: 0; }
 .tag { font-size: 9.5px; font-weight: 700; letter-spacing: .07em; color: var(--agent); background: var(--atint); border-radius: 4px; padding: 1px 5px; line-height: 14px; }
 .time { font-size: 10.5px; color: var(--ink3); }
 .state { font-size: 10.5px; color: var(--ink3); }
@@ -156,3 +156,10 @@
   background: linear-gradient(90deg, var(--surface2) 12%, var(--line) 38%, var(--surface2) 62%);
   background-size: 220% 100%; animation: global(rl-shim) 1.5s linear infinite;
 }
+
+/* 画廊：同一个人连发的图并排 */
+.gallery { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 3px; max-width: 760px; }
+.galleryItem { border-radius: 8px; overflow: hidden; border: 1px solid var(--line); background: var(--surface2); flex: none; }
+.galleryItem img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.galleryItem:hover { border-color: var(--line2); }
+.bubbleGallery { padding: 6px; background: transparent; border-color: transparent; }

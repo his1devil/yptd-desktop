@@ -1,5 +1,5 @@
-import { app, BrowserWindow, dialog, ipcMain, net, safeStorage, session, shell } from 'electron'
-import { mkdirSync, readFileSync, unlinkSync, writeFileSync, existsSync } from 'node:fs'
+import { app, BrowserWindow, dialog, ipcMain, nativeImage, net, safeStorage, session, shell } from 'electron'
+import { mkdirSync, readFileSync, statSync, unlinkSync, writeFileSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { IPC, type HttpRequest, type HttpResponse, type StreamBatch } from '../shared/ipc'
 import { attachOpenIM, disposeOpenIM } from './openim'
@@ -121,6 +121,17 @@ ipcMain.handle(IPC.dialogPickFiles, async (e, kind: 'image' | 'any') => {
   }
   const r = win ? await dialog.showOpenDialog(win, options) : await dialog.showOpenDialog(options)
   return r.canceled ? [] : r.filePaths
+})
+// 输入框里的缩略图：渲染进程不能读本地文件，这里用 nativeImage 缩到 320 再以 data URL 送过去
+ipcMain.handle(IPC.fileThumbnail, (_e, path: string) => {
+  try {
+    const img = nativeImage.createFromPath(path)
+    if (img.isEmpty()) return null
+    const { width, height } = img.getSize()
+    const scale = Math.min(1, 320 / Math.max(width, height))
+    const small = scale < 1 ? img.resize({ width: Math.round(width * scale), height: Math.round(height * scale), quality: 'good' }) : img
+    return { dataURL: small.toDataURL(), width, height, bytes: statSync(path).size }
+  } catch { return null }
 })
 ipcMain.handle(IPC.fileStash, (_e, name: string, bytes: ArrayBuffer | Uint8Array) => {
   const dir = join(app.getPath('temp'), 'yptd-stash')

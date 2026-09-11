@@ -311,6 +311,8 @@ async function connect(set: Set, get: Get, authenticate: () => Promise<{ userID:
       await im.init(cfg, await window.desktop.dataDir())
       await im.login(auth.userID, auth.imToken)
     }
+    // 登录成功就是连着的；之后掉线/重连由 SDK 事件改这个位
+    set({ connected: true })
     translator.atAllTag = await im.atAllTag().catch(() => '')
     subscribe(set, get)
     set({ phase: { kind: 'ready' } })

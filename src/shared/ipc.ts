@@ -21,6 +21,7 @@ export const IPC = {
   /** 文件：系统选文件对话框；粘贴板里的图片落成临时文件（SDK 只认路径） */
   dialogPickFiles: 'dialog:pickFiles',
   fileStash: 'file:stash',
+  fileThumbnail: 'file:thumbnail',
   /** yptd-server 的 HTTP 走主进程：渲染进程的 origin（localhost / file://）过不了 CORS */
   httpFetch: 'http:fetch',
   /** SSE 也走主进程：开一条流、收事件、关掉 */
@@ -97,5 +98,7 @@ export interface DesktopBridge {
     stash(name: string, bytes: ArrayBuffer): Promise<string>
     /** 拖进来的 File 的真实路径（沙箱渲染进程里没有 File.path） */
     pathFor(file: File): string
+    /** 本地图片的缩略图（data URL，最长边 ≤ 320）和原始尺寸；读不出来返回 null */
+    thumbnail(path: string): Promise<{ dataURL: string; width: number; height: number; bytes: number } | null>
   }
 }

@@ -46,6 +46,7 @@ const bridge: DesktopBridge = {
     pick: (kind) => ipcRenderer.invoke(IPC.dialogPickFiles, kind),
     stash: (name, bytes) => ipcRenderer.invoke(IPC.fileStash, name, bytes),
     pathFor: (file) => webUtils.getPathForFile(file),
+    thumbnail: (path) => ipcRenderer.invoke(IPC.fileThumbnail, path),
   },
 }
 
