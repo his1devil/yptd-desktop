@@ -77,10 +77,11 @@ function Head({ place }: { place: Place }) {
     <div className={styles.head}>
       <div className={styles.titleBlock}>
         <div className={styles.titleRow}>
+          {/* 切会话时这两个是「共享元素」：从旧位置滑到新位置，眼睛盯着的东西一直在 */}
           {place.kind !== 'channel' && (
-            <Avatar glyph={place.glyph} pair={place.pair} size={22} kind={place.isAgent ? 'agent' : 'human'} src={place.avatar} />
+            <Avatar glyph={place.glyph} pair={place.pair} size={22} kind={place.isAgent ? 'agent' : 'human'} src={place.avatar} style={{ viewTransitionName: 'conv-avatar' }} />
           )}
-          <span className={styles.title}>{place.kind === 'channel' ? `#${place.title}` : place.title}</span>
+          <span className={styles.title} style={{ viewTransitionName: 'conv-title' }}>{place.kind === 'channel' ? `#${place.title}` : place.title}</span>
           {place.isAgent ? (
             <span className={`${styles.tag} mono`}>{place.peer?.tag || 'AGENT'}</span>
           ) : place.groupID ? (

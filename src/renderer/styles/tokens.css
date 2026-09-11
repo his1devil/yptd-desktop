@@ -63,6 +63,8 @@
 
   /* 动效：只动 opacity / transform，进出用 ease-out，位移不超过 10px。 */
   --ease-out: cubic-bezier(.2, .8, .2, 1);
+  /* 弹簧：一段 linear() 采样，给弹出的徽标和回应芯片用，不要给位移用 */
+  --spring: linear(0, 0.006, 0.025 2.8%, 0.101 6.1%, 0.539 18.9%, 0.721 25.3%, 0.849 31.5%, 0.937 38.1%, 0.968 41.8%, 0.991 45.7%, 1.006 50.1%, 1.015 55%, 1.017 63.9%, 1.001);
   --dur-fast: 120ms;
   --dur: 180ms;
   --dur-slow: 260ms;
@@ -117,9 +119,30 @@
 @keyframes rl-fade  { from { opacity: 0 } to { opacity: 1 } }
 @keyframes rl-rise  { from { opacity: 0; transform: translateY(10px) } to { opacity: 1; transform: none } }
 @keyframes rl-pop   { from { opacity: 0; transform: scale(.82) } 60% { transform: scale(1.04) } to { opacity: 1; transform: none } }
+@keyframes rl-spring-in { from { opacity: 0; transform: scale(.6) } to { opacity: 1; transform: none } }
+@keyframes rl-fade-out  { to { opacity: 0 } }
+@keyframes rl-reveal    { from { clip-path: circle(0 at var(--tx, 50%) var(--ty, 50%)) } to { clip-path: circle(150% at var(--tx, 50%) var(--ty, 50%)) } }
+
+/* View Transitions（motion/transition.ts）。root 不做全屏交叉淡入：没命名的部分即时切换，
+   命名的元素各自连续移动。plus-lighter 是默认的混合模式，两层都不透明时会发白，得改回 normal。 */
+::view-transition-old(root), ::view-transition-new(root) { animation: none; mix-blend-mode: normal; }
+/* 切会话：旧的消息流淡出，头部的头像和标题滑到新位置；新流自己带瀑布进场 */
+::view-transition-old(conv-stream) { animation: rl-fade-out 140ms var(--ease-out) both; mix-blend-mode: normal; }
+::view-transition-new(conv-stream) { animation: none; mix-blend-mode: normal; }
+::view-transition-group(conv-avatar), ::view-transition-group(conv-title) { animation-duration: 260ms; animation-timing-function: var(--ease-out); }
+/* 放大图片：缩略图和大图是同一个元素在长大；两张图直接叠、不淡，边框随组一起走 */
+::view-transition-group(shot) { animation-duration: 300ms; animation-timing-function: var(--ease-out); }
+::view-transition-old(shot), ::view-transition-new(shot) { animation: none; mix-blend-mode: normal; height: 100%; overflow: hidden; }
+::view-transition-old(lb-bg) { animation: rl-fade-out 160ms ease both; }
+::view-transition-new(lb-bg) { animation: rl-fade 160ms ease both; }
+/* 切主题：从点击处圆形揭示出新主题；揭示期间关掉各处底色过渡，边界才干净 */
+:root:active-view-transition-type(theme)::view-transition-old(root) { animation: none; }
+:root:active-view-transition-type(theme)::view-transition-new(root) { animation: rl-reveal 420ms var(--ease-out) both; }
+[data-theming] *, [data-theming] *::before, [data-theming] *::after { transition: none !important; }
 
 /* 系统关了动效就全关，包括进场的瀑布 */
 @media (prefers-reduced-motion: reduce) {
   :root { --dur-fast: 0ms; --dur: 0ms; --dur-slow: 0ms; }
   *, *::before, *::after { animation-duration: 0ms !important; animation-delay: 0ms !important; transition-duration: 0ms !important; }
+  ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none !important; }
 }

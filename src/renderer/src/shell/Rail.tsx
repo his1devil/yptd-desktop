@@ -49,7 +49,7 @@ export function Rail() {
       <div className={styles.indicator} style={{ transform: `translateY(${y ?? 0}px)`, opacity: y === null ? 0 : 1 }} />
       {NAV.map(({ id, name, Icon }) => item(id, name, Icon))}
       <div className={styles.spacer} />
-      <button className={styles.item} title={theme === 'dark' ? '切到浅色' : '切到深色'} onClick={toggleTheme}>
+      <button className={styles.item} title={theme === 'dark' ? '切到浅色' : '切到深色'} onClick={(e) => toggleTheme({ x: e.clientX, y: e.clientY })}>
         {theme === 'dark' ? <IconMoon /> : <IconSun />}
       </button>
       {item('set', '设置', IconSettings)}

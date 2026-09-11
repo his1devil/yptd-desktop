@@ -6,8 +6,10 @@ import { Rail } from './shell/Rail'
 import { ContextSidebar } from './shell/ContextSidebar'
 import { Inspector } from './shell/Inspector'
 import { MainArea } from './shell/MainArea'
+import { nextConversation, orderedConversationIds } from './store/order'
 import { useSession } from './store/session'
 import { useUI } from './store/ui'
+import { composerBus } from './views/composerBus'
 import { ChannelDialogsMount } from './views/mounts'
 import { CommandPalette } from './views/CommandPalette'
 import { Recover, SignIn, Splash } from './views/SignIn'
@@ -32,12 +34,31 @@ export function App() {
     void useSession.getState().boot()
   }, [])
 
-  // 全局快捷键：⌘K 搜索/派活，⌘, 设置
+  // 全局快捷键：⌘K 搜索/派活，⌘, 设置，⌥↑↓ 切会话（加 ⇧ 只在有未读的里跳），⌘1–9 前九个会话，
+  // ⌘. 右栏，⌘⇧E 标已读，Esc 回到输入框
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
-      if (!(e.metaKey || e.ctrlKey)) return
-      if (e.key === 'k' || e.key === 'K') { e.preventDefault(); const ui = useUI.getState(); ui.setPalette(!ui.paletteOpen) }
-      else if (e.key === ',') { e.preventDefault(); useUI.getState().setSettingsPage('profile') }
+      const ui = useUI.getState()
+      const cmd = e.metaKey || e.ctrlKey
+      const inField = (e.target as HTMLElement | null)?.tagName === 'INPUT' || (e.target as HTMLElement | null)?.tagName === 'TEXTAREA'
+      if (e.altKey && !cmd && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
+        e.preventDefault()
+        stepConversation(e.key === 'ArrowDown' ? 1 : -1, e.shiftKey)
+        return
+      }
+      if (e.key === 'Escape' && !inField && !ui.paletteOpen && !ui.dialog && ui.conversationId && ui.section !== 'set' && ui.section !== 'inbox') {
+        composerBus.insert('')
+        return
+      }
+      if (!cmd) return
+      if (e.key === 'k' || e.key === 'K') { e.preventDefault(); ui.setPalette(!ui.paletteOpen) }
+      else if (e.key === ',') { e.preventDefault(); ui.setSettingsPage('profile') }
+      else if (e.key === '.') { e.preventDefault(); ui.setInspectorOpen(!ui.inspectorOpen) }
+      else if (e.shiftKey && (e.key === 'e' || e.key === 'E')) { e.preventDefault(); if (ui.conversationId) void useSession.getState().markRead(ui.conversationId) }
+      else if (!e.shiftKey && !e.altKey && /^[1-9]$/.test(e.key)) {
+        const id = orderedConversationIds(useSession.getState())[Number(e.key) - 1]
+        if (id) { e.preventDefault(); void useSession.getState().open(id) }
+      }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
@@ -54,6 +75,7 @@ export function App() {
   if (phase.kind !== 'ready') return <SignIn />
 
   return (
+    // 冷启动：四块区域按 60ms 错开各浮一次（App.module.css），之后各自的进场接着播
     <div className={styles.window}>
       <TitleBar fullscreen={fullscreen} />
       <div className={styles.body}>
@@ -68,4 +90,12 @@ export function App() {
       <ChannelDialogsMount />
     </div>
   )
+}
+
+/** ⌥↑ / ⌥↓：按侧栏的顺序（频道、私聊、agent）切到上一个 / 下一个会话；带 ⇧ 只在有未读的里找，循环 */
+function stepConversation(dir: 1 | -1, unreadOnly: boolean): void {
+  const s = useSession.getState()
+  const unread = new Set(s.conversations.filter((c) => c.unread > 0).map((c) => c.id))
+  const id = nextConversation(orderedConversationIds(s), useUI.getState().conversationId, dir, unread, unreadOnly)
+  if (id) void s.open(id)
 }

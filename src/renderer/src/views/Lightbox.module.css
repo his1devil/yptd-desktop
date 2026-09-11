@@ -1,10 +1,11 @@
+/* 进出由 View Transition 管（tokens.css 的 lb-bg / shot）：底色淡入，图从缩略图长大 */
 .layer {
   position: fixed; inset: 0; z-index: 60;
   background: rgba(6, 6, 7, .78);
   display: flex; align-items: center; justify-content: center;
-  animation: global(rl-up) .12s ease-out;
+  view-transition-name: lb-bg;
 }
-.img { max-width: 92vw; max-height: 86vh; border-radius: 8px; box-shadow: var(--shwin); background: #000; }
+.img { max-width: 92vw; max-height: 86vh; border-radius: 8px; box-shadow: var(--shwin); background: #000; view-transition-name: shot; }
 .bar {
   position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
   display: flex; align-items: center; gap: 14px;

@@ -1,8 +1,9 @@
-import type { ReactNode } from 'react'
+import { useRef, type ReactNode } from 'react'
 import type { Conversation, Person } from '../../../shared/model'
 import { Avatar, glyphOf, pairOf } from '../components/Avatar'
 import { IconPlus } from '../components/Icons'
 import { directId } from '../im/translate'
+import { useFlip } from '../motion/useFlip'
 import { agentsOf, useSession } from '../store/session'
 import { useUI, type InboxFilter, type Section } from '../store/ui'
 import { SETTINGS_PAGES } from '../views/Settings'
@@ -91,7 +92,7 @@ function ConversationItem({ c, active }: { c: Conversation; active: boolean }) {
   const isChannel = c.kind === 'channel'
   const isAgent = c.kind === 'agent_session'
   return (
-    <button className={`${styles.item} ${active ? styles.active : ''} ${c.unread ? styles.unread : ''}`} onClick={() => void useSession.getState().open(c.id)}>
+    <button className={`${styles.item} ${active ? styles.active : ''} ${c.unread ? styles.unread : ''}`} data-flip={c.id} onClick={() => void useSession.getState().open(c.id)}>
       {isChannel ? (
         <span className={`${styles.hash} mono`}>#</span>
       ) : (
@@ -101,7 +102,8 @@ function ConversationItem({ c, active }: { c: Conversation; active: boolean }) {
         <span className={styles.name}>{c.title}</span>
         {isAgent && c.preview && <span className={styles.sub}>{c.preview}</span>}
       </span>
-      {c.unread > 0 && <span className={`${styles.count} ${c.mentioned ? styles.countAt : ''} mono`}>{c.mentioned ? '@' : ''}{c.unread > 99 ? '99+' : c.unread}</span>}
+      {/* 数字变了就换一个节点，让它重新弹一次 */}
+      {c.unread > 0 && <span key={c.unread} className={`${styles.count} ${c.mentioned ? styles.countAt : ''} mono`}>{c.mentioned ? '@' : ''}{c.unread > 99 ? '99+' : c.unread}</span>}
     </button>
   )
 }
@@ -129,11 +131,14 @@ function ChatList() {
   const channels = conversations.filter((c) => c.kind === 'channel')
   const dms = conversations.filter((c) => c.kind === 'dm')
   const unreadOf = (a: Person): number => conversations.find((c) => c.id === directId(me, a.userID))?.unread ?? 0
+  // 新消息把会话顶上去时，它是滑上去的，不是跳
+  const listRef = useRef<HTMLDivElement>(null)
+  useFlip(listRef, [conversations])
 
   return (
     <>
       <Header title="会话" action={<button className={styles.headBtn} title="新建频道" onClick={() => useUI.getState().openDialog({ kind: 'newChannel' })}><IconPlus /></button>} />
-      <div className={styles.scroll}>
+      <div className={styles.scroll} ref={listRef}>
         <Group title="频道 CHANNELS" empty={<>还没有频道 · <button className={styles.emptyAction} onClick={() => useUI.getState().openDialog({ kind: 'newChannel' })}>新建一个</button></>}>
           {channels.map((c) => <ConversationItem key={c.id} c={c} active={c.id === conversationId} />)}
         </Group>

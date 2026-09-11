@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
 import type { Theme } from '../../../shared/ipc'
+import { transition } from '../motion/transition'
 
 /**
  * 区段（section）与会话（conversation）是两个独立的字段——设计稿踩过的坑：
@@ -43,8 +44,9 @@ interface UIState {
   /** 新账号第一次进来：主区先放欢迎页。打开任何会话或点「先逛逛」就收起；持久化，没收起前重启还在 */
   welcome: boolean
 
-  setTheme(theme: Theme): void
-  toggleTheme(): void
+  /** `origin` 是点击位置：给了就从那里圆形揭示出新主题，没给就直接切 */
+  setTheme(theme: Theme, origin?: { x: number; y: number }): void
+  toggleTheme(origin?: { x: number; y: number }): void
   go(section: Section): void
   /** `agent` 说明这是和单个 agent 的会话：它不会成为「最后一个非 agent 会话」。会话 id 本身看不出这一点，由调用方从会话种类判断。 */
   open(conversationId: string, opts?: { section?: Section; agent?: boolean }): void
@@ -96,11 +98,11 @@ export const useUI = create<UIState>()(
       jumpTo: null,
       welcome: false,
 
-      setTheme: (theme) => {
-        applyTheme(theme)
+      setTheme: (theme, origin) => {
+        applyTheme(theme, origin)
         set({ theme })
       },
-      toggleTheme: () => get().setTheme(get().theme === 'dark' ? 'light' : 'dark'),
+      toggleTheme: (origin) => get().setTheme(get().theme === 'dark' ? 'light' : 'dark', origin),
 
       go: (section) => {
         const s = get()
@@ -191,8 +193,15 @@ export const useUI = create<UIState>()(
   ),
 )
 
-export function applyTheme(theme: Theme): void {
+export function applyTheme(theme: Theme, origin?: { x: number; y: number }): void {
   // 测试在 node 里跑，没有 document
   if (typeof document === 'undefined') return
-  document.documentElement.setAttribute('data-theme', theme)
+  const root = document.documentElement
+  const apply = (): void => root.setAttribute('data-theme', theme)
+  if (!origin || root.getAttribute('data-theme') === theme) { apply(); return }
+  // 从点击处圆形揭示（tokens.css 的 theme 类型过渡）；揭示期间各处的底色过渡先关掉
+  root.style.setProperty('--tx', `${origin.x}px`)
+  root.style.setProperty('--ty', `${origin.y}px`)
+  root.setAttribute('data-theming', '')
+  void transition(apply, 'theme').finally(() => root.removeAttribute('data-theming'))
 }

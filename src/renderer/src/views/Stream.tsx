@@ -6,6 +6,8 @@ import { Avatar, glyphOf, pairOf } from '../components/Avatar'
 import { IconCopy, IconEmoji, IconFile, IconHandoff, IconMore, IconQuote, IconUndo } from '../components/Icons'
 import { previewFor } from '../im/files'
 import { visible } from '../im/timeline'
+import { flyEmoji } from '../motion/fly'
+import { reduceMotion, transition } from '../motion/transition'
 import { useAgentProfiles } from '../store/agents'
 import type { Place } from '../store/selectors'
 import { timeline, useSession } from '../store/session'
@@ -35,7 +37,7 @@ const STARTERS = ['你能帮我做什么？', '用三句话介绍你自己', '�
 function estimate(row: Row): number {
   if (row.kind === 'day') return 44
   if (row.kind === 'pending') return row.message.runID ? 170 : 46
-  if (row.kind === 'gallery') return 52 + 180 * Math.ceil(row.messages.length / 4)
+  if (row.kind === 'gallery') return 52 + 180 * Math.ceil(row.messages.length / 4) - (row.continued ? 26 : 0)
   const m = row.message
   let h = 52
   h += attachmentsHeight(m.attachments)
@@ -45,7 +47,9 @@ function estimate(row: Row): number {
   else h += 56
   if (m.quote) h += 34
   if (m.reactions.length) h += 34
-  return h
+  // 续行没有头像和名字那一行
+  if (row.continued) h -= 36
+  return Math.max(h, 24)
 }
 
 /** 附件块的估高：图按画廊那套（≤2 张 200 高，更多 150 高，一行最多 4 张），文件卡 58 一张 */
@@ -74,6 +78,8 @@ const bytes = (n: number): string => (n < 1024 ? `${n} B` : n < 1024 * 1024 ? `$
 interface Popover { id: MessageId; kind: 'picker' | 'menu'; anchor: DOMRect }
 type Anchor = (id: MessageId, kind: Popover['kind'], anchor: DOMRect) => void
 type Shot = { url: string; name: string } | null
+/** 点开一张图：`from` 是被点的那个缩略图，灯箱是从它长大出来的 */
+type OpenImage = (shot: Shot, from?: HTMLElement) => void
 
 export function Stream({ place }: { place: Place }) {
   const id = place.id
@@ -89,10 +95,46 @@ export function Stream({ place }: { place: Place }) {
   const [popover, setPopover] = useState<Popover | null>(null)
   const [flash, setFlash] = useState<MessageId | null>(null)
   const [shot, setShot] = useState<Shot>(null)
+  /** 不在底部时到的新消息：几条、第一条是谁说了什么 */
+  const [fresh, setFresh] = useState<{ n: number; who: string; text: string } | null>(null)
 
   const scrollRef = useRef<HTMLDivElement>(null)
   const atBottom = useRef(true)
   const requesting = useRef(false)
+  const lastNewest = useRef<string | null>(null)
+
+  const scrollToBottom = useCallback((smooth: boolean) => {
+    const el = scrollRef.current
+    if (!el) return
+    atBottom.current = true
+    el.scrollTo({ top: el.scrollHeight, behavior: smooth && !reduceMotion() ? 'smooth' : 'auto' })
+  }, [])
+
+  // 新消息到了：我自己发的直接跟到底；别人的、我不在底部时记下来给药丸
+  useEffect(() => {
+    const m = timeline(id).newest
+    const prev = lastNewest.current
+    lastNewest.current = m?.id ?? null
+    if (!m || prev === null || m.id === prev || m.transient) return
+    if (m.sender === me) { scrollToBottom(false); setFresh(null); return }
+    if (!atBottom.current) setFresh((f) => ({ n: (f?.n ?? 0) + 1, who: f?.who ?? m.senderName, text: f?.text ?? summarize(m) }))
+  }, [tick, id, me, scrollToBottom])
+
+  // 灯箱：从被点的缩略图长大出来，关了缩回去（View Transition 的共享元素）
+  const shotFrom = useRef<HTMLElement | null>(null)
+  const openShot = useCallback<OpenImage>((s, from) => {
+    if (!s) return
+    const el = from ?? null
+    shotFrom.current = el
+    if (el) el.style.viewTransitionName = 'shot'
+    void transition(() => { if (el) el.style.viewTransitionName = ''; setShot(s) })
+  }, [])
+  const closeShot = useCallback(() => {
+    const el = shotFrom.current
+    shotFrom.current = null
+    const back = el && el.isConnected ? el : null
+    void transition(() => { setShot(null); if (back) back.style.viewTransitionName = 'shot' }).then(() => { if (back) back.style.viewTransitionName = '' })
+  }, [])
 
   // 第一页：点会话打开的路径已经在拉了，这里兜住另一条——重启后从上次的会话直接挂上来，
   // 没人点过它。ensure 是幂等的，拉过就不会再拉。
@@ -173,6 +215,7 @@ export function Stream({ place }: { place: Place }) {
     const el = scrollRef.current
     if (!el) return
     atBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < 48
+    if (atBottom.current) setFresh((f) => (f ? null : f))
     if (el.scrollTop < 300) maybeLoadOlder()
   }, [maybeLoadOlder])
 
@@ -226,7 +269,7 @@ export function Stream({ place }: { place: Place }) {
   const loading = rows.length === 0 && !failed && !empty
 
   return (
-    <div className={styles.wrap}>
+    <div className={styles.wrap} style={{ viewTransitionName: 'conv-stream' }}>
       <div ref={scrollRef} className={styles.scroll} onScroll={onScroll}>
         {loading ? (
           <Skeleton harness={harness} />
@@ -268,26 +311,28 @@ export function Stream({ place }: { place: Place }) {
                     <Pending message={row.message} harness={harness} />
                   ) : row.kind === 'gallery' ? (
                     harness ? (
-                      <Turn message={row.messages[0]!} gallery={row.messages} mine={row.messages[0]!.sender === me} flash={row.messages.some((m) => m.id === flash)} onCopy={copy} onQuote={quote} onImage={setShot} />
+                      <Turn message={row.messages[0]!} gallery={row.messages} mine={row.messages[0]!.sender === me} flash={row.messages.some((m) => m.id === flash)} onCopy={copy} onQuote={quote} onImage={openShot} />
                     ) : (
                       <MessageRow
                         message={row.messages[0]!}
                         gallery={row.messages}
+                        continued={row.continued}
                         mine={row.messages[0]!.sender === me}
                         pinned={popover?.id === row.messages[0]!.id}
                         flash={row.messages.some((m) => m.id === flash)}
-                        onReact={react} onQuote={quote} onHandoff={handoff} onJump={jump} onImage={setShot} onPopover={openPopover}
+                        onReact={react} onQuote={quote} onHandoff={handoff} onJump={jump} onImage={openShot} onPopover={openPopover}
                       />
                     )
                   ) : harness ? (
-                    <Turn message={row.message} mine={row.message.sender === me} flash={flash === row.message.id} onCopy={copy} onQuote={quote} onImage={setShot} />
+                    <Turn message={row.message} mine={row.message.sender === me} flash={flash === row.message.id} onCopy={copy} onQuote={quote} onImage={openShot} />
                   ) : (
                     <MessageRow
                       message={row.message}
+                      continued={row.kind === 'msg' && row.continued}
                       mine={row.message.sender === me}
                       pinned={popover?.id === row.message.id}
                       flash={flash === row.message.id}
-                      onReact={react} onQuote={quote} onHandoff={handoff} onJump={jump} onImage={setShot} onPopover={openPopover}
+                      onReact={react} onQuote={quote} onHandoff={handoff} onJump={jump} onImage={openShot} onPopover={openPopover}
                     />
                   )}
                   </div>
@@ -298,6 +343,12 @@ export function Stream({ place }: { place: Place }) {
         )}
       </div>
       {loadingOlder && <div className={styles.loadingPill}>加载更早的消息…</div>}
+      {fresh && (
+        <button className={styles.newPill} onClick={() => scrollToBottom(true)}>
+          <span>↓ {fresh.n} 条新消息</span>
+          <span className={styles.newPillWho}>{fresh.who}：{fresh.text}</span>
+        </button>
+      )}
       {popover && (
         <PopoverLayer
           popover={popover}
@@ -305,7 +356,7 @@ export function Stream({ place }: { place: Place }) {
           onClose={closePopover} onReact={react} onQuote={quote} onCopy={copy} onRevoke={revoke}
         />
       )}
-      {shot && <Lightbox url={shot.url} name={shot.name} onClose={() => setShot(null)} />}
+      {shot && <Lightbox url={shot.url} name={shot.name} onClose={closeShot} />}
     </div>
   )
 }
@@ -367,6 +418,8 @@ interface RowProps {
   message: Message
   /** 同一个人连着发的几张图：并成一行画廊 */
   gallery?: Message[]
+  /** 紧接着上一行、同一个人在说：省掉头像和名字，悬停才看时间 */
+  continued?: boolean
   mine: boolean
   pinned: boolean
   flash: boolean
@@ -374,17 +427,24 @@ interface RowProps {
   onQuote(id: MessageId): void
   onHandoff(id: MessageId): void
   onJump(id: MessageId): void
-  onImage(shot: Shot): void
+  onImage: OpenImage
   onPopover: Anchor
 }
 
-const MessageRow = memo(function MessageRow({ message: m, gallery, pinned, flash, onReact, onQuote, onHandoff, onJump, onImage, onPopover }: RowProps) {
-  const cls = [styles.row, pinned && styles.pinned, flash && styles.flash, m.mentionsMe && styles.mentioned].filter(Boolean).join(' ')
+const MessageRow = memo(function MessageRow({ message: m, gallery, continued = false, pinned, flash, onReact, onQuote, onHandoff, onJump, onImage, onPopover }: RowProps) {
+  const rootRef = useRef<HTMLDivElement>(null)
+  const cls = [styles.row, continued && styles.cont, pinned && styles.pinned, flash && styles.flash, m.mentionsMe && styles.mentioned].filter(Boolean).join(' ')
+  // 表情先从按钮飞到回应行再发出去：飞到一半回显就到了，网络那几百毫秒感觉不到
+  const reactFrom = (emoji: string, from: HTMLElement): void => {
+    const to = rootRef.current?.querySelector('[data-rx]') ?? rootRef.current?.querySelector('[data-body]')
+    if (to) flyEmoji(emoji, from.getBoundingClientRect(), to.getBoundingClientRect())
+    onReact(m.id, emoji)
+  }
   return (
-    <div className={cls}>
+    <div className={cls} ref={rootRef} data-mid={m.id}>
       {!m.transient && <div className={styles.bar}>
         {QUICK.map((e) => (
-          <button key={e} className={styles.barEmoji} title={e === '👍' ? '赞' : e === '✅' ? '搞定' : '在看'} onClick={() => onReact(m.id, e)}>{e}</button>
+          <button key={e} className={styles.barEmoji} title={e === '👍' ? '赞' : e === '✅' ? '搞定' : '在看'} onClick={(ev) => reactFrom(e, ev.currentTarget)}>{e}</button>
         ))}
         <span className={styles.barSep} />
         <button className={styles.barBtn} title="添加表情" onClick={(e) => onPopover(m.id, 'picker', e.currentTarget.getBoundingClientRect())}><IconEmoji /></button>
@@ -393,15 +453,20 @@ const MessageRow = memo(function MessageRow({ message: m, gallery, pinned, flash
         <button className={styles.barBtn} title="更多" onClick={(e) => onPopover(m.id, 'menu', e.currentTarget.getBoundingClientRect())}><IconMore /></button>
       </div>}
 
-      <SenderAvatar id={m.sender} name={m.senderName} fallback={m.senderAvatar} size={30} agent={m.isAgent} style={{ marginTop: 1 }} />
-      <div className={styles.content}>
-        <div className={styles.meta}>
+      {continued ? (
+        <span className={styles.gut}><span className={`${styles.gutTime} mono`}>{m.sendState === 'sending' ? '…' : hhmm(m.sentAt)}</span></span>
+      ) : (
+        <SenderAvatar id={m.sender} name={m.senderName} fallback={m.senderAvatar} size={30} agent={m.isAgent} style={{ marginTop: 1 }} />
+      )}
+      <div className={styles.content} data-body>
+        {!continued && <div className={styles.meta}>
           <span className={styles.who}>{m.senderName}</span>
           {m.isAgent && <span className={`${styles.tag} mono`}>{m.agentTag || 'AGENT'}</span>}
           <span className={`${styles.time} mono`}>{hhmm(m.sentAt)}</span>
           {m.sendState === 'sending' && <span className={styles.state}>· 发送中</span>}
           {m.sendState === 'failed' && <span className={`${styles.state} ${styles.stateBad}`}>· 没发出去</span>}
-        </div>
+        </div>}
+        {continued && m.sendState === 'failed' && <div className={styles.stateBad}>没发出去</div>}
         {m.quote && <QuoteBlock quote={m.quote} onJump={onJump} />}
         {gallery ? (
           <Gallery messages={gallery} onImage={onImage} />
@@ -412,9 +477,9 @@ const MessageRow = memo(function MessageRow({ message: m, gallery, pinned, flash
         )}
         {m.attachments.length > 0 && <Attachments message={m} onImage={onImage} />}
         {m.reactions.length > 0 && (
-          <div className={styles.rx}>
+          <div className={styles.rx} data-rx>
             {m.reactions.map((r) => (
-              <button key={r.emoji} className={`${styles.chip} ${r.mine ? styles.chipMine : ''}`} onClick={() => onReact(m.id, r.emoji)}>
+              <button key={r.emoji} className={`${styles.chip} ${r.mine ? styles.chipMine : ''}`} onClick={(ev) => (r.mine ? onReact(m.id, r.emoji) : reactFrom(r.emoji, ev.currentTarget))}>
                 <span className={styles.chipEmoji}>{r.emoji}</span>
                 <span className="mono">{r.count}</span>
               </button>
@@ -437,7 +502,7 @@ function QuoteBlock({ quote, onJump }: { quote: QuotePreview; onJump(id: Message
   )
 }
 
-function Body({ message: m, onImage, large }: { message: Message; onImage(shot: Shot): void; large?: boolean }) {
+function Body({ message: m, onImage, large }: { message: Message; onImage: OpenImage; large?: boolean }) {
   const b = m.body
   switch (b.kind) {
     case 'text':
@@ -451,7 +516,7 @@ function Body({ message: m, onImage, large }: { message: Message; onImage(shot: 
     case 'picture': {
       const box = fit(b.natural)
       return (
-        <button className={`${styles.pic} ${box ? styles.picFixed : ''}`} style={box ?? undefined} onClick={() => onImage({ url: b.url, name: b.name })} title={b.name}>
+        <button className={`${styles.pic} ${box ? styles.picFixed : ''}`} style={box ?? undefined} onClick={(e) => onImage({ url: b.url, name: b.name }, e.currentTarget)} title={b.name}>
           <img src={b.url} alt={b.name} draggable={false} loading="lazy" />
         </button>
       )
@@ -475,7 +540,7 @@ function Body({ message: m, onImage, large }: { message: Message; onImage(shot: 
  * 一条消息里的附件：图并排成画廊（按原始尺寸排版，不等图加载），文件是卡。
  * 发送中的那条：图是本机缩略图；回显换成服务端地址时，缩略图铺在底下，真图加载完淡入，不闪。
  */
-function Attachments({ message: m, onImage }: { message: Message; onImage(shot: Shot): void }) {
+function Attachments({ message: m, onImage }: { message: Message; onImage: OpenImage }) {
   const imgs = m.attachments.filter((a) => a.kind === 'image')
   const files = m.attachments.filter((a) => a.kind === 'file')
   const sending = m.sendState === 'sending'
@@ -491,7 +556,7 @@ function Attachments({ message: m, onImage }: { message: Message; onImage(shot: 
               <button
                 key={i} className={styles.galleryItem} title={a.name}
                 style={{ width: w, height: h, backgroundImage: under ? `url(${under})` : undefined }}
-                onClick={() => { if (!sending) onImage({ url: a.url, name: a.name }) }}
+                onClick={(e) => { if (!sending) onImage({ url: a.url, name: a.name }, e.currentTarget) }}
               >
                 <img
                   src={a.url} alt={a.name} draggable={false} loading="lazy"
@@ -522,7 +587,7 @@ function Attachments({ message: m, onImage }: { message: Message; onImage(shot: 
 }
 
 /** 几张图并排：统一 180 高，按各自比例给宽，装不下就换行。点开全屏。 */
-function Gallery({ messages, onImage }: { messages: Message[]; onImage(shot: Shot): void }) {
+function Gallery({ messages, onImage }: { messages: Message[]; onImage: OpenImage }) {
   // 越多越小：两张 200 高，三张以上 150 高，一般一批能排在一行里
   const h = messages.length <= 2 ? 200 : 150
   return (
@@ -532,7 +597,7 @@ function Gallery({ messages, onImage }: { messages: Message[]; onImage(shot: Sho
         const b = m.body
         const w = b.natural && b.natural.height > 0 ? Math.min(h * 2, Math.max(Math.round(h * 0.55), Math.round(h * b.natural.width / b.natural.height))) : h
         return (
-          <button key={m.id} className={styles.galleryItem} style={{ width: w, height: h }} onClick={() => onImage({ url: b.url, name: b.name })} title={b.name}>
+          <button key={m.id} className={styles.galleryItem} style={{ width: w, height: h }} onClick={(e) => onImage({ url: b.url, name: b.name }, e.currentTarget)} title={b.name}>
             <img src={b.url} alt={b.name} draggable={false} loading="lazy" />
           </button>
         )
@@ -550,7 +615,7 @@ interface TurnProps {
   flash: boolean
   onCopy(id: MessageId): void
   onQuote(id: MessageId): void
-  onImage(shot: Shot): void
+  onImage: OpenImage
 }
 
 const Turn = memo(function Turn({ message: m, gallery, mine, flash, onCopy, onQuote, onImage }: TurnProps) {
@@ -636,7 +701,12 @@ function PopoverLayer({ popover, mine, onClose, onReact, onQuote, onCopy, onRevo
             </div>
             <div className={styles.emojiGrid}>
               {EMOJI.map((e) => (
-                <button key={e} className={styles.emojiBtn} onClick={() => { onReact(popover.id, e); onClose() }}>{e}</button>
+                <button key={e} className={styles.emojiBtn} onClick={(ev) => {
+                  const row = document.querySelector(`[data-mid="${CSS.escape(popover.id)}"]`)
+                  const to = row?.querySelector('[data-rx]') ?? row?.querySelector('[data-body]')
+                  if (to) flyEmoji(e, ev.currentTarget.getBoundingClientRect(), to.getBoundingClientRect())
+                  onReact(popover.id, e); onClose()
+                }}>{e}</button>
               ))}
             </div>
           </>

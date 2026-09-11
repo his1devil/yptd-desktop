@@ -3,6 +3,7 @@ import { summarize, type OutgoingAttachment } from '../../../shared/model'
 import { Avatar, glyphOf, pairOf } from '../components/Avatar'
 import { IconClose, IconFile, IconImage, IconPaperclip } from '../components/Icons'
 import { IMAGE_EXT, mimeOf } from '../im/files'
+import { reduceMotion } from '../motion/transition'
 import { mentionables, type Mentionable, type Place } from '../store/selectors'
 import { agentsOf, timeline, useSession } from '../store/session'
 import { useUI } from '../store/ui'
@@ -84,12 +85,19 @@ export function Composer({ place }: { place: Place }) {
 
   useEffect(() => { drafts.set(id, draft) }, [id, draft])
 
-  // 自适应高度，最多 8 行
+  // 自适应高度，最多 8 行；行数变了高度是过渡过去的（发出去那一下从三行收回一行不跳）
   useLayoutEffect(() => {
     const el = ref.current
     if (!el) return
+    const prev = el.style.height
     el.style.height = '0px'
-    el.style.height = `${Math.min(el.scrollHeight, LINE * MAX_LINES + 24)}px`
+    const target = `${Math.min(el.scrollHeight, LINE * MAX_LINES + 24)}px`
+    if (prev && prev !== target && !reduceMotion()) {
+      // 先回到旧高度并让浏览器记住它，下一步设新高度才有过渡可走
+      el.style.height = prev
+      void el.offsetHeight
+    }
+    el.style.height = target
   }, [draft])
 
   const candidates = useMemo(() => mentionables(place, roster, me), [place, roster, me])

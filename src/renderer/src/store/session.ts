@@ -8,6 +8,7 @@ import { Translator, dayIndex, directId, placeholderFor, reactionData, richEx } 
 import { Timeline } from '../im/timeline'
 import { mimeOf, objectName, rememberPreview } from '../im/files'
 import { composerBus } from '../views/composerBus'
+import { transition } from '../motion/transition'
 import { useUI } from './ui'
 
 /**
@@ -47,6 +48,8 @@ interface SessionState {
   register(invite: string, nickname: string): Promise<void>
   signOut(): Promise<void>
   open(id: ConversationId): Promise<void>
+  /** 把一个会话标成已读（快捷键用）；正看着的会话平时由消息流自己标 */
+  markRead(id: ConversationId): Promise<void>
   /** 第一页还没到（或上次没到）就去拉；到过了什么都不做。消息流挂上来时调，重启后恢复的会话靠它加载。 */
   ensure(id: ConversationId): Promise<void>
   loadOlder(id: ConversationId): Promise<void>
@@ -128,7 +131,10 @@ export const useSession = create<SessionState>()((set, get) => ({
   },
 
   async open(id) {
-    useUI.getState().open(id, { agent: kindOf(id, get()) === 'agent_session' })
+    const agent = kindOf(id, get()) === 'agent_session'
+    // 换会话走 View Transition：旧流淡出、头部的头像和标题滑过去（同一个会话就不折腾）
+    if (useUI.getState().conversationId !== id) void transition(() => useUI.getState().open(id, { agent }))
+    else useUI.getState().open(id, { agent })
     await get().ensure(id)
     const c = get().conversations.find((x) => x.id === id)
     // 还没聊过的会话（从名册点开的 agent）在 SDK 里不存在，标已读会报错
@@ -141,6 +147,10 @@ export const useSession = create<SessionState>()((set, get) => ({
     if (t.status === 'idle' || t.status === 'failed') await loadPage(set, get, id, '')
   },
 
+  async markRead(id) {
+    try { await im.markRead(id); await refreshConversations(set, get) } catch { /* 标不上就等下次 */ }
+  },
+
   async loadOlder(id) {
     const t = timeline(id)
     if (!t.hasMore || get().loadingOlder || !t.oldest) return
@@ -148,12 +158,20 @@ export const useSession = create<SessionState>()((set, get) => ({
     try { await loadPage(set, get, id, t.oldest.id) } finally { set({ loadingOlder: false }) }
   },
 
+  // 发送即上屏：按下 Enter 那一刻先摆一条「发送中」，回显到了换成真的；没发出去就收回并把话还给输入框
   async send(id, text, opts) {
+    const local = localMessage(get, id, text, [], opts?.quote)
+    timeline(id).upsert(local)
+    bump(set)
     try {
       const echo = await im.send(await composeText(get, id, text, opts), recipientOf(get, id))
+      timeline(id).remove(local.id)
       absorb(set, get, translator.messages([echo]), id)
     } catch (e) {
+      timeline(id).remove(local.id)
+      bump(set)
       set({ notice: `发送失败：${describe(e)}` })
+      composerBus.restore(id, { text, attachments: [], quote: opts?.quote ?? null })
     }
   },
 

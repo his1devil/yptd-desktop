@@ -19,6 +19,12 @@
 
 /* 消息行 */
 .row { display: flex; gap: 11px; padding: 7px 24px; position: relative; }
+/* 续行：没有头像和名字，行距收紧，左侧留白悬停时显示时间 */
+.cont { padding-top: 2px; padding-bottom: 2px; }
+.gut { width: 30px; flex: none; display: flex; justify-content: center; align-items: flex-start; padding-top: 5px; }
+.gutTime { font-size: 9.5px; color: var(--ink3); opacity: 0; transition: opacity var(--dur-fast); }
+.cont:hover .gutTime, .cont.pinned .gutTime { opacity: 1; }
+.cont .bar { top: -18px; }
 .row:hover, .pinned { background: var(--surface2); }
 .mentioned { background: var(--tint); box-shadow: inset 2px 0 0 var(--accent); }
 .mentioned:hover { background: var(--tint); }
@@ -117,6 +123,17 @@
 .turnBtn { width: 28px; height: 26px; border-radius: 6px; display: flex; align-items: center; justify-content: center; color: var(--ink3); }
 .turnBtn:hover { background: var(--surface2); color: var(--ink); }
 
+/* 不在底部时到的新消息：点了平滑滚到底。居中用 translate 属性，动画的 transform 才不会把它顶偏 */
+.newPill {
+  position: absolute; bottom: 12px; left: 50%; translate: -50% 0; z-index: 3;
+  display: flex; align-items: center; gap: 8px; max-width: 70%;
+  height: 30px; padding: 0 12px 0 11px; border-radius: 99px;
+  background: var(--accent); color: var(--onacc); font-size: 12px; font-weight: 600; box-shadow: var(--sh);
+  animation: global(rl-up) var(--dur) var(--ease-out) both;
+}
+.newPill:hover { background: var(--accent2); }
+.newPillWho { font-weight: 400; opacity: .85; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
 .loadingPill {
   position: absolute; top: 10px; left: 50%; transform: translateX(-50%); z-index: 3;
   font-size: 11px; color: var(--ink3);
@@ -147,7 +164,7 @@
 .wrap { animation: global(rl-fade) var(--dur) var(--ease-out) both; }
 .enter { animation: global(rl-rise) var(--dur-slow) var(--ease-out) both; }
 .fresh { animation: global(rl-rise) var(--dur) var(--ease-out) both; }
-.chip, .chipAdd { animation: global(rl-pop) var(--dur) var(--ease-out) both; }
+.chip, .chipAdd { animation: global(rl-spring-in) var(--dur-slow) var(--spring) both; }
 
 /* 骨架 */
 .skel { padding: 8px 24px; display: flex; flex-direction: column; gap: 18px; }
