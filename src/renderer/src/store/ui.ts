@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
+import { createJSONStorage, persist } from 'zustand/middleware'
 import type { Theme } from '../../../shared/ipc'
 
 /**
@@ -103,6 +103,13 @@ export const useUI = create<UIState>()(
     }),
     {
       name: 'yptd.ui',
+      // 测试在 node 里跑，没有 localStorage；给一个什么都不存的后备，
+      // 免得每次 set 都刷一行 "storage is currently unavailable"
+      storage: createJSONStorage(() =>
+        typeof localStorage !== 'undefined'
+          ? localStorage
+          : { getItem: () => null, setItem: () => {}, removeItem: () => {} },
+      ),
       partialize: (s) => ({
         theme: s.theme,
         inspectorOpen: s.inspectorOpen,
@@ -114,5 +121,7 @@ export const useUI = create<UIState>()(
 )
 
 export function applyTheme(theme: Theme): void {
+  // 测试在 node 里跑，没有 document
+  if (typeof document === 'undefined') return
   document.documentElement.setAttribute('data-theme', theme)
 }
