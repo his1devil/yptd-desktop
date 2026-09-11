@@ -1,0 +1,44 @@
+.main {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+}
+
+/* 频道头 54px：名称 14.5/600 + 等宽 slug + 主题行 11.5 + 头像堆 + 人数 + 无边框开合图标 */
+.head {
+  height: 54px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 14px 0 24px;
+  border-bottom: 1px solid var(--line);
+}
+.titleBlock { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.titleRow { display: flex; align-items: baseline; gap: 8px; }
+.title { font-size: 14.5px; font-weight: 600; letter-spacing: -.015em; }
+.slug { font-size: 10.5px; color: var(--ink3); }
+.topic { font-size: 11.5px; color: var(--ink2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.right { display: flex; align-items: center; gap: 10px; flex: none; }
+.stack { display: flex; }
+.stackAv {
+  width: 22px; height: 22px; border-radius: 99px;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 9.5px; font-weight: 600;
+  border: 2px solid var(--bg);
+  margin-left: -6px;
+}
+.stackAv:first-child { margin-left: 0; }
+.count { font-size: 11px; color: var(--ink3); }
+.panelBtn {
+  width: 28px; height: 28px; border-radius: 7px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--ink3);
+}
+.panelBtn:hover { background: var(--surface2); color: var(--ink); }
+
+.stream { flex: 1; min-height: 0; }

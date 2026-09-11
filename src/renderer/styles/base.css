@@ -1,0 +1,41 @@
+@import url('../fonts/fonts.css');
+
+* { box-sizing: border-box; }
+
+html, body, #root { height: 100%; }
+
+body {
+  margin: 0;
+  font-family: var(--font);
+  font-size: 13px;
+  color: var(--ink);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overflow: hidden;
+  user-select: none;
+}
+
+button {
+  border: 0;
+  background: none;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+}
+button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+input, textarea { font: inherit; color: inherit; border: 0; background: none; outline: none; }
+
+a { color: var(--ontint); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* 等宽只用于机器数据：时间戳、run id、token/成本、代码与价格、工具名、大写分组标签 */
+.mono { font-family: var(--mono); }
+
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-thumb { background: var(--line2); border-radius: 99px; border: 2px solid transparent; background-clip: padding-box; }
+::-webkit-scrollbar-track { background: transparent; }

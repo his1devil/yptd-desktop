@@ -1,0 +1,2105 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Noto+Sans+SC:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+--desk:#E6E5E0;--bg:#FCFCFB;--sub:#F4F4F1;--rail:#EBEAE5;--surface:#FFFFFF;--surface2:#F7F7F4;
+--line:#E4E3DD;--line2:#D1D0C8;--ink:#171917;--ink2:#5C615D;--ink3:#8E938F;
+--accent:#1C6E58;--accent2:#14523F;--tint:#E6F0EC;--agent:#A2621A;--atint:#FAEFE0;
+--ok:#2E7D4F;--danger:#A93325;--warn:#9A6B12;
+--sh:0 1px 2px rgba(20,25,22,.05),0 10px 30px rgba(20,25,22,.08);
+--shwin:0 30px 90px rgba(20,25,22,.28),0 2px 8px rgba(20,25,22,.14);
+}
+[data-theme="dark"]{
+--desk:#080908;--bg:#151714;--sub:#101210;--rail:#0B0D0B;--surface:#1B1E1B;--surface2:#212521;
+--line:#292D29;--line2:#3B403B;--ink:#ECEEEA;--ink2:#9AA19B;--ink3:#6D746E;
+--accent:#4BAE8D;--accent2:#6BC7A7;--tint:#15302A;--agent:#D7A462;--atint:#31271A;
+--ok:#5CB782;--danger:#E07464;--warn:#D0A24E;
+--sh:0 1px 2px rgba(0,0,0,.4),0 10px 30px rgba(0,0,0,.45);
+--shwin:0 30px 90px rgba(0,0,0,.6),0 2px 8px rgba(0,0,0,.4);
+}
+*{box-sizing:border-box}
+body{margin:0;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+button{border:0;background:none;padding:0;margin:0;cursor:pointer;font:inherit;color:inherit;text-align:left}
+input,textarea{font:inherit;color:inherit;border:0;background:none;outline:none}
+a{color:var(--ontint);text-decoration:none}
+a:hover{color:var(--ontint);text-decoration:underline}
+::-webkit-scrollbar{width:11px;height:11px}
+::-webkit-scrollbar-thumb{background:var(--line2);border-radius:99px;border:3.5px solid transparent;background-clip:content-box}
+::-webkit-scrollbar-thumb:hover{background:var(--ink3);background-clip:content-box;border:3.5px solid transparent}
+::-webkit-scrollbar-track{background:transparent}
+@keyframes rl-shim{0%{background-position:-180% 0}100%{background-position:180% 0}}
+@keyframes rl-pulse{0%,100%{opacity:1}50%{opacity:.35}}
+@keyframes rl-spin{to{transform:rotate(360deg)}}
+@keyframes rl-up{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+</style>
+</helmet>
+<div data-theme="{{ theme }}" style="min-height:100vh;width:100%;display:flex;align-items:center;justify-content:center;background:var(--desk);padding:0;font-family:'Instrument Sans','Noto Sans SC',system-ui,sans-serif;color:var(--ink)" ref="{{ rootRef }}">
+<div ref="{{ winRef }}" style="width:1440px;height:900px;flex:none;background:var(--bg);border-radius:11px;overflow:hidden;box-shadow:var(--shwin);display:flex;flex-direction:column;position:relative;border:1px solid var(--line2)">
+
+  <!-- ── title bar ─────────────────────────────── -->
+  <div style="height:48px;flex:none;display:flex;align-items:center;gap:0;padding:0 14px 0 0;background:var(--rail);border-bottom:1px solid var(--railline)">
+    <div style="width:58px;flex:none;height:100%;display:flex;gap:7px;align-items:center;justify-content:center;border-right:1px solid var(--railline)">
+      <div style="width:11px;height:11px;border-radius:99px;background:#EC6A5E"></div>
+      <div style="width:11px;height:11px;border-radius:99px;background:#F4BF4F"></div>
+      <div style="width:11px;height:11px;border-radius:99px;background:#61C554"></div>
+    </div>
+    <button onClick="{{ openProfile }}" style="display:flex;align-items:center;gap:9px;height:36px;padding:0 9px;border-radius:9px;margin-left:8px;flex:none" style-hover="background:var(--railhover)">
+      <span style="position:relative;flex:none">
+        <span style="width:27px;height:27px;border-radius:99px;background:var(--a5bg);color:var(--a5fg);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600">幻</span>
+        <span style="position:absolute;right:-1px;bottom:-1px;width:9px;height:9px;border-radius:99px;background:var(--ok);border:2px solid var(--rail)"></span>
+      </span>
+      <span style="display:flex;flex-direction:column;align-items:flex-start;gap:1px;min-width:0">
+        <span style="font-size:12.5px;font-weight:600;line-height:1.15;color:var(--railink2);white-space:nowrap">张幻阳</span>
+        <span style="font-size:10.5px;line-height:1.15;color:var(--railink);white-space:nowrap">产品 · 盯 v2.4 发布</span>
+      </span>
+      <svg width="11" height="11" viewBox="0 0 12 12" fill="none" style="color:var(--railink);flex:none;margin-left:1px"><path d="M3 4.8 6 7.8 9 4.8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+    <div style="flex:1;display:flex;justify-content:center;padding:0 223px 0 16px">
+      <button onClick="{{ openCmdk }}" style="width:420px;height:27px;border-radius:7px;background:var(--railfield);border:1px solid var(--railline);display:flex;align-items:center;gap:8px;padding:0 9px;color:var(--railink)" style-hover="border-color:var(--railink);color:var(--railink2)">
+        <svg width="12" height="12" viewBox="0 0 14 14" fill="none"><circle cx="6.2" cy="6.2" r="4.3" stroke="currentColor" stroke-width="1.4"/><path d="M9.5 9.5 12.4 12.4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+        <span style="font-size:12px;flex:1">搜索消息、文件、agent…</span>
+        <span style="font-family:'IBM Plex Mono',monospace;font-size:10.5px;border:1px solid var(--railline);border-radius:4px;padding:1px 5px">⌘K</span>
+      </button>
+    </div>
+  </div>
+
+  <div style="flex:1;display:flex;min-height:0">
+
+    <!-- ── icon rail ───────────────────────────── -->
+    <div style="width:58px;flex:none;background:var(--rail);border-right:1px solid var(--railline);display:flex;flex-direction:column;align-items:center;padding:10px 0 10px">
+      <sc-for list="{{ rail }}" as="r" hint-placeholder-count="5">
+        <button onClick="{{ r.go }}" title="{{ r.name }}" style="width:44px;height:44px;border-radius:11px;display:flex;align-items:center;justify-content:center;margin-bottom:6px;position:relative;background:{{ r.bg }};color:{{ r.fg }}" style-hover="background:var(--railhover)">
+          <div style="width:23px;height:23px;display:flex;align-items:center;justify-content:center" dangerouslySetInnerHTML="{{ r.icon }}"></div>
+          <sc-if value="{{ r.dot }}"><span style="position:absolute;top:4px;right:5px;min-width:14px;height:14px;border-radius:99px;background:var(--danger);color:var(--ondanger);font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 3px">{{ r.dot }}</span></sc-if>
+        </button>
+      </sc-for>
+      <div style="flex:1"></div>
+      <button onClick="{{ toggleTheme }}" title="{{ themeTitle }}" style="width:44px;height:44px;border-radius:11px;display:flex;align-items:center;justify-content:center;color:var(--railink);margin-bottom:6px" style-hover="background:var(--railhover);color:var(--railink2)">
+        <sc-if value="{{ isLight }}" hint-placeholder-val="{{ true }}">
+          <svg width="21" height="21" viewBox="0 0 22 22" fill="none"><circle cx="11" cy="11" r="4.2" stroke="currentColor" stroke-width="1.6"/><path d="M11 1.6v2.2M11 18.2v2.2M20.4 11h-2.2M3.8 11H1.6M17.6 4.4l-1.6 1.6M6 16l-1.6 1.6M17.6 17.6 16 16M6 6 4.4 4.4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+        </sc-if>
+        <sc-if value="{{ isDark }}">
+          <svg width="21" height="21" viewBox="0 0 22 22" fill="none"><path d="M18.4 13.9A8.1 8.1 0 0 1 8.1 3.6a8.1 8.1 0 1 0 10.3 10.3Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+        </sc-if>
+      </button>
+      <button onClick="{{ goSet }}" title="设置与权限" style="width:44px;height:44px;border-radius:11px;display:flex;align-items:center;justify-content:center;background:{{ setBg }};color:{{ setFg }}" style-hover="background:var(--railhover)">
+        <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><path d="M3.2 6.6h15.6M3.2 15.4h15.6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="7.8" cy="6.6" r="2.5" fill="var(--rail)" stroke="currentColor" stroke-width="1.5"/><circle cx="14.2" cy="15.4" r="2.5" fill="var(--rail)" stroke="currentColor" stroke-width="1.5"/></svg>
+      </button>
+    </div>
+
+    <!-- ── contextual sidebar ──────────────────── -->
+    <div style="width:252px;flex:none;background:var(--sub);border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0">
+      <div style="height:46px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 14px 0 16px;border-bottom:1px solid var(--line)">
+        <span style="font-size:13px;font-weight:600;letter-spacing:-.01em">{{ sbTitle }}</span>
+        <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--ink3);text-transform:uppercase;letter-spacing:.06em">{{ sbSub }}</span>
+      </div>
+      <div style="flex:1;overflow-y:auto;padding:8px 8px 20px">
+        <sc-for list="{{ sbGroups }}" as="g" hint-placeholder-count="3">
+          <div style="margin-bottom:14px">
+            <div style="display:flex;align-items:center;gap:6px;padding:4px 8px 5px">
+              <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;color:var(--ink3);text-transform:uppercase;letter-spacing:.08em">{{ g.name }}</span>
+              <div style="flex:1;height:1px;background:var(--line)"></div>
+              <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--ink3)">{{ g.count }}</span>
+            </div>
+            <sc-for list="{{ g.items }}" as="it" hint-placeholder-count="4">
+              <button onClick="{{ it.go }}" style="width:100%;display:flex;align-items:center;gap:9px;padding:6px 8px;border-radius:7px;margin-bottom:1px;background:{{ it.bg }}" style-hover="background:var(--surface2)">
+                <span style="width:20px;height:20px;flex:none;border-radius:{{ it.r }};background:{{ it.chipBg }};color:{{ it.chipFg }};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600">{{ it.glyph }}</span>
+                <span style="flex:1;min-width:0;font-size:12.5px;font-weight:{{ it.w }};color:{{ it.fg }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ it.name }}</span>
+                <sc-if value="{{ it.badge }}"><span style="font-size:10px;font-weight:700;font-family:'IBM Plex Mono',monospace;color:{{ it.badgeFg }};background:{{ it.badgeBg }};border-radius:99px;padding:1px 6px">{{ it.badge }}</span></sc-if>
+                <sc-if value="{{ it.live }}"><span style="width:6px;height:6px;border-radius:99px;background:var(--agent);animation:rl-pulse 1.4s infinite"></span></sc-if>
+              </button>
+            </sc-for>
+          </div>
+        </sc-for>
+      </div>
+      <div style="flex:none;border-top:1px solid var(--line);padding:9px 12px;display:flex;align-items:center;gap:8px">
+        <div style="width:7px;height:7px;border-radius:99px;background:var(--ok)"></div>
+        <span style="font-size:11px;color:var(--ink2);flex:1">6 个 agent 在线 · 2 运行中</span>
+        <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--ink3)">$13.6/日</span>
+      </div>
+    </div>
+
+    <!-- ── main ────────────────────────────────── -->
+    <div style="flex:1;min-width:0;display:flex;flex-direction:column;background:var(--bg)">
+
+      <!-- CHAT -->
+      <sc-if value="{{ vChat }}" hint-placeholder-val="{{ true }}">
+        <div data-screen-label="频道聊天" style="flex:1;display:flex;min-height:0">
+          <div style="flex:1;min-width:0;display:flex;flex-direction:column">
+            <div style="height:54px;flex:none;display:flex;align-items:center;gap:12px;padding:0 20px;border-bottom:1px solid var(--line)">
+              <div style="min-width:0">
+                <div style="display:flex;align-items:center;gap:7px">
+                  <span style="font-size:14.5px;font-weight:600;letter-spacing:-.015em">{{ chanName }}</span>
+                  <span style="font-size:11px;color:var(--ink3);font-family:'IBM Plex Mono',monospace">{{ chanSlug }}</span>
+                </div>
+                <div style="font-size:11.5px;color:var(--ink2);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ chanTopic }}</div>
+              </div>
+              <div style="flex:1"></div>
+              <div style="display:flex;align-items:center;gap:-6px;flex:none">
+                <sc-for list="{{ chanFaces }}" as="f" hint-placeholder-count="4">
+                  <div style="width:23px;height:23px;border-radius:{{ f.r }};background:{{ f.bg }};color:{{ f.fg }};display:flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:600;border:2px solid var(--bg);margin-left:-6px">{{ f.i }}</div>
+                </sc-for>
+                <span style="font-size:11.5px;color:var(--ink2);margin-left:8px;white-space:nowrap">{{ chanCount }}</span>
+                <sc-if value="{{ isAgSes }}">
+                  <span style="display:inline-flex;align-items:center;gap:5px;margin-left:9px;font-size:10.5px;font-weight:700;color:{{ agSesFg }};background:{{ agSesBg }};border-radius:99px;padding:2px 9px;white-space:nowrap;flex:none">
+                    <span style="width:5px;height:5px;border-radius:99px;background:{{ agSesDot }};flex:none"></span>{{ agSesState }}
+                  </span>
+                </sc-if>
+              </div>
+              <button onClick="{{ toggleInspector }}" title="{{ insToggleTitle }}" style="width:28px;height:28px;border-radius:7px;display:flex;align-items:center;justify-content:center;color:var(--ink3);flex:none" style-hover="background:var(--surface2);color:var(--ink)">
+                <sc-if value="{{ inspectorOpen }}" hint-placeholder-val="{{ true }}">
+                  <svg width="17" height="17" viewBox="0 0 18 18" fill="none"><rect x="1.6" y="3" width="14.8" height="12" rx="2.2" stroke="currentColor" stroke-width="1.4"/><path d="M11.4 3v12" stroke="currentColor" stroke-width="1.4"/><path d="M5.1 7.4 7.2 9l-2.1 1.6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </sc-if>
+                <sc-if value="{{ inspectorShut }}">
+                  <svg width="17" height="17" viewBox="0 0 18 18" fill="none"><rect x="1.6" y="3" width="14.8" height="12" rx="2.2" stroke="currentColor" stroke-width="1.4"/><path d="M11.4 3v12" stroke="currentColor" stroke-width="1.4"/><path d="M7.2 7.4 5.1 9l2.1 1.6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </sc-if>
+              </button>
+            </div>
+
+            <div ref="{{ scrollRef }}" style="flex:1;overflow-y:auto;overflow-x:hidden;padding:14px 0 8px">
+              <div style="display:flex;align-items:center;gap:12px;padding:6px 24px 14px">
+                <div style="flex:1;height:1px;background:var(--line)"></div>
+                <span style="font-size:10.5px;font-weight:600;font-family:'IBM Plex Mono',monospace;color:var(--ink3);border:1px solid var(--line);border-radius:99px;padding:2px 10px;background:var(--bg)">今天 · 9月11日</span>
+                <div style="flex:1;height:1px;background:var(--line)"></div>
+              </div>
+
+              <sc-if value="{{ notAgSes }}" hint-placeholder-val="{{ true }}">
+              <sc-for list="{{ messages }}" as="m" hint-placeholder-count="5">
+                <div onMouseEnter="{{ m.onEnter }}" onMouseLeave="{{ m.onLeave }}" style="display:flex;gap:11px;padding:7px 24px 7px 24px;position:relative" style-hover="background:var(--surface2)">
+                  <sc-if value="{{ m.hovered }}">
+                    <div style="position:absolute;top:-14px;right:24px;display:flex;align-items:center;gap:1px;background:var(--surface);border:1px solid var(--line2);border-radius:8px;box-shadow:var(--sh);padding:2px;z-index:4">
+                      <button onClick="{{ m.rxUp }}" title="赞" style="width:31px;height:27px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:17px;line-height:1" style-hover="background:var(--surface2)">👍</button>
+                      <button onClick="{{ m.rxOk }}" title="搞定" style="width:31px;height:27px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:17px;line-height:1" style-hover="background:var(--surface2)">✅</button>
+                      <button onClick="{{ m.rxEye }}" title="在看" style="width:31px;height:27px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:17px;line-height:1" style-hover="background:var(--surface2)">👀</button>
+                      <div style="width:1px;height:17px;background:var(--line);margin:0 3px"></div>
+                      <button onClick="{{ m.togglePicker }}" title="添加表情" style="width:29px;height:27px;border-radius:6px;display:flex;align-items:center;justify-content:center;color:var(--ink2)" style-hover="background:var(--surface2);color:var(--ink)">
+                        <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="6.9" stroke="currentColor" stroke-width="1.5"/><circle cx="6.6" cy="7.4" r="1.05" fill="currentColor"/><circle cx="11.4" cy="7.4" r="1.05" fill="currentColor"/><path d="M6.1 10.5c.6 1.5 1.7 2.3 2.9 2.3s2.3-.8 2.9-2.3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                      </button>
+                      <button onClick="{{ m.quoteThis }}" title="引用回复" style="width:29px;height:27px;border-radius:6px;display:flex;align-items:center;justify-content:center;color:var(--ink2)" style-hover="background:var(--surface2);color:var(--ink)">
+                        <svg width="16" height="16" viewBox="0 0 18 18" fill="none"><path d="M3.5 3.8v10.4" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/><path d="M7.2 5.6h8M7.2 9h8M7.2 12.4h5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+                      </button>
+                      <button onClick="{{ m.openThread }}" title="在话题中回复" style="width:29px;height:27px;border-radius:6px;display:flex;align-items:center;justify-content:center;color:var(--ink2)" style-hover="background:var(--surface2);color:var(--ink)">
+                        <svg width="16" height="16" viewBox="0 0 18 18" fill="none"><path d="M2.9 5.8A1.8 1.8 0 0 1 4.7 4h8.6a1.8 1.8 0 0 1 1.8 1.8v4.1a1.8 1.8 0 0 1-1.8 1.8H7.2L3.8 14.4v-2.7h-.9V5.8Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>
+                      </button>
+                      <button onClick="{{ m.handoff }}" title="转交给 agent" style="width:29px;height:27px;border-radius:6px;display:flex;align-items:center;justify-content:center;color:var(--agent)" style-hover="background:var(--atint)">
+                        <svg width="17" height="17" viewBox="0 0 18 18" fill="none"><path d="M9 1.9 15.4 5.5v7L9 16.1 2.6 12.5v-7L9 1.9Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M9 6.3 11.1 9 9 11.7 6.9 9 9 6.3Z" fill="currentColor"/></svg>
+                      </button>
+                      <button title="更多" style="width:29px;height:27px;border-radius:6px;display:flex;align-items:center;justify-content:center;color:var(--ink2)" style-hover="background:var(--surface2);color:var(--ink)">
+                        <svg width="17" height="17" viewBox="0 0 18 18" fill="none"><circle cx="4" cy="9" r="1.25" fill="currentColor"/><circle cx="9" cy="9" r="1.25" fill="currentColor"/><circle cx="14" cy="9" r="1.25" fill="currentColor"/></svg>
+                      </button>
+                    </div>
+                  </sc-if>
+                  <div style="width:30px;height:30px;flex:none;border-radius:{{ m.r }};background:{{ m.bg }};color:{{ m.fg }};display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;margin-top:1px">{{ m.glyph }}</div>
+                  <div style="flex:1;min-width:0">
+                    <div style="display:flex;align-items:baseline;gap:7px;margin-bottom:2px">
+                      <span style="font-size:13px;font-weight:600;letter-spacing:-.01em">{{ m.who }}</span>
+                      <sc-if value="{{ m.isAgent }}"><span style="font-family:'IBM Plex Mono',monospace;font-size:9.5px;font-weight:700;letter-spacing:.07em;color:var(--agent);background:var(--atint);border-radius:4px;padding:1px 5px;line-height:14px">AGENT</span></sc-if>
+                      <span style="font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--ink3)">{{ m.time }}</span>
+                      <sc-if value="{{ m.via }}"><span style="font-size:10.5px;color:var(--ink3)">· {{ m.via }}</span></sc-if>
+                    </div>
+
+                    <sc-if value="{{ m.quote }}">
+                      <button style="display:flex;align-items:center;gap:7px;max-width:620px;width:100%;margin:2px 0 6px;padding:5px 10px 5px 9px;border-left:2px solid var(--line2);border-radius:0 6px 6px 0;background:var(--surface2)" style-hover="border-left-color:var(--accent);background:var(--surface)">
+                        <span style="width:17px;height:17px;flex:none;border-radius:{{ m.quote.r }};background:{{ m.quote.bg }};color:{{ m.quote.fg }};display:flex;align-items:center;justify-content:center;font-size:9.5px;font-weight:600">{{ m.quote.glyph }}</span>
+                        <span style="font-size:11.5px;font-weight:600;color:var(--ink2);flex:none">{{ m.quote.who }}</span>
+                        <span style="font-size:11.5px;color:var(--ink3);flex:1;min-width:0;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ m.quote.text }}</span>
+                      </button>
+                    </sc-if>
+
+                    <sc-if value="{{ m.isText }}" hint-placeholder-val="{{ true }}">
+                      <div style="font-size:13.5px;line-height:1.68;color:var(--ink);max-width:760px;text-wrap:pretty">
+                        <sc-for list="{{ m.segs }}" as="sg" hint-placeholder-count="1">
+                          <sc-if value="{{ sg.plain }}" hint-placeholder-val="{{ true }}"><span>{{ sg.t }}</span></sc-if>
+                          <sc-if value="{{ sg.chip }}"><span style="display:inline-block;background:{{ sg.bg }};color:{{ sg.fg }};border-radius:4px;padding:0 5px;font-weight:600;font-size:13px">{{ sg.t }}</span></sc-if>
+                        </sc-for>
+                      </div>
+                    </sc-if>
+
+                    <!-- agent run card -->
+                    <sc-if value="{{ m.isRun }}">
+                      <div style="max-width:760px;margin-top:3px;border:1px solid var(--line);border-left:2px solid var(--agent);border-radius:9px;background:var(--surface);overflow:hidden;box-shadow:var(--sh)">
+                        <div style="display:flex;align-items:center;gap:10px;padding:10px 13px;border-bottom:1px solid var(--line);background:var(--atint)">
+                          <span style="font-family:'IBM Plex Mono',monospace;font-size:10.5px;font-weight:600;color:var(--agent);letter-spacing:.04em">RUN #{{ m.runId }}</span>
+                          <span style="font-size:12.5px;font-weight:600;flex:1;min-width:0;color:var(--ink)">{{ m.runTitle }}</span>
+                          <span style="font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--ink2);white-space:nowrap;flex:none">{{ m.runMeta }}</span>
+                          <span style="font-size:10.5px;font-weight:700;color:var(--ok);background:var(--bg);border:1px solid var(--line);border-radius:99px;padding:1px 8px;white-space:nowrap;flex:none">{{ m.runState }}</span>
+                        </div>
+                        <button onClick="{{ m.toggle }}" style="width:100%;display:flex;align-items:center;gap:8px;padding:7px 13px;border-bottom:1px solid var(--line);color:var(--ink2)" style-hover="background:var(--surface2);color:var(--ink)">
+                          <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.02em">{{ m.toggleLabel }}</span>
+                          <div style="flex:1;height:1px;background:var(--line)"></div>
+                          <span style="font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--ink3)">{{ m.stepCount }}</span>
+                        </button>
+                        <sc-if value="{{ m.open }}">
+                          <div style="padding:12px 13px 4px 13px;background:var(--surface2);border-bottom:1px solid var(--line)">
+                            <sc-for list="{{ m.steps }}" as="s" hint-placeholder-count="4">
+                              <div style="display:flex;gap:11px;padding-bottom:11px;position:relative">
+                                <div style="width:14px;flex:none;display:flex;flex-direction:column;align-items:center">
+                                  <div style="width:7px;height:7px;border-radius:1.5px;background:{{ s.dot }};margin-top:4px;flex:none"></div>
+                                  <div style="width:1px;flex:1;background:var(--line2);margin-top:3px"></div>
+                                </div>
+                                <div style="flex:1;min-width:0">
+                                  <div style="display:flex;align-items:baseline;gap:8px">
+                                    <span style="font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--ink3)">{{ s.t }}</span>
+                                    <span style="font-size:10.5px;font-weight:700;letter-spacing:.05em;color:var(--agent)">{{ s.k }}</span>
+                                    <span style="font-size:12.5px;color:var(--ink);font-weight:500">{{ s.label }}</span>
+                                  </div>
+                                  <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ink2);margin-top:2px">{{ s.meta }}</div>
+                                </div>
+                              </div>
+                            </sc-for>
+                          </div>
+                        </sc-if>
+                        <div style="padding:11px 13px 12px">
+                          <div style="font-size:13.5px;line-height:1.66;color:var(--ink);text-wrap:pretty">{{ m.runResult }}</div>
+                          <div style="display:flex;flex-wrap:wrap;gap:7px;margin-top:11px">
+                            <button onClick="{{ m.openThread }}" style="height:28px;padding:0 12px;border-radius:7px;background:var(--accent);color:var(--onacc);font-size:12px;font-weight:600;white-space:nowrap;flex:none" style-hover="background:var(--accent2)">开 Thread 跟进</button>
+                            <button style="height:28px;padding:0 12px;border-radius:7px;border:1px solid var(--line2);font-size:12px;font-weight:500;color:var(--ink2);white-space:nowrap;flex:none" style-hover="background:var(--surface2);color:var(--ink)">指派给 @陈知远</button>
+                            <button onClick="{{ m.openRun }}" style="height:28px;padding:0 12px;border-radius:7px;border:1px solid var(--line2);font-size:12px;font-weight:500;color:var(--ink2);white-space:nowrap;flex:none" style-hover="background:var(--surface2);color:var(--ink)">查看完整轨迹 ↗</button>
+                          </div>
+                        </div>
+                      </div>
+                    </sc-if>
+
+
+                    <!-- watchlist tape -->
+                    <sc-if value="{{ m.isTape }}">
+                      <div style="max-width:600px;margin-top:3px;border:1px solid var(--line);border-left:2px solid var(--agent);border-radius:9px;background:var(--surface);overflow:hidden;box-shadow:var(--sh)">
+                        <div style="padding:11px 13px 9px;border-bottom:1px solid var(--line);background:var(--atint)">
+                          <div style="font-size:13px;font-weight:600;color:var(--ink)">{{ m.tapeTitle }}</div>
+                          <div style="font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--ink2);margin-top:3px">{{ m.tapeMeta }}</div>
+                        </div>
+                        <sc-for list="{{ m.tapeRows }}" as="tp" hint-placeholder-count="5">
+                          <div style="display:grid;grid-template-columns:88px 1fr 92px 72px;gap:10px;align-items:center;padding:8px 13px;border-bottom:1px solid var(--line)" style-hover="background:var(--surface2)">
+                            <span style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:600;color:var(--ink)">{{ tp.sym }}</span>
+                            <span style="font-size:12px;color:var(--ink2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ tp.name }}</span>
+                            <span style="font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:var(--ink);text-align:right">{{ tp.px }}</span>
+                            <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;color:{{ tp.chgFg }};background:{{ tp.chgBg }};border-radius:4px;padding:2px 0;text-align:center">{{ tp.chg }}</span>
+                          </div>
+                        </sc-for>
+                        <button style="width:100%;padding:8px;font-size:11.5px;font-weight:600;color:var(--ontint)" style-hover="background:var(--surface2)">管理观察池与提醒阈值 →</button>
+                      </div>
+                    </sc-if>
+
+                    <!-- price alert -->
+                    <sc-if value="{{ m.isAlert }}">
+                      <div style="max-width:560px;margin-top:3px;border:1px solid var(--line2);border-left:2px solid var(--danger);border-radius:9px;background:var(--surface);overflow:hidden;box-shadow:var(--sh)">
+                        <div style="display:flex;align-items:center;gap:8px;padding:8px 13px;border-bottom:1px solid var(--line);background:var(--dtint)">
+                          <svg width="13" height="13" viewBox="0 0 14 14" fill="none" style="color:var(--danger);flex:none"><path d="M7 1.8a3.4 3.4 0 0 0-3.4 3.4c0 3.1-1.3 4.1-1.3 4.1h9.4s-1.3-1-1.3-4.1A3.4 3.4 0 0 0 7 1.8ZM5.8 11.5a1.3 1.3 0 0 0 2.4 0" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                          <span style="font-family:'IBM Plex Mono',monospace;font-size:10.5px;font-weight:700;letter-spacing:.06em;color:var(--danger)">PRICE ALERT</span>
+                          <div style="flex:1"></div>
+                          <span style="font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--ink2)">09:31:04 · 实时</span>
+                        </div>
+                        <div style="padding:12px 13px 13px">
+                          <div style="display:flex;align-items:baseline;gap:10px">
+                            <span style="font-family:'IBM Plex Mono',monospace;font-size:19px;font-weight:600;letter-spacing:-.02em;color:var(--ink)">{{ m.alertSym }}</span>
+                            <span style="font-family:'IBM Plex Mono',monospace;font-size:17px;color:var(--ink)">{{ m.alertPx }}</span>
+                            <span style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;color:{{ m.chgFg }};background:{{ m.chgBg }};border-radius:5px;padding:2px 8px">{{ m.chg }}</span>
+                          </div>
+                          <div style="font-size:12.5px;line-height:1.6;color:var(--ink2);margin-top:8px;text-wrap:pretty">{{ m.alertRule }}</div>
+                          <div style="display:flex;flex-wrap:wrap;gap:7px;margin-top:12px">
+                            <button onClick="{{ openQuant }}" style="height:28px;padding:0 12px;border-radius:7px;background:var(--accent);color:var(--onacc);font-size:12px;font-weight:600;white-space:nowrap;flex:none" style-hover="background:var(--accent2)">让 Quant 分析</button>
+                            <button style="height:28px;padding:0 12px;border-radius:7px;border:1px solid var(--line2);font-size:12px;font-weight:500;color:var(--ink2);white-space:nowrap;flex:none" style-hover="background:var(--surface2);color:var(--ink)">调整阈值</button>
+                            <button style="height:28px;padding:0 12px;border-radius:7px;border:1px solid var(--line2);font-size:12px;font-weight:500;color:var(--ink2);white-space:nowrap;flex:none" style-hover="background:var(--surface2);color:var(--ink)">静音 1 小时</button>
+                          </div>
+                        </div>
+                      </div>
+                    </sc-if>
+
+                    <!-- strategy backtest -->
+                    <sc-if value="{{ m.isStrat }}">
+                      <div style="max-width:700px;margin-top:3px;border:1px solid var(--line);border-left:2px solid var(--agent);border-radius:9px;background:var(--surface);overflow:hidden;box-shadow:var(--sh)">
+                        <div style="display:flex;align-items:center;gap:10px;padding:10px 13px;border-bottom:1px solid var(--line);background:var(--atint)">
+                          <span style="font-family:'IBM Plex Mono',monospace;font-size:10.5px;font-weight:600;color:var(--agent);letter-spacing:.04em;white-space:nowrap;flex:none">BACKTEST {{ m.stratId }}</span>
+                          <span style="font-size:12.5px;font-weight:600;flex:1;min-width:0;color:var(--ink)">{{ m.stratTitle }}</span>
+                          <span style="font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--ink2);white-space:nowrap;flex:none">{{ m.stratMeta }}</span>
+                        </div>
+                        <div style="display:grid;grid-template-columns:repeat(4,1fr);border-bottom:1px solid var(--line)">
+                          <sc-for list="{{ m.stratMetrics }}" as="sm" hint-placeholder-count="4">
+                            <div style="padding:11px 13px;border-left:1px solid var(--line)">
+                              <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--ink3);letter-spacing:.06em">{{ sm.k }}</div>
+                              <div style="font-size:18px;font-weight:600;letter-spacing:-.025em;margin-top:3px;color:{{ sm.fg }}">{{ sm.v }}</div>
+                            </div>
+                          </sc-for>
+                        </div>
+                        <div style="padding:13px 13px 9px">
+                          <div style="display:flex;align-items:flex-end;gap:3px;height:52px;padding-bottom:2px">
+                            <sc-for list="{{ m.bars }}" as="bar" hint-placeholder-count="24">
+                              <div style="flex:1;min-width:0;height:{{ bar.h }};background:{{ bar.c }};border-radius:2px;opacity:.85"></div>
+                            </sc-for>
+                          </div>
+                          <div style="display:flex;justify-content:space-between;margin-top:5px">
+                            <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--ink3)">7月</span>
+                            <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--ink3)">日超额收益 vs 基准</span>
+                            <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--ink3)">今日</span>
+                          </div>
+                        </div>
+                        <div style="padding:2px 13px 13px">
+                          <div style="font-size:13.5px;line-height:1.66;color:var(--ink);text-wrap:pretty">{{ m.stratResult }}</div>
+                          <div style="display:flex;flex-wrap:wrap;gap:7px;margin-top:11px">
+                            <button onClick="{{ openBacktest }}" style="height:28px;padding:0 12px;border-radius:7px;background:var(--accent);color:var(--onacc);font-size:12px;font-weight:600;white-space:nowrap;flex:none" style-hover="background:var(--accent2)">查看回测详情</button>
+                            <button style="height:28px;padding:0 12px;border-radius:7px;border:1px solid var(--line2);font-size:12px;font-weight:500;color:var(--ink2);white-space:nowrap;flex:none" style-hover="background:var(--surface2);color:var(--ink)">存入知识库</button>
+                            <button style="height:28px;padding:0 12px;border-radius:7px;border:1px solid var(--line2);font-size:12px;font-weight:500;color:var(--ink2);white-space:nowrap;flex:none" style-hover="background:var(--surface2);color:var(--ink)">改风险线重跑</button>
+                          </div>
+                        </div>
+                      </div>
+                    </sc-if>
+
+                    <!-- digest card -->
+                    <sc-if value="{{ m.isDigest }}">
+                      <div style="max-width:620px;margin-top:3px;border:1px solid var(--line);border-radius:9px;background:var(--surface);overflow:hidden">
+                        <div style="padding:11px 13px 9px;border-bottom:1px solid var(--line)">
+                          <div style="font-size:13px;font-weight:600">{{ m.digestTitle }}</div>
+                          <div style="font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--ink3);margin-top:3px">{{ m.digestMeta }}</div>
+                        </div>
+                        <sc-for list="{{ m.digestItems }}" as="d" hint-placeholder-count="3">
+                          <div style="display:flex;gap:10px;padding:9px 13px;border-bottom:1px solid var(--line)">
+                            <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;color:{{ d.fg }};background:{{ d.bg }};border-radius:4px;padding:2px 6px;height:18px;flex:none">{{ d.tag }}</span>
+                            <span style="font-size:12.5px;line-height:1.5;color:var(--ink2);flex:1;min-width:0;text-wrap:pretty">{{ d.text }}</span>
+                          </div>
+                        </sc-for>
+                        <button style="width:100%;padding:8px;font-size:11.5px;font-weight:600;color:var(--ontint)" style-hover="background:var(--surface2)">展开全部 8 条 ↓</button>
+                      </div>
+                    </sc-if>
+
+                    <!-- baton handoff -->
+                    <sc-if value="{{ m.baton }}">
+                      <div style="display:inline-flex;align-items:center;gap:7px;margin-top:7px;border:1px dashed var(--line2);border-radius:99px;padding:3px 10px 3px 5px;background:var(--surface)">
+                        <span style="width:18px;height:18px;border-radius:4px;background:var(--atint);color:var(--agent);display:flex;align-items:center;justify-content:center;font-size:9.5px;font-weight:700">▷</span>
+                        <svg width="14" height="9" viewBox="0 0 14 9" fill="none"><path d="M0 4.5h11m0 0L8 1.5M11 4.5 8 7.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" opacity=".5"/></svg>
+                        <span style="width:18px;height:18px;border-radius:99px;background:var(--a1bg);color:var(--a1fg);display:flex;align-items:center;justify-content:center;font-size:9.5px;font-weight:700">知</span>
+                        <span style="font-size:11px;color:var(--ink2)">接力棒转交 · 陈知远 持有</span>
+                      </div>
+                    </sc-if>
+
+                    <sc-if value="{{ m.reactions }}">
+                      <div style="display:flex;gap:5px;margin-top:7px">
+                        <sc-for list="{{ m.reactions }}" as="rx" hint-placeholder-count="2">
+                          <button onClick="{{ rx.go }}" style="display:flex;align-items:center;gap:5px;border:1px solid {{ rx.bd }};border-radius:99px;padding:2px 10px;background:{{ rx.bg }};font-size:11.5px;color:{{ rx.fg }}" style-hover="border-color:var(--accent)">
+                            <span style="font-size:14px;line-height:1.25">{{ rx.k }}</span><span style="font-family:'IBM Plex Mono',monospace;font-weight:600">{{ rx.n }}</span>
+                          </button>
+                        </sc-for>
+                        <button onClick="{{ m.togglePicker }}" title="添加表情" style="display:flex;align-items:center;justify-content:center;width:32px;height:24px;border:1px solid var(--line);border-radius:99px;background:transparent;color:var(--ink3)" style-hover="border-color:var(--line2);color:var(--ink2);background:var(--surface)">
+                          <svg width="16" height="16" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="6.9" stroke="currentColor" stroke-width="1.5"/><circle cx="6.6" cy="7.4" r="1.05" fill="currentColor"/><circle cx="11.4" cy="7.4" r="1.05" fill="currentColor"/><path d="M6.1 10.5c.6 1.5 1.7 2.3 2.9 2.3s2.3-.8 2.9-2.3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                        </button>
+                      </div>
+                    </sc-if>
+
+                    <sc-if value="{{ m.replies }}">
+                      <button onClick="{{ m.openThread }}" style="display:flex;align-items:center;gap:8px;margin-top:8px;padding:4px 10px 4px 5px;border-radius:7px;border:1px solid transparent" style-hover="border-color:var(--line);background:var(--surface)">
+                        <span style="display:flex">
+                          <span style="width:17px;height:17px;border-radius:4px;background:var(--atint);color:var(--agent);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;border:1.5px solid var(--bg)">▷</span>
+                          <span style="width:17px;height:17px;border-radius:99px;background:var(--a3bg);color:var(--a3fg);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;border:1.5px solid var(--bg);margin-left:-5px">越</span>
+                          <span style="width:17px;height:17px;border-radius:99px;background:var(--a1bg);color:var(--a1fg);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;border:1.5px solid var(--bg);margin-left:-5px">知</span>
+                        </span>
+                        <span style="font-size:11.5px;font-weight:600;color:var(--ontint);white-space:nowrap">{{ m.replies }} 条回复</span>
+                        <span style="font-size:11px;color:var(--ink3);white-space:nowrap">最后回复 09:24</span>
+                      </button>
+                    </sc-if>
+                  </div>
+                </div>
+              </sc-for>
+              </sc-if>
+
+              <sc-if value="{{ isAgSes }}">
+                <sc-for list="{{ turns }}" as="t" hint-placeholder-count="3">
+                  <sc-if value="{{ t.isUser }}">
+                    <div style="display:flex;justify-content:flex-end;padding:9px 28px">
+                      <div style="max-width:72%;background:var(--surface2);border:1px solid var(--line);border-radius:13px 13px 4px 13px;padding:10px 14px;font-size:14px;line-height:1.7;color:var(--ink);white-space:pre-wrap;text-wrap:pretty">{{ t.text }}</div>
+                    </div>
+                  </sc-if>
+                  <sc-if value="{{ t.isAsk }}">
+                    <div style="padding:11px 28px 20px">
+                      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+                        <span style="width:24px;height:24px;flex:none;border-radius:6px;background:var(--atint);color:var(--agent);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700">{{ t.glyph }}</span>
+                        <span style="font-size:13px;font-weight:600;letter-spacing:-.01em">{{ t.name }}</span>
+                        <span style="font-family:'IBM Plex Mono',monospace;font-size:9.5px;font-weight:700;letter-spacing:.07em;color:var(--agent);background:var(--atint);border-radius:4px;padding:1px 5px;line-height:14px">AGENT</span>
+                        <span style="font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--ink3)">{{ t.time }}</span>
+                      </div>
+                      <div style="max-width:760px;border:1px solid var(--line);border-radius:9px;background:var(--surface);overflow:hidden;margin-bottom:12px">
+                        <button onClick="{{ t.toggleThink }}" style="width:100%;display:flex;align-items:center;gap:8px;padding:8px 12px;color:var(--ink2)" style-hover="background:var(--surface2);color:var(--ink)">
+                          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" style="flex:none"><path d="M8 1.8a4.4 4.4 0 0 0-2.6 7.9V11a1 1 0 0 0 1 1h3.2a1 1 0 0 0 1-1V9.7A4.4 4.4 0 0 0 8 1.8Z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M6.6 14h2.8" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+                          <span style="font-size:12.5px;font-weight:600;white-space:nowrap">{{ t.thinkLabel }}</span>
+                          <div style="flex:1;height:1px;background:var(--line)"></div>
+                          <span style="font-family:'IBM Plex Mono',monospace;font-size:9.5px;color:var(--ink3);flex:none">{{ t.thinkChev }}</span>
+                        </button>
+                        <sc-if value="{{ t.thinkOpen }}">
+                          <div style="padding:2px 12px 12px 12px;background:var(--surface2);border-top:1px solid var(--line)">
+                            <div style="border-left:2px solid var(--line2);padding-left:12px;margin-top:10px;font-size:12.5px;line-height:1.8;color:var(--ink2);white-space:pre-wrap;text-wrap:pretty">{{ t.think }}</div>
+                          </div>
+                        </sc-if>
+                      </div>
+                      <sc-if value="{{ t.tools }}">
+                        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:13px">
+                          <sc-for list="{{ t.tools }}" as="tl" hint-placeholder-count="2">
+                            <div style="display:flex;align-items:center;gap:7px;border:1px solid var(--line);border-radius:7px;background:var(--surface);padding:3px 9px;flex:none">
+                              <span style="width:5px;height:5px;border-radius:1.5px;background:var(--ok);flex:none"></span>
+                              <span style="font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--ink2);white-space:nowrap">{{ tl.n }}</span>
+                              <span style="font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--ink3);white-space:nowrap">{{ tl.d }}</span>
+                            </div>
+                          </sc-for>
+                        </div>
+                      </sc-if>
+                      <div style="font-size:14px;line-height:1.8;color:var(--ink);max-width:760px;white-space:pre-wrap;text-wrap:pretty">{{ t.shown }}<sc-if value="{{ t.caret }}"><span style="display:inline-block;width:2px;height:15px;background:var(--agent);margin-left:3px;vertical-align:-2px;animation:rl-pulse .9s steps(2) infinite"></span></sc-if></div>
+                      <sc-if value="{{ t.streaming }}">
+                        <button onClick="{{ stopStream }}" style="display:flex;align-items:center;gap:7px;height:29px;padding:0 12px;border-radius:8px;border:1px solid var(--line2);background:var(--surface);font-size:12px;font-weight:500;color:var(--ink2);margin-top:14px" style-hover="background:var(--surface2);color:var(--ink)">
+                          <span style="width:8px;height:8px;border-radius:2px;background:var(--danger);flex:none"></span>停止生成
+                        </button>
+                      </sc-if>
+                      <sc-if value="{{ t.doneActions }}">
+                        <div style="display:flex;align-items:center;gap:2px;margin-top:13px">
+                          <button title="复制" style="width:28px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;color:var(--ink3)" style-hover="background:var(--surface2);color:var(--ink)">
+                            <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><rect x="5.4" y="5.4" width="8.2" height="8.2" rx="1.7" stroke="currentColor" stroke-width="1.3"/><path d="M10.6 5.4V4a1.7 1.7 0 0 0-1.7-1.7H4a1.7 1.7 0 0 0-1.7 1.7v4.9A1.7 1.7 0 0 0 4 10.6h1.4" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>
+                          </button>
+                          <button title="重新生成" style="width:28px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;color:var(--ink3)" style-hover="background:var(--surface2);color:var(--ink)">
+                            <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M13.4 8a5.4 5.4 0 1 1-1.7-3.9" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M13.6 2v2.6H11" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                          </button>
+                          <button title="有帮助" style="width:28px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;color:var(--ink3)" style-hover="background:var(--surface2);color:var(--ink)">
+                            <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M5.4 13.6V6.9l2.9-4.3a1.2 1.2 0 0 1 2.1 1l-.6 2.6h2.7a1.4 1.4 0 0 1 1.3 1.8l-1.2 4.3a1.4 1.4 0 0 1-1.3 1H5.4Zm0 0H2.8V6.9h2.6" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>
+                          </button>
+                          <button title="没帮助" style="width:28px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;color:var(--ink3)" style-hover="background:var(--surface2);color:var(--ink)">
+                            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" style="transform:rotate(180deg)"><path d="M5.4 13.6V6.9l2.9-4.3a1.2 1.2 0 0 1 2.1 1l-.6 2.6h2.7a1.4 1.4 0 0 1 1.3 1.8l-1.2 4.3a1.4 1.4 0 0 1-1.3 1H5.4Zm0 0H2.8V6.9h2.6" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>
+                          </button>
+                          <div style="width:1px;height:16px;background:var(--line);margin:0 5px"></div>
+                          <button style="height:26px;padding:0 10px;border-radius:6px;font-size:11.5px;font-weight:500;color:var(--ink3)" style-hover="background:var(--surface2);color:var(--ink)">存入知识库</button>
+                          <button style="height:26px;padding:0 10px;border-radius:6px;font-size:11.5px;font-weight:500;color:var(--ink3)" style-hover="background:var(--surface2);color:var(--ink)">转成频道消息</button>
+                        </div>
+                      </sc-if>
+                    </div>
+                  </sc-if>
+                </sc-for>
+              </sc-if>
+
+              <sc-if value="{{ typing }}">
+                <div style="display:flex;gap:11px;padding:7px 24px;align-items:center">
+                  <div style="width:30px;height:30px;flex:none;border-radius:7px;background:var(--atint);color:var(--agent);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700">◎</div>
+                  <div style="height:18px;width:190px;border-radius:5px;background:linear-gradient(90deg,var(--surface2) 12%,var(--line) 38%,var(--surface2) 62%);background-size:220% 100%;animation:rl-shim 1.5s linear infinite"></div>
+                </div>
+              </sc-if>
+            </div>
+
+            <div style="flex:none;padding:0 24px 16px">
+              <div style="border:1px solid var(--line2);border-radius:10px;background:var(--surface);box-shadow:var(--sh);overflow:hidden">
+                <div style="display:flex;align-items:center;gap:6px;padding:6px 10px;border-bottom:1px solid var(--line);background:var(--surface2)">
+                  <sc-for list="{{ composerAgents }}" as="c" hint-placeholder-count="3">
+                    <button onClick="{{ c.pick }}" style="display:flex;align-items:center;gap:5px;height:22px;padding:0 8px;border-radius:6px;border:1px solid var(--line2);background:var(--bg);font-size:11px;font-weight:500;color:var(--ink2)" style-hover="border-color:var(--agent);color:var(--agent)">
+                      <span style="font-size:10px;color:var(--agent);font-weight:700">{{ c.g }}</span>{{ c.n }}
+                    </button>
+                  </sc-for>
+                  <div style="flex:1"></div>
+                  <span style="font-size:11px;color:var(--ink3);white-space:nowrap;flex:none">按 <span style="font-family:'IBM Plex Mono',monospace">/</span> 唤起指令</span>
+                </div>
+                <sc-if value="{{ quoteActive }}">
+                  <div style="display:flex;align-items:center;gap:9px;padding:8px 12px 8px 10px;border-bottom:1px solid var(--line);background:var(--surface2)">
+                    <div style="width:2px;align-self:stretch;background:var(--accent);border-radius:2px;flex:none"></div>
+                    <span style="width:20px;height:20px;flex:none;border-radius:{{ quoteR }};background:{{ quoteBg }};color:{{ quoteFg }};display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600">{{ quoteGlyph }}</span>
+                    <div style="flex:1;min-width:0">
+                      <div style="font-size:11px;font-weight:600;color:var(--ontint)">引用 {{ quoteWho }}</div>
+                      <div style="font-size:11.5px;color:var(--ink3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{ quoteText }}</div>
+                    </div>
+                    <button onClick="{{ clearQuote }}" title="取消引用" style="width:22px;height:22px;flex:none;border-radius:6px;display:flex;align-items:center;justify-content:center;color:var(--ink3)" style-hover="background:var(--surface);color:var(--ink)">
+                      <svg width="12" height="12" viewBox="0 0 14 14" fill="none"><path d="m3 3 8 8M11 3l-8 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                    </button>
+                  </div>
+                </sc-if>
+                <input value="{{ draft }}" onChange="{{ onDraft }}" onKeyDown="{{ onSend }}" placeholder="{{ composerHint }}" style="width:100%;padding:12px 14px;font-size:13.5px;background:transparent">
+                <div style="display:flex;align-items:center;gap:4px;padding:0 10px 9px 12px">
+                  <button style="width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;color:var(--ink3)" style-hover="background:var(--surface2);color:var(--ink)"><svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M8 3.5v9M3.5 8h9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button>
+                  <button style="width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;color:var(--ink3)" style-hover="background:var(--surface2);color:var(--ink)"><svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M11.5 5.5 6.2 10.8a2.1 2.1 0 0 1-3-3l5.6-5.6a3.3 3.3 0 0 1 4.7 4.7l-5.6 5.6a4.5 4.5 0 0 1-6.4-6.4l5-5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+                  <div style="flex:1"></div>
+                  <span style="font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--ink3)">Enter 发送</span>
+                  <button onClick="{{ sendBtn }}" style="height:26px;padding:0 12px;border-radius:7px;background:var(--accent);color:var(--onacc);font-size:12px;font-weight:600;margin-left:8px" style-hover="background:var(--accent2)">发送</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- inspector -->
+          <sc-if value="{{ inspectorOpen }}" hint-placeholder-val="{{ true }}">
+            <div style="width:{{ insW }};flex:none;border-left:1px solid var(--line);display:flex;flex-direction:column;background:var(--sub);min-height:0;position:relative">
+              <div onMouseDown="{{ startResize }}" title="拖动调整宽度" style="position:absolute;left:-4px;top:0;bottom:0;width:9px;cursor:col-resize;z-index:5;background:transparent" style-hover="background:linear-gradient(90deg,transparent 3.5px,var(--accent) 3.5px,var(--accent) 5.5px,transparent 5.5px)"></div>
+              <div style="height:54px;flex:none;display:flex;align-items:center;gap:3px;padding:0 8px 0 12px;border-bottom:1px solid var(--line)">
+                <sc-for list="{{ insTabs }}" as="tb" hint-placeholder-count="2">
+                  <div style="display:flex;align-items:center;gap:1px;height:27px;border-radius:7px;background:{{ tb.bg }};padding-right:{{ tb.pr }};flex:none">
+                    <button onClick="{{ tb.go }}" style="height:27px;padding:0 10px;border-radius:7px;font-size:12px;font-weight:600;color:{{ tb.fg }};white-space:nowrap;display:flex;align-items:center">{{ tb.n }}</button>
+                    <button onClick="{{ tb.close }}" title="关闭此页签" style="width:{{ tb.closeW }};height:16px;border-radius:4px;display:flex;align-items:center;justify-content:center;color:var(--ink3);overflow:hidden;flex:none;opacity:{{ tb.closeOp }};pointer-events:{{ tb.closePe }}" style-hover="background:var(--line);color:var(--ink)">
+                      <svg width="9" height="9" viewBox="0 0 10 10" fill="none" style="flex:none"><path d="m2.2 2.2 5.6 5.6M7.8 2.2l-5.6 5.6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                    </button>
+                  </div>
+                </sc-for>
+                <div style="flex:1"></div>
+                <button onClick="{{ closeInspector }}" title="收起侧栏" style="width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;color:var(--ink3);flex:none" style-hover="background:var(--surface2);color:var(--ink)">
+                  <svg width="15" height="15" viewBox="0 0 18 18" fill="none"><path d="M6.6 4.4 11.2 9l-4.6 4.6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M14.4 3.4v11.2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                </button>
+              </div>
+
+              <sc-if value="{{ insEmpty }}">
+                <div style="flex:1;overflow-y:auto;padding:26px 20px 20px;display:flex;flex-direction:column;align-items:flex-start">
+                  <div style="width:52px;height:40px;border:1.5px solid var(--line2);border-radius:8px;display:flex;margin-bottom:15px;overflow:hidden;flex:none">
+                    <div style="flex:1;background:var(--surface2)"></div>
+                    <div style="width:1.5px;background:var(--line2)"></div>
+                    <div style="width:19px;background:var(--tint)"></div>
+                  </div>
+                  <div style="font-size:14.5px;font-weight:600;letter-spacing:-.015em">这里并排显示上下文</div>
+                  <div style="font-size:12.5px;line-height:1.7;color:var(--ink2);margin-top:6px;text-wrap:pretty">左边继续聊，右边读细节 —— 话题回复、agent 的执行轨迹、回测与分析结果都会作为页签堆在这里，不会遮住对话。</div>
+                  <div style="width:100%;height:1px;background:var(--line);margin:17px 0 3px"></div>
+                  <sc-for list="{{ insEmptyHints }}" as="eh" hint-placeholder-count="3">
+                    <div style="display:flex;gap:11px;padding:11px 0;width:100%">
+                      <span style="width:22px;height:22px;flex:none;border-radius:6px;background:var(--surface);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;color:var(--ink3)">{{ eh.i }}</span>
+                      <div style="flex:1;min-width:0">
+                        <div style="font-size:12.5px;font-weight:500;color:var(--ink)">{{ eh.n }}</div>
+                        <div style="font-size:11.5px;line-height:1.55;color:var(--ink3);margin-top:2px;text-wrap:pretty">{{ eh.d }}</div>
+                      </div>
+                    </div>
+                  </sc-for>
+                  <button onClick="{{ goEngChannel }}" style="height:29px;padding:0 13px;border-radius:8px;background:var(--accent);color:var(--onacc);font-size:12px;font-weight:600;margin-top:12px;white-space:nowrap;flex:none" style-hover="background:var(--accent2)">去 #engineering 看个例子</button>
+                </div>
+              </sc-if>
+
+              <sc-if value="{{ insThread }}" hint-placeholder-val="{{ true }}">
+                <div style="flex:1;overflow-y:auto;padding:14px 14px 18px">
+                  <div style="border:1px solid var(--line);border-left:2px solid var(--agent);border-radius:8px;background:var(--surface);padding:11px 12px;margin-bottom:14px">
+                    <div style="display:flex;align-items:center;gap:7px;margin-bottom:5px">
+                      <span style="width:20px;height:20px;border-radius:5px;background:var(--atint);color:var(--agent);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700">{{ threadParentGlyph }}</span>
+                      <span style="font-size:12.5px;font-weight:600">{{ threadParentWho }}</span>
+                      <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--ink3)">{{ threadParentTime }}</span>
+                    </div>
+                    <div style="font-size:12.5px;line-height:1.6;color:var(--ink2)">{{ threadParentText }}</div>
+                  </div>
+                  <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+                    <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--ink3);letter-spacing:.06em">4 REPLIES</span>
+                    <div style="flex:1;height:1px;background:var(--line)"></div>
+                  </div>
+                  <sc-for list="{{ threadMsgs }}" as="t" hint-placeholder-count="4">
+                    <div style="display:flex;gap:9px;margin-bottom:15px">
+                      <div style="width:25px;height:25px;flex:none;border-radius:{{ t.r }};background:{{ t.bg }};color:{{ t.fg }};display:flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:600">{{ t.glyph }}</div>
+                      <div style="flex:1;min-width:0">
+                        <div style="display:flex;align-items:baseline;gap:6px;margin-bottom:2px">
+                          <span style="font-size:12.5px;font-weight:600">{{ t.who }}</span>
+                          <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--ink3)">{{ t.time }}</span>
+                        </div>
+                        <div style="font-size:12.5px;line-height:1.62;color:var(--ink)">
+                          <sc-for list="{{ t.segs }}" as="tg" hint-placeholder-count="1">
+                            <sc-if value="{{ tg.plain }}" hint-placeholder-val="{{ true }}"><span>{{ tg.t }}</span></sc-if>
+                            <sc-if value="{{ tg.chip }}"><span style="display:inline-block;background:{{ tg.bg }};color:{{ tg.fg }};border-radius:4px;padding:0 5px;font-weight:600;font-size:12px">{{ tg.t }}</span></sc-if>
+                          </sc-for>
+                        </div>
+                        <sc-if value="{{ t.pill }}">
+                          <div style="display:flex;align-items:center;gap:8px;margin-top:7px;border:1px solid var(--line);border-radius:7px;background:var(--surface);padding:7px 10px">
+                            <span style="width:6px;height:6px;border-radius:99px;background:var(--ok);flex:none"></span>
+                            <span style="font-size:11.5px;color:var(--ink);flex:1;min-width:0">{{ t.pill }}</span>
+                            <span style="font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--ink3)">{{ t.pillMeta }}</span>
+                          </div>
+                        </sc-if>
+                      </div>
+                    </div>
+                  </sc-for>
+                  <div style="border:1px solid var(--line2);border-radius:9px;background:var(--surface);padding:9px 11px;display:flex;align-items:center;gap:9px">
+                    <span style="font-size:12.5px;color:var(--ink3);flex:1">回复话题…</span>
+                    <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--ink3);border:1px solid var(--line);border-radius:4px;padding:1px 5px">⏎</span>
+                  </div>
+                </div>
+              </sc-if>
+
+              <sc-if value="{{ insRun }}">
+                <div style="flex:1;overflow-y:auto;padding:14px 14px 18px">
+                  <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+                    <span style="width:26px;height:26px;border-radius:6px;background:var(--atint);color:var(--agent);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700">{{ runGlyphIns }}</span>
+                    <div style="flex:1;min-width:0">
+                      <div style="font-size:12.5px;font-weight:600">{{ runTitleIns }}</div>
+                      <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--ink3)">{{ runMetaIns }}</div>
+                    </div>
+                  </div>
+                  <sc-for list="{{ runDetail }}" as="rd" hint-placeholder-count="4">
+                    <div style="border:1px solid var(--line);border-radius:8px;background:var(--surface);margin-bottom:8px;overflow:hidden">
+                      <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-bottom:1px solid var(--line)">
+                        <span style="width:6px;height:6px;border-radius:1.5px;background:{{ rd.dot }};flex:none"></span>
+                        <span style="font-size:10px;font-weight:700;letter-spacing:.05em;color:var(--agent)">{{ rd.k }}</span>
+                        <span style="font-size:12px;font-weight:500;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ rd.label }}</span>
+                        <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--ink3)">{{ rd.dur }}</span>
+                      </div>
+                      <div style="padding:8px 10px;font-family:'IBM Plex Mono',monospace;font-size:10.5px;line-height:1.65;color:var(--ink2);background:var(--surface2);white-space:pre-wrap">{{ rd.payload }}</div>
+                    </div>
+                  </sc-for>
+                </div>
+              </sc-if>
+
+              <sc-if value="{{ insBt }}">
+                <div style="flex:1;overflow-y:auto;padding:14px 14px 18px">
+                  <div style="display:flex;align-items:center;gap:9px;margin-bottom:13px">
+                    <span style="width:26px;height:26px;flex:none;border-radius:6px;background:var(--atint);color:var(--agent);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700">∑</span>
+                    <div style="flex:1;min-width:0">
+                      <div style="font-size:12.5px;font-weight:600">Quant 量化 · B-0917</div>
+                      <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--ink3)">Q3 减仓决策复盘 · 38.6s · $0.082</div>
+                    </div>
+                  </div>
+                  <div style="border:1px solid var(--line);border-radius:9px;background:var(--surface);padding:12px 12px 10px;margin-bottom:12px">
+                    <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:9px">
+                      <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;letter-spacing:.06em;color:var(--ink3)">累计超额收益</span>
+                      <span style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:600;color:var(--ok)">+2.3%</span>
+                    </div>
+                    <div style="position:relative;height:96px;display:flex;align-items:center;gap:2px">
+                      <div style="position:absolute;left:0;right:0;top:50%;height:1px;background:var(--line2)"></div>
+                      <sc-for list="{{ btCurve }}" as="bc" hint-placeholder-count="24">
+                        <div style="flex:1;min-width:0;height:100%;position:relative">
+                          <div style="position:absolute;left:0;right:0;height:{{ bc.h }};top:{{ bc.top }};bottom:{{ bc.bot }};background:{{ bc.c }};border-radius:2px;opacity:.85"></div>
+                        </div>
+                      </sc-for>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;margin-top:7px">
+                      <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--ink3)">7月</span>
+                      <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--ink3)">今日</span>
+                    </div>
+                  </div>
+                  <div style="border:1px solid var(--danger);border-radius:9px;background:var(--dtint);padding:10px 12px;margin-bottom:12px">
+                    <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;letter-spacing:.06em;color:var(--danger)">风险线触发点</div>
+                    <div style="display:flex;align-items:baseline;gap:8px;margin-top:5px">
+                      <span style="font-family:'IBM Plex Mono',monospace;font-size:15px;font-weight:600;color:var(--ink)">-19.1%</span>
+                      <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ink2)">2026-09-12</span>
+                    </div>
+                    <div style="font-size:11.5px;line-height:1.55;color:var(--ink2);margin-top:4px">越过 -15% 风险线，若未减仓会触发强制平仓，实际成本高于账面差额。</div>
+                  </div>
+                  <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;letter-spacing:.08em;color:var(--ink3);margin-bottom:8px">参数与统计</div>
+                  <sc-for list="{{ btMetrics }}" as="bm" hint-placeholder-count="8">
+                    <div style="display:flex;align-items:baseline;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--line)">
+                      <span style="font-size:12px;color:var(--ink2)">{{ bm.k }}</span>
+                      <span style="font-family:'IBM Plex Mono',monospace;font-size:11.5px;font-weight:500;color:var(--ink)">{{ bm.v }}</span>
+                    </div>
+                  </sc-for>
+                  <div style="display:flex;flex-wrap:wrap;gap:7px;margin-top:14px">
+                    <button onClick="{{ goRun }}" style="height:28px;padding:0 12px;border-radius:7px;background:var(--accent);color:var(--onacc);font-size:12px;font-weight:600;white-space:nowrap;flex:none" style-hover="background:var(--accent2)">在新页面打开 ↗</button>
+                    <button style="height:28px;padding:0 12px;border-radius:7px;border:1px solid var(--line2);font-size:12px;font-weight:500;color:var(--ink2);white-space:nowrap;flex:none" style-hover="background:var(--surface2);color:var(--ink)">存入知识库</button>
+                  </div>
+                </div>
+              </sc-if>
+
+              <sc-if value="{{ insQa }}">
+                <div style="flex:1;overflow-y:auto;padding:14px 14px 18px">
+                  <div style="display:flex;align-items:center;gap:9px;margin-bottom:13px">
+                    <span style="width:26px;height:26px;flex:none;border-radius:6px;background:var(--atint);color:var(--agent);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700">∑</span>
+                    <div style="flex:1;min-width:0">
+                      <div style="font-size:12.5px;font-weight:600">NVDA 跌破阈值分析</div>
+                      <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--ink3)">由 Ticker 报价提醒转派 · 09:32</div>
+                    </div>
+                    <span style="display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:700;color:var(--agent);background:var(--atint);border-radius:99px;padding:2px 8px;flex:none">
+                      <span style="width:5px;height:5px;border-radius:99px;background:var(--agent);animation:rl-pulse 1.4s infinite"></span>运行中
+                    </span>
+                  </div>
+                  <sc-for list="{{ qaSteps }}" as="qs" hint-placeholder-count="4">
+                    <div style="display:flex;gap:10px;padding-bottom:12px">
+                      <div style="width:12px;flex:none;display:flex;flex-direction:column;align-items:center">
+                        <div style="width:7px;height:7px;border-radius:1.5px;background:{{ qs.dot }};margin-top:4px;flex:none"></div>
+                        <div style="width:1px;flex:1;background:var(--line2);margin-top:3px"></div>
+                      </div>
+                      <div style="flex:1;min-width:0">
+                        <div style="display:flex;align-items:baseline;gap:7px">
+                          <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--ink3)">{{ qs.t }}</span>
+                          <span style="font-size:10px;font-weight:700;letter-spacing:.05em;color:var(--agent)">{{ qs.k }}</span>
+                        </div>
+                        <div style="font-size:12.5px;font-weight:500;color:var(--ink);margin-top:2px">{{ qs.label }}</div>
+                        <sc-if value="{{ qs.done }}" hint-placeholder-val="{{ true }}">
+                          <div style="font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--ink2);margin-top:2px">{{ qs.meta }}</div>
+                        </sc-if>
+                        <sc-if value="{{ qs.running }}">
+                          <div style="height:14px;width:170px;border-radius:4px;margin-top:4px;background:linear-gradient(90deg,var(--surface2) 12%,var(--line) 38%,var(--surface2) 62%);background-size:220% 100%;animation:rl-shim 1.5s linear infinite"></div>
+                        </sc-if>
+                      </div>
+                    </div>
+                  </sc-for>
+                  <div style="border:1px solid var(--line);border-radius:9px;background:var(--surface);padding:11px 12px">
+                    <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;letter-spacing:.06em;color:var(--ink3)">初步结论（可能随模拟更新）</div>
+                    <div style="font-size:12.5px;line-height:1.6;color:var(--ink);margin-top:6px;text-wrap:pretty">放量下跌但盘口卖压集中在两笔大单，不构成趋势反转信号。当前价距 -15% 风险线还有 8.2 个点，建议按原计划持有，等 10:00 的成交结构再确认。</div>
+                  </div>
+                  <div style="display:flex;flex-wrap:wrap;gap:7px;margin-top:12px">
+                    <button style="height:28px;padding:0 12px;border-radius:7px;border:1px solid var(--line2);font-size:12px;font-weight:500;color:var(--ink2);white-space:nowrap;flex:none" style-hover="background:var(--surface2);color:var(--ink)">转为任务并指派</button>
+                    <button style="height:28px;padding:0 12px;border-radius:7px;border:1px solid var(--line2);font-size:12px;font-weight:500;color:var(--danger);white-space:nowrap;flex:none" style-hover="background:var(--dtint)">取消运行</button>
+                  </div>
+                </div>
+              </sc-if>
+            </div>
+          </sc-if>
+        </div>
+      </sc-if>
+
+      <!-- AGENT DETAIL -->
+      <sc-if value="{{ vAgent }}">
+        <div data-screen-label="Agent 详情配置" style="flex:1;overflow-y:auto">
+          <div style="padding:26px 34px 0;border-bottom:1px solid var(--line)">
+            <div style="display:flex;align-items:flex-start;gap:15px;max-width:880px">
+              <div style="width:52px;height:52px;flex:none;border-radius:11px;background:var(--atint);color:var(--agent);display:flex;align-items:center;justify-content:center;font-size:21px;font-weight:700">△</div>
+              <div style="flex:1;min-width:0">
+                <div style="display:flex;align-items:center;gap:9px">
+                  <h1 style="margin:0;font-size:21px;font-weight:600;letter-spacing:-.025em">Triage 分诊</h1>
+                  <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;color:var(--ok);border:1px solid var(--ok);border-radius:3px;padding:1px 5px">ACTIVE</span>
+                </div>
+                <p style="margin:5px 0 0;font-size:13.5px;line-height:1.6;color:var(--ink2);max-width:600px;text-wrap:pretty">监听线上异常，自动聚合 Sentry 事件与近期 PR，定位可疑变更并生成分诊报告。由 陈知远 于 6 周前安装。</p>
+              </div>
+              <button style="height:31px;padding:0 14px;border-radius:8px;border:1px solid var(--line2);font-size:12.5px;font-weight:600;color:var(--ink2)" style-hover="background:var(--surface2);color:var(--ink)">暂停</button>
+              <button onClick="{{ goRun }}" style="height:31px;padding:0 14px;border-radius:8px;background:var(--accent);color:var(--onacc);font-size:12.5px;font-weight:600" style-hover="background:var(--accent2)">立即运行</button>
+            </div>
+            <div style="display:flex;gap:24px;margin-top:22px">
+              <sc-for list="{{ agentTabs }}" as="at" hint-placeholder-count="4">
+                <div style="padding-bottom:11px;border-bottom:2px solid {{ at.bd }};font-size:12.5px;font-weight:600;color:{{ at.fg }};cursor:pointer">{{ at.n }}</div>
+              </sc-for>
+            </div>
+          </div>
+
+          <div style="padding:24px 34px 40px;max-width:940px">
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:26px">
+              <sc-for list="{{ agentStats }}" as="st" hint-placeholder-count="4">
+                <div style="border:1px solid var(--line);border-radius:9px;background:var(--surface);padding:12px 13px">
+                  <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--ink3);letter-spacing:.06em;text-transform:uppercase">{{ st.k }}</div>
+                  <div style="font-size:22px;font-weight:600;letter-spacing:-.03em;margin-top:5px">{{ st.v }}</div>
+                  <div style="font-size:11px;color:{{ st.fg }};margin-top:2px">{{ st.d }}</div>
+                </div>
+              </sc-for>
+            </div>
+
+            <div style="font-size:12px;font-weight:700;letter-spacing:.06em;color:var(--ink3);font-family:'IBM Plex Mono',monospace;margin-bottom:10px">触发条件 TRIGGERS</div>
+            <div style="border:1px solid var(--line);border-radius:10px;background:var(--surface);overflow:hidden;margin-bottom:26px">
+              <sc-for list="{{ triggers }}" as="tg" hint-placeholder-count="3">
+                <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;border-bottom:1px solid var(--line)">
+                  <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;color:var(--agent);background:var(--atint);border-radius:4px;padding:2px 7px;flex:none">{{ tg.k }}</span>
+                  <div style="flex:1;min-width:0">
+                    <div style="font-size:13px;font-weight:500">{{ tg.n }}</div>
+                    <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ink3);margin-top:2px">{{ tg.c }}</div>
+                  </div>
+                  <button onClick="{{ tg.toggle }}" style="width:36px;height:20px;border-radius:99px;background:{{ tg.bg }};position:relative;flex:none;transition:background .15s">
+                    <span style="position:absolute;top:2px;left:{{ tg.x }};width:16px;height:16px;border-radius:99px;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.25);transition:left .15s"></span>
+                  </button>
+                </div>
+              </sc-for>
+              <button style="width:100%;padding:10px;font-size:12px;font-weight:600;color:var(--ontint)" style-hover="background:var(--surface2)">+ 添加触发条件</button>
+            </div>
+
+            <div style="font-size:12px;font-weight:700;letter-spacing:.06em;color:var(--ink3);font-family:'IBM Plex Mono',monospace;margin-bottom:10px">权限范围 SCOPES</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:26px">
+              <sc-for list="{{ scopes }}" as="sp" hint-placeholder-count="4">
+                <div style="border:1px solid var(--line);border-radius:9px;background:var(--surface);padding:11px 12px;display:flex;align-items:center;gap:10px">
+                  <span style="width:26px;height:26px;border-radius:6px;background:var(--surface2);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--ink2);flex:none">{{ sp.g }}</span>
+                  <div style="flex:1;min-width:0">
+                    <div style="font-size:12.5px;font-weight:500">{{ sp.n }}</div>
+                    <div style="font-size:11px;color:var(--ink3)">{{ sp.d }}</div>
+                  </div>
+                  <span style="font-size:10.5px;font-weight:700;font-family:'IBM Plex Mono',monospace;color:{{ sp.fg }};background:{{ sp.bg }};border-radius:4px;padding:2px 7px">{{ sp.lvl }}</span>
+                </div>
+              </sc-for>
+            </div>
+
+            <div style="font-size:12px;font-weight:700;letter-spacing:.06em;color:var(--ink3);font-family:'IBM Plex Mono',monospace;margin-bottom:10px">最近运行 HISTORY</div>
+            <div style="border:1px solid var(--line);border-radius:10px;background:var(--surface);overflow:hidden">
+              <sc-for list="{{ history }}" as="h" hint-placeholder-count="4">
+                <button onClick="{{ goRun }}" style="width:100%;display:flex;align-items:center;gap:12px;padding:10px 14px;border-bottom:1px solid var(--line)" style-hover="background:var(--surface2)">
+                  <span style="width:6px;height:6px;border-radius:1.5px;background:{{ h.dot }};flex:none"></span>
+                  <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ink3);width:64px;flex:none">#{{ h.id }}</span>
+                  <span style="font-size:12.5px;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ h.n }}</span>
+                  <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ink3)">{{ h.dur }}</span>
+                  <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ink3);width:54px;text-align:right">{{ h.cost }}</span>
+                  <span style="font-size:11px;color:var(--ink3);width:70px;text-align:right">{{ h.ago }}</span>
+                </button>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- RUN TRACE -->
+      <sc-if value="{{ vRun }}">
+        <div data-screen-label="Agent 运行轨迹" style="flex:1;display:flex;min-height:0">
+          <div style="flex:1;min-width:0;display:flex;flex-direction:column">
+            <div style="height:54px;flex:none;display:flex;align-items:center;gap:11px;padding:0 22px;border-bottom:1px solid var(--line)">
+              <button onClick="{{ goAgent }}" style="width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;color:var(--ink2);border:1px solid var(--line)" style-hover="background:var(--surface2)"><svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M8.5 2.5 4 7l4.5 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+              <span style="width:24px;height:24px;border-radius:6px;background:var(--atint);color:var(--agent);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700">△</span>
+              <div>
+                <div style="font-size:14px;font-weight:600;letter-spacing:-.015em">分诊 staging 间歇性 504</div>
+                <div style="font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--ink3);margin-top:1px">run #4821 · 由 @林越 在 #engineering 触发 · 09:15:01</div>
+              </div>
+              <div style="flex:1"></div>
+              <span style="font-size:11px;font-weight:700;color:var(--ok);border:1px solid var(--ok);border-radius:99px;padding:2px 10px">已完成</span>
+              <button style="height:28px;padding:0 12px;border-radius:7px;border:1px solid var(--line2);font-size:12px;font-weight:500;color:var(--ink2)" style-hover="background:var(--surface2);color:var(--ink)">重跑</button>
+            </div>
+            <div style="flex:1;overflow-y:auto;padding:20px 22px 40px">
+              <sc-for list="{{ runFull }}" as="f" hint-placeholder-count="5">
+                <div style="display:flex;gap:14px">
+                  <div style="width:74px;flex:none;text-align:right;padding-top:11px">
+                    <div style="font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--ink3)">{{ f.t }}</div>
+                    <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--ink3);opacity:.7">{{ f.dur }}</div>
+                  </div>
+                  <div style="width:16px;flex:none;display:flex;flex-direction:column;align-items:center">
+                    <div style="width:9px;height:9px;border-radius:2px;background:{{ f.dot }};margin-top:14px;flex:none;outline:3px solid var(--bg)"></div>
+                    <div style="width:1px;flex:1;background:var(--line2)"></div>
+                  </div>
+                  <div style="flex:1;min-width:0;padding-bottom:14px">
+                    <div style="border:1px solid var(--line);border-radius:9px;background:var(--surface);overflow:hidden">
+                      <div style="display:flex;align-items:center;gap:9px;padding:9px 12px;border-bottom:1px solid var(--line)">
+                        <span style="font-size:10px;font-weight:700;letter-spacing:.06em;color:var(--agent);background:var(--atint);border-radius:4px;padding:2px 6px">{{ f.k }}</span>
+                        <span style="font-size:13px;font-weight:600;flex:1;min-width:0">{{ f.label }}</span>
+                        <span style="font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--ink3)">{{ f.tok }}</span>
+                      </div>
+                      <div style="padding:11px 12px;font-size:12.5px;line-height:1.7;color:var(--ink2);text-wrap:pretty">{{ f.body }}</div>
+                      <sc-if value="{{ f.code }}">
+                        <div style="margin:0 12px 12px;border:1px solid var(--line);border-radius:7px;background:var(--surface2);padding:10px 12px;font-family:'IBM Plex Mono',monospace;font-size:11px;line-height:1.75;color:var(--ink2);white-space:pre-wrap;overflow-x:auto">{{ f.code }}</div>
+                      </sc-if>
+                    </div>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+          <div style="width:288px;flex:none;border-left:1px solid var(--line);background:var(--sub);padding:18px 16px;overflow-y:auto">
+            <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;letter-spacing:.08em;color:var(--ink3);margin-bottom:11px">运行摘要 SUMMARY</div>
+            <sc-for list="{{ runSummary }}" as="rs" hint-placeholder-count="6">
+              <div style="display:flex;align-items:baseline;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--line)">
+                <span style="font-size:12px;color:var(--ink2)">{{ rs.k }}</span>
+                <span style="font-family:'IBM Plex Mono',monospace;font-size:11.5px;font-weight:500;color:var(--ink)">{{ rs.v }}</span>
+              </div>
+            </sc-for>
+            <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;letter-spacing:.08em;color:var(--ink3);margin:22px 0 11px">产出 ARTIFACTS</div>
+            <sc-for list="{{ artifacts }}" as="af" hint-placeholder-count="3">
+              <div style="display:flex;align-items:center;gap:9px;border:1px solid var(--line);border-radius:8px;background:var(--surface);padding:9px 10px;margin-bottom:7px">
+                <span style="width:22px;height:22px;border-radius:5px;background:var(--surface2);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;color:var(--ink2);flex:none">{{ af.ext }}</span>
+                <div style="flex:1;min-width:0">
+                  <div style="font-size:12px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ af.n }}</div>
+                  <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--ink3)">{{ af.s }}</div>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- MARKET -->
+      <sc-if value="{{ vMarket }}">
+        <div data-screen-label="Agent 市场" style="flex:1;overflow-y:auto">
+          <div style="padding:30px 34px 22px;border-bottom:1px solid var(--line)">
+            <h1 style="margin:0;font-size:22px;font-weight:600;letter-spacing:-.025em">Agent 市场</h1>
+            <p style="margin:6px 0 0;font-size:13.5px;color:var(--ink2);max-width:520px">安装模板后可在任意频道 @ 调用。所有 agent 的数据权限由工作区管理员统一审批。</p>
+          </div>
+          <div style="padding:22px 34px 40px">
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;max-width:1000px">
+              <sc-for list="{{ market }}" as="mk" hint-placeholder-count="6">
+                <div style="border:1px solid var(--line);border-radius:11px;background:var(--surface);padding:15px;display:flex;flex-direction:column;gap:10px" style-hover="border-color:var(--line2);box-shadow:var(--sh)">
+                  <div style="display:flex;align-items:flex-start;gap:10px">
+                    <span style="width:34px;height:34px;flex:none;border-radius:8px;background:{{ mk.bg }};color:{{ mk.fg }};display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700">{{ mk.g }}</span>
+                    <div style="flex:1;min-width:0">
+                      <div style="font-size:13.5px;font-weight:600;letter-spacing:-.01em">{{ mk.n }}</div>
+                      <div style="font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--ink3);margin-top:2px">{{ mk.by }}</div>
+                    </div>
+                  </div>
+                  <div style="font-size:12.5px;line-height:1.6;color:var(--ink2);flex:1;text-wrap:pretty">{{ mk.d }}</div>
+                  <div style="display:flex;align-items:center;gap:6px">
+                    <sc-for list="{{ mk.tags }}" as="tg2" hint-placeholder-count="2">
+                      <span style="font-size:10.5px;color:var(--ink2);border:1px solid var(--line);border-radius:99px;padding:1px 8px">{{ tg2 }}</span>
+                    </sc-for>
+                  </div>
+                  <div style="display:flex;align-items:center;gap:8px;padding-top:9px;border-top:1px solid var(--line)">
+                    <span style="font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--ink3);flex:1">{{ mk.installs }}</span>
+                    <button style="height:26px;padding:0 12px;border-radius:7px;font-size:11.5px;font-weight:600;background:{{ mk.btnBg }};color:{{ mk.btnFg }};border:1px solid {{ mk.btnBd }}">{{ mk.btn }}</button>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- INBOX -->
+      <sc-if value="{{ vInbox }}">
+        <div data-screen-label="通知收件箱" style="flex:1;overflow-y:auto">
+          <div style="height:54px;flex:none;display:flex;align-items:center;gap:12px;padding:0 26px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--bg);z-index:2">
+            <span style="font-size:15px;font-weight:600;letter-spacing:-.02em">收件箱</span>
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ink3)">7 未读</span>
+            <div style="flex:1"></div>
+            <button style="height:27px;padding:0 11px;border-radius:7px;border:1px solid var(--line);font-size:12px;color:var(--ink2)" style-hover="background:var(--surface2);color:var(--ink)">全部标记已读</button>
+          </div>
+          <div style="padding:16px 26px 40px;max-width:880px">
+            <sc-for list="{{ inbox }}" as="ib" hint-placeholder-count="3">
+              <div style="margin-bottom:22px">
+                <div style="display:flex;align-items:center;gap:9px;margin-bottom:9px">
+                  <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;letter-spacing:.08em;color:var(--ink3)">{{ ib.name }}</span>
+                  <div style="flex:1;height:1px;background:var(--line)"></div>
+                </div>
+                <sc-for list="{{ ib.items }}" as="n" hint-placeholder-count="3">
+                  <div style="display:flex;gap:11px;border:1px solid var(--line);border-left:2px solid {{ n.edge }};border-radius:9px;background:var(--surface);padding:12px 14px;margin-bottom:7px" style-hover="border-color:var(--line2)">
+                    <span style="width:26px;height:26px;flex:none;border-radius:{{ n.r }};background:{{ n.bg }};color:{{ n.fg }};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600">{{ n.glyph }}</span>
+                    <div style="flex:1;min-width:0">
+                      <div style="display:flex;align-items:baseline;gap:7px">
+                        <span style="font-size:12.5px;font-weight:600">{{ n.who }}</span>
+                        <span style="font-size:11.5px;color:var(--ink3)">{{ n.where }}</span>
+                        <div style="flex:1"></div>
+                        <span style="font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--ink3)">{{ n.time }}</span>
+                      </div>
+                      <div style="font-size:12.5px;line-height:1.6;color:var(--ink2);margin-top:3px;text-wrap:pretty">
+                        <sc-for list="{{ n.segs }}" as="ng" hint-placeholder-count="1">
+                          <sc-if value="{{ ng.plain }}" hint-placeholder-val="{{ true }}"><span>{{ ng.t }}</span></sc-if>
+                          <sc-if value="{{ ng.chip }}"><span style="display:inline-block;background:{{ ng.bg }};color:{{ ng.fg }};border-radius:4px;padding:0 5px;font-weight:600;font-size:12px">{{ ng.t }}</span></sc-if>
+                        </sc-for>
+                      </div>
+                      <sc-if value="{{ n.action }}">
+                        <div style="display:flex;gap:7px;margin-top:9px">
+                          <button style="height:26px;padding:0 11px;border-radius:6px;background:var(--accent);color:var(--onacc);font-size:11.5px;font-weight:600" style-hover="background:var(--accent2)">{{ n.action }}</button>
+                          <button style="height:26px;padding:0 11px;border-radius:6px;border:1px solid var(--line2);font-size:11.5px;font-weight:500;color:var(--ink2)" style-hover="background:var(--surface2)">拒绝</button>
+                        </div>
+                      </sc-if>
+                    </div>
+                  </div>
+                </sc-for>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- VMS -->
+      <sc-if value="{{ vVm }}">
+        <div data-screen-label="运行机器" style="flex:1;overflow-y:auto">
+          <div style="height:54px;flex:none;display:flex;align-items:center;gap:12px;padding:0 26px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--bg);z-index:2">
+            <span style="font-size:15px;font-weight:600;letter-spacing:-.02em">运行机器</span>
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ink3)">12 台 · 上海 / 新加坡 · agent 沙箱隔离</span>
+            <div style="flex:1"></div>
+            <button style="height:27px;padding:0 11px;border-radius:7px;border:1px solid var(--line);font-size:12px;color:var(--ink2);white-space:nowrap;flex:none" style-hover="background:var(--surface2);color:var(--ink)">扩缩容策略</button>
+            <button style="height:27px;padding:0 12px;border-radius:7px;background:var(--accent);color:var(--onacc);font-size:12px;font-weight:600;white-space:nowrap;flex:none" style-hover="background:var(--accent2)">新建机器</button>
+          </div>
+          <div style="padding:18px 26px 40px">
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:18px;max-width:1060px">
+              <sc-for list="{{ vmStats }}" as="vs" hint-placeholder-count="4">
+                <div style="border:1px solid var(--line);border-radius:9px;background:var(--surface);padding:12px 13px">
+                  <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--ink3);letter-spacing:.06em;text-transform:uppercase">{{ vs.k }}</div>
+                  <div style="font-size:22px;font-weight:600;letter-spacing:-.03em;margin-top:5px">{{ vs.v }}</div>
+                  <div style="font-size:11px;color:{{ vs.fg }};margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ vs.d }}</div>
+                </div>
+              </sc-for>
+            </div>
+            <div style="border:1px solid var(--line);border-radius:10px;background:var(--surface);overflow:hidden;max-width:1060px">
+              <div style="display:grid;grid-template-columns:1.5fr 92px 1.6fr 128px 116px 86px 96px 72px;gap:12px;padding:9px 14px;border-bottom:1px solid var(--line);background:var(--surface2)">
+                <sc-for list="{{ vmCols }}" as="vc" hint-placeholder-count="8">
+                  <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;letter-spacing:.06em;color:var(--ink3);text-transform:uppercase;white-space:nowrap">{{ vc }}</span>
+                </sc-for>
+              </div>
+              <sc-for list="{{ vms }}" as="v" hint-placeholder-count="6">
+                <div style="border-bottom:1px solid var(--line)" style-hover="background:var(--surface2)">
+                  <div style="display:grid;grid-template-columns:1.5fr 92px 1.6fr 128px 116px 86px 96px 72px;gap:12px;padding:11px 14px;align-items:center">
+                    <span style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:500;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ v.n }}</span>
+                    <span style="display:inline-flex;align-items:center;gap:5px;background:{{ v.sBg }};color:{{ v.sFg }};border-radius:99px;padding:2px 8px;font-size:11px;font-weight:600;justify-self:start">
+                      <span style="width:5px;height:5px;border-radius:99px;background:{{ v.sDot }};flex:none"></span>{{ v.s }}
+                    </span>
+                    <span style="font-size:12px;color:{{ v.agFg }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ v.ag }}</span>
+                    <div style="display:flex;align-items:center;gap:8px;min-width:0">
+                      <div style="flex:1;min-width:0;height:5px;border-radius:99px;background:var(--surface2);border:1px solid var(--line);overflow:hidden">
+                        <div style="width:{{ v.cpuW }};height:100%;background:{{ v.cpuC }}"></div>
+                      </div>
+                      <span style="font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--ink2);flex:none;width:30px;text-align:right">{{ v.cpuN }}</span>
+                    </div>
+                    <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ink2);white-space:nowrap">{{ v.mem }}</span>
+                    <span style="font-size:11.5px;color:var(--ink2);white-space:nowrap">{{ v.reg }}</span>
+                    <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ink3);white-space:nowrap">{{ v.up }}</span>
+                    <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ink2);text-align:right">{{ v.cost }}</span>
+                  </div>
+                  <sc-if value="{{ v.alert }}">
+                    <div style="display:flex;align-items:center;gap:9px;margin:0 14px 11px;padding:8px 11px;border-radius:7px;border:1px solid var(--danger);background:var(--dtint)">
+                      <span style="width:16px;height:16px;flex:none;border-radius:4px;background:var(--danger);color:var(--ondanger);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700">!</span>
+                      <span style="font-size:12px;color:var(--ink);flex:1;min-width:0">{{ v.alert }}</span>
+                      <button style="height:24px;padding:0 10px;border-radius:6px;background:var(--accent);color:var(--onacc);font-size:11.5px;font-weight:600;flex:none" style-hover="background:var(--accent2)">重启</button>
+                      <button style="height:24px;padding:0 10px;border-radius:6px;border:1px solid var(--line2);font-size:11.5px;font-weight:500;color:var(--ink2);flex:none" style-hover="background:var(--surface)">查看日志</button>
+                    </div>
+                  </sc-if>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- LIBRARY -->
+      <sc-if value="{{ vLib }}">
+        <div data-screen-label="知识库" style="flex:1;overflow-y:auto">
+          <div style="height:54px;flex:none;display:flex;align-items:center;gap:12px;padding:0 26px;border-bottom:1px solid var(--line)">
+            <span style="font-size:15px;font-weight:600;letter-spacing:-.02em">知识库 · 工程</span>
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ink3)">42 个文件 · agent 可检索</span>
+            <div style="flex:1"></div>
+            <button style="height:27px;padding:0 12px;border-radius:7px;background:var(--accent);color:var(--onacc);font-size:12px;font-weight:600" style-hover="background:var(--accent2)">上传</button>
+          </div>
+          <div style="padding:18px 26px 40px">
+            <div style="border:1px solid var(--line);border-radius:10px;background:var(--surface);overflow:hidden;max-width:1000px">
+              <div style="display:grid;grid-template-columns:1fr 110px 110px 150px 90px;gap:12px;padding:9px 14px;border-bottom:1px solid var(--line);background:var(--surface2)">
+                <sc-for list="{{ libCols }}" as="lc" hint-placeholder-count="5">
+                  <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;letter-spacing:.06em;color:var(--ink3);text-transform:uppercase">{{ lc }}</span>
+                </sc-for>
+              </div>
+              <sc-for list="{{ library }}" as="lf" hint-placeholder-count="6">
+                <div style="display:grid;grid-template-columns:1fr 110px 110px 150px 90px;gap:12px;padding:11px 14px;border-bottom:1px solid var(--line);align-items:center" style-hover="background:var(--surface2)">
+                  <div style="display:flex;align-items:center;gap:9px;min-width:0">
+                    <span style="width:22px;height:22px;flex:none;border-radius:5px;background:var(--surface2);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-family:'IBM Plex Mono',monospace;font-size:8.5px;font-weight:700;color:var(--ink2)">{{ lf.ext }}</span>
+                    <span style="font-size:12.5px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ lf.n }}</span>
+                  </div>
+                  <span style="font-size:11.5px;color:var(--ink2)">{{ lf.owner }}</span>
+                  <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ink3)">{{ lf.size }}</span>
+                  <div style="display:flex;align-items:center;gap:6px">
+                    <span style="width:5px;height:5px;border-radius:1px;background:var(--agent);flex:none"></span>
+                    <span style="font-size:11.5px;color:var(--ink2)">{{ lf.cited }}</span>
+                  </div>
+                  <span style="font-size:11.5px;color:var(--ink3);text-align:right">{{ lf.ago }}</span>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- SETTINGS -->
+      <sc-if value="{{ vSet }}">
+        <div data-screen-label="设置与权限" style="flex:1;overflow-y:auto">
+          <div style="padding:28px 34px 20px;border-bottom:1px solid var(--line)">
+            <h1 style="margin:0;font-size:20px;font-weight:600;letter-spacing:-.025em">Agent 权限矩阵</h1>
+            <p style="margin:6px 0 0;font-size:13px;color:var(--ink2);max-width:560px">每个 agent 能触达的数据源与写入能力。变更需要两名管理员确认，审计日志保留 180 天。</p>
+          </div>
+          <div style="padding:22px 34px 40px">
+            <div style="border:1px solid var(--line);border-radius:10px;background:var(--surface);overflow:hidden;max-width:1000px">
+              <div style="display:grid;grid-template-columns:150px repeat(6,1fr);gap:0;border-bottom:1px solid var(--line);background:var(--surface2)">
+                <div style="padding:10px 14px;font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;letter-spacing:.06em;color:var(--ink3)">AGENT</div>
+                <sc-for list="{{ permCols }}" as="pc" hint-placeholder-count="6">
+                  <div style="padding:10px 12px;font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;letter-spacing:.06em;color:var(--ink3);border-left:1px solid var(--line)">{{ pc }}</div>
+                </sc-for>
+              </div>
+              <sc-for list="{{ permRows }}" as="pr" hint-placeholder-count="9">
+                <div style="display:grid;grid-template-columns:150px repeat(6,1fr);border-bottom:1px solid var(--line);align-items:stretch">
+                  <div style="padding:11px 14px;display:flex;align-items:center;gap:9px">
+                    <span style="width:22px;height:22px;flex:none;border-radius:5px;background:var(--atint);color:var(--agent);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700">{{ pr.g }}</span>
+                    <span style="font-size:12.5px;font-weight:500">{{ pr.n }}</span>
+                  </div>
+                  <sc-for list="{{ pr.cells }}" as="cl" hint-placeholder-count="6">
+                    <div style="padding:11px 12px;border-left:1px solid var(--line);display:flex;align-items:center">
+                      <span style="font-family:'IBM Plex Mono',monospace;font-size:10.5px;font-weight:600;color:{{ cl.fg }};background:{{ cl.bg }};border-radius:4px;padding:2px 8px">{{ cl.v }}</span>
+                    </div>
+                  </sc-for>
+                </div>
+              </sc-for>
+            </div>
+            <div style="display:flex;gap:9px;margin-top:20px;align-items:center">
+              <span style="font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--ink3)">图例</span>
+              <span style="font-family:'IBM Plex Mono',monospace;font-size:10.5px;font-weight:600;color:var(--ok);background:var(--tint);border-radius:4px;padding:2px 8px">R/W</span>
+              <span style="font-family:'IBM Plex Mono',monospace;font-size:10.5px;font-weight:600;color:var(--ink2);background:var(--surface2);border:1px solid var(--line);border-radius:4px;padding:2px 8px">R</span>
+              <span style="font-family:'IBM Plex Mono',monospace;font-size:10.5px;font-weight:600;color:var(--ink3);border-radius:4px;padding:2px 8px">—</span>
+              <span style="font-size:11.5px;color:var(--ink3)">写权限触发的每次动作都会在频道内留痕，可一键撤销。</span>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+    </div>
+  </div>
+
+  <!-- ── emoji picker ────────────────────────── -->
+  <sc-if value="{{ pickerOpen }}">
+    <div onClick="{{ closePicker }}" style="position:absolute;inset:0;z-index:42">
+      <div onClick="{{ stopProp }}" style="position:absolute;left:{{ pickerX }};top:{{ pickerY }};width:284px;border-radius:11px;background:var(--surface);border:1px solid var(--line2);box-shadow:var(--shwin);padding:9px;animation:rl-up .12s ease-out">
+        <div style="display:flex;align-items:center;gap:8px;padding:0 2px 8px">
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:9.5px;font-weight:600;letter-spacing:.08em;color:var(--ink3)">常用 FREQUENT</span>
+          <div style="flex:1;height:1px;background:var(--line)"></div>
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:9.5px;color:var(--ink3)">ESC 关闭</span>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(8,1fr);gap:2px">
+          <sc-for list="{{ pickerEmoji }}" as="em" hint-placeholder-count="24">
+            <button onClick="{{ em.go }}" style="height:31px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:18px;line-height:1" style-hover="background:var(--surface2)">{{ em.e }}</button>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <!-- ── profile popover ─────────────────────── -->
+  <sc-if value="{{ profileOpen }}">
+    <div onClick="{{ closeProfile }}" style="position:absolute;inset:0;z-index:44">
+      <div onClick="{{ stopProp }}" style="position:absolute;top:52px;left:66px;width:262px;border-radius:12px;background:var(--surface);border:1px solid var(--line2);box-shadow:var(--shwin);overflow:hidden;animation:rl-up .12s ease-out">
+        <div style="display:flex;align-items:center;gap:11px;padding:13px 14px;border-bottom:1px solid var(--line)">
+          <span style="position:relative;flex:none">
+            <span style="width:36px;height:36px;border-radius:99px;background:var(--a5bg);color:var(--a5fg);display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:600">幻</span>
+            <span style="position:absolute;right:-1px;bottom:-1px;width:11px;height:11px;border-radius:99px;background:var(--ok);border:2px solid var(--surface)"></span>
+          </span>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:13.5px;font-weight:600;letter-spacing:-.01em">张幻阳</div>
+            <div style="font-size:11.5px;color:var(--ink3);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">zhangyy@mochuan.io</div>
+          </div>
+        </div>
+        <div style="padding:6px">
+          <sc-for list="{{ profileItems }}" as="pi" hint-placeholder-count="4">
+            <button onClick="{{ pi.go }}" style="width:100%;display:flex;align-items:center;gap:10px;padding:7px 8px;border-radius:8px" style-hover="background:var(--surface2)">
+              <span style="width:22px;height:22px;flex:none;border-radius:6px;background:var(--surface2);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:10.5px;color:var(--ink2)">{{ pi.g }}</span>
+              <span style="font-size:12.5px;font-weight:500;flex:none">{{ pi.n }}</span>
+              <span style="font-size:11px;color:var(--ink3);flex:1;min-width:0;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ pi.d }}</span>
+            </button>
+          </sc-for>
+        </div>
+        <div style="padding:6px;border-top:1px solid var(--line)">
+          <button style="width:100%;display:flex;align-items:center;gap:10px;padding:7px 8px;border-radius:8px;color:var(--danger)" style-hover="background:var(--surface2)">
+            <span style="width:22px;height:22px;flex:none;display:flex;align-items:center;justify-content:center">
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M6.2 13.5H3.4a1.4 1.4 0 0 1-1.4-1.4V3.9a1.4 1.4 0 0 1 1.4-1.4h2.8M10.6 10.8 13.4 8l-2.8-2.8M13.4 8H6.4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </span>
+            <span style="font-size:12.5px;font-weight:500">退出登录</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <!-- ── command palette ─────────────────────── -->
+  <sc-if value="{{ cmdk }}">
+    <div onClick="{{ closeCmdk }}" style="position:absolute;inset:0;background:rgba(12,16,14,.44);backdrop-filter:blur(3px);display:flex;align-items:flex-start;justify-content:center;padding-top:130px;z-index:40">
+      <div style="width:600px;border-radius:13px;background:var(--surface);border:1px solid var(--line2);box-shadow:var(--shwin);overflow:hidden;animation:rl-up .14s ease-out">
+        <div style="display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--line)">
+          <svg width="15" height="15" viewBox="0 0 14 14" fill="none" style="color:var(--ink3)"><circle cx="6.2" cy="6.2" r="4.3" stroke="currentColor" stroke-width="1.4"/><path d="M9.5 9.5 12.4 12.4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+          <span style="font-size:14.5px;color:var(--ink3);flex:1">派活给 agent、跳转频道、搜索…</span>
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--ink3);border:1px solid var(--line);border-radius:4px;padding:1px 5px">ESC</span>
+        </div>
+        <sc-for list="{{ cmdGroups }}" as="cg" hint-placeholder-count="2">
+          <div style="padding:8px 8px 4px">
+            <div style="font-family:'IBM Plex Mono',monospace;font-size:9.5px;font-weight:600;letter-spacing:.08em;color:var(--ink3);padding:4px 9px 6px">{{ cg.name }}</div>
+            <sc-for list="{{ cg.items }}" as="ci" hint-placeholder-count="3">
+              <button onClick="{{ ci.go }}" style="width:100%;display:flex;align-items:center;gap:11px;padding:8px 9px;border-radius:8px;background:{{ ci.bg }}" style-hover="background:var(--surface2)">
+                <span style="width:22px;height:22px;flex:none;border-radius:{{ ci.r }};background:{{ ci.chipBg }};color:{{ ci.chipFg }};display:flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:700">{{ ci.g }}</span>
+                <span style="font-size:13px;font-weight:500;flex:1;min-width:0">{{ ci.n }}</span>
+                <span style="font-size:11.5px;color:var(--ink3)">{{ ci.hint }}</span>
+                <sc-if value="{{ ci.kbd }}"><span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--ink3);border:1px solid var(--line);border-radius:4px;padding:1px 5px">{{ ci.kbd }}</span></sc-if>
+              </button>
+            </sc-for>
+          </div>
+        </sc-for>
+        <div style="padding:8px 14px;border-top:1px solid var(--line);background:var(--surface2);display:flex;gap:16px">
+          <span style="font-size:11px;color:var(--ink3)"><span style="font-family:'IBM Plex Mono',monospace">↑↓</span> 选择</span>
+          <span style="font-size:11px;color:var(--ink3)"><span style="font-family:'IBM Plex Mono',monospace">⏎</span> 执行</span>
+          <span style="font-size:11px;color:var(--ink3)"><span style="font-family:'IBM Plex Mono',monospace">⇥</span> 交给 agent</span>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <!-- ── onboarding ──────────────────────────── -->
+  <sc-if value="{{ onboarding }}">
+    <div style="position:absolute;inset:0;background:var(--desk);display:flex;align-items:center;justify-content:center;z-index:50">
+      <div style="width:880px;height:540px;border-radius:14px;background:var(--surface);border:1px solid var(--line2);box-shadow:var(--shwin);display:flex;overflow:hidden">
+        <div style="width:290px;flex:none;background:var(--sub);border-right:1px solid var(--line);padding:28px 24px;display:flex;flex-direction:column">
+          <div style="display:flex;align-items:center;gap:9px;margin-bottom:30px">
+            <div style="width:22px;height:22px;border-radius:6px;background:var(--accent);display:flex;align-items:center;justify-content:center">
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M1.5 8.5 4 3l2 4 1.2-2.2L10.5 8.5" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+            <span style="font-size:14px;font-weight:600;letter-spacing:-.01em">Relay</span>
+          </div>
+          <sc-for list="{{ obSteps }}" as="os" hint-placeholder-count="3">
+            <div style="display:flex;gap:11px;margin-bottom:20px">
+              <div style="width:22px;flex:none;display:flex;flex-direction:column;align-items:center">
+                <div style="width:20px;height:20px;border-radius:99px;background:{{ os.bg }};color:{{ os.fg }};border:1px solid {{ os.bd }};display:flex;align-items:center;justify-content:center;font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;flex:none">{{ os.i }}</div>
+              </div>
+              <div style="flex:1;min-width:0;padding-top:1px">
+                <div style="font-size:12.5px;font-weight:600;color:{{ os.tfg }}">{{ os.n }}</div>
+                <div style="font-size:11.5px;line-height:1.5;color:var(--ink3);margin-top:2px">{{ os.d }}</div>
+              </div>
+            </div>
+          </sc-for>
+          <div style="flex:1"></div>
+          <button onClick="{{ closeOnboarding }}" style="font-size:12px;color:var(--ink3);font-weight:500" style-hover="color:var(--ink)">跳过，直接进入工作区 →</button>
+        </div>
+        <div style="flex:1;min-width:0;display:flex;flex-direction:column">
+          <div style="flex:1;padding:38px 40px;overflow-y:auto">
+            <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;letter-spacing:.1em;color:var(--agent)">{{ obKicker }}</div>
+            <h2 style="margin:9px 0 0;font-size:24px;font-weight:600;letter-spacing:-.03em;line-height:1.25">{{ obTitle }}</h2>
+            <p style="margin:9px 0 0;font-size:13.5px;line-height:1.65;color:var(--ink2);max-width:440px;text-wrap:pretty">{{ obDesc }}</p>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:24px">
+              <sc-for list="{{ obCards }}" as="oc" hint-placeholder-count="4">
+                <button onClick="{{ oc.pick }}" style="text-align:left;border:1px solid {{ oc.bd }};border-radius:10px;background:{{ oc.bg }};padding:14px;display:flex;flex-direction:column;gap:7px" style-hover="border-color:var(--line2)">
+                  <div style="display:flex;align-items:center;gap:9px">
+                    <span style="width:28px;height:28px;flex:none;border-radius:7px;background:{{ oc.gBg }};color:{{ oc.gFg }};display:flex;align-items:center;justify-content:center;font-size:12.5px;font-weight:700">{{ oc.g }}</span>
+                    <span style="font-size:13px;font-weight:600;flex:1;min-width:0">{{ oc.n }}</span>
+                    <sc-if value="{{ oc.on }}"><span style="width:16px;height:16px;border-radius:99px;background:var(--accent);color:var(--onacc);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700">✓</span></sc-if>
+                  </div>
+                  <span style="font-size:11.5px;line-height:1.55;color:var(--ink2);text-wrap:pretty">{{ oc.d }}</span>
+                </button>
+              </sc-for>
+            </div>
+          </div>
+          <div style="flex:none;border-top:1px solid var(--line);padding:14px 40px;display:flex;align-items:center;gap:10px">
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ink3);flex:1">{{ obProgress }}</span>
+            <button onClick="{{ obBack }}" style="height:30px;padding:0 14px;border-radius:8px;border:1px solid var(--line2);font-size:12.5px;font-weight:500;color:var(--ink2)" style-hover="background:var(--surface2);color:var(--ink)">上一步</button>
+            <button onClick="{{ obNext }}" style="height:30px;padding:0 18px;border-radius:8px;background:var(--accent);color:var(--onacc);font-size:12.5px;font-weight:600" style-hover="background:var(--accent2)">{{ obNextLabel }}</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;light&quot;,&quot;dark&quot;],&quot;default&quot;:&quot;light&quot;,&quot;tsType&quot;:&quot;'light' | 'dark'&quot;,&quot;section&quot;:&quot;外观&quot;}}">
+const ICON = {
+  inbox:'<svg width="22" height="22" viewBox="0 0 22 22" fill="none"><path d="M2.4 12.8 4.4 4.5A1.8 1.8 0 0 1 6.2 3.1h9.6a1.8 1.8 0 0 1 1.8 1.4l2 8.3m-17.2 0v4a1.8 1.8 0 0 0 1.8 1.8h13.6a1.8 1.8 0 0 0 1.8-1.8v-4m-17.2 0h4.4l1.2 2.2h5.8l1.2-2.2h4.4" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>',
+  chat:'<svg width="22" height="22" viewBox="0 0 22 22" fill="none"><path d="M19 11.3c0 3.8-3.6 6.9-8 6.9-1.1 0-2.2-.2-3.2-.5L3 19.3l1.5-3.8A6.5 6.5 0 0 1 3 11.3c0-3.8 3.6-6.9 8-6.9s8 3.1 8 6.9Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>',
+  agents:'<svg width="22" height="22" viewBox="0 0 22 22" fill="none"><rect x="3.6" y="7.2" width="14.8" height="11" rx="3.2" stroke="currentColor" stroke-width="1.6"/><path d="M11 4.4v2.8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="11" cy="3" r="1.5" stroke="currentColor" stroke-width="1.5"/><circle cx="8.2" cy="11.6" r="1.3" fill="currentColor"/><circle cx="13.8" cy="11.6" r="1.3" fill="currentColor"/><path d="M8.8 15h4.4M1.7 10.6v3.2M20.3 10.6v3.2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>',
+  market:'<svg width="18" height="18" viewBox="0 0 18 18" fill="none"><rect x="2.4" y="2.4" width="5.6" height="5.6" rx="1.4" stroke="currentColor" stroke-width="1.4"/><rect x="10" y="2.4" width="5.6" height="5.6" rx="1.4" stroke="currentColor" stroke-width="1.4"/><rect x="2.4" y="10" width="5.6" height="5.6" rx="1.4" stroke="currentColor" stroke-width="1.4"/><path d="M12.8 10v5.6M10 12.8h5.6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>',
+  lib:'<svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M3 3.8A1.3 1.3 0 0 1 4.3 2.5H9v13H4.3A1.3 1.3 0 0 1 3 14.2V3.8ZM9 2.5h4.7A1.3 1.3 0 0 1 15 3.8v10.4a1.3 1.3 0 0 1-1.3 1.3H9" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>',
+  set:'<svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M2.6 5.4h12.8M2.6 12.6h12.8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><circle cx="6.4" cy="5.4" r="2" fill="var(--rail)" stroke="currentColor" stroke-width="1.4"/><circle cx="11.6" cy="12.6" r="2" fill="var(--rail)" stroke="currentColor" stroke-width="1.4"/></svg>',
+  vm:'<svg width="18" height="18" viewBox="0 0 18 18" fill="none"><rect x="2.4" y="2.6" width="13.2" height="4.8" rx="1.4" stroke="currentColor" stroke-width="1.4"/><rect x="2.4" y="10.6" width="13.2" height="4.8" rx="1.4" stroke="currentColor" stroke-width="1.4"/><circle cx="5.3" cy="5" r=".95" fill="currentColor"/><circle cx="5.3" cy="13" r=".95" fill="currentColor"/><path d="M9.4 5h3.9M9.4 13h3.9" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>'
+};
+
+const HARNESS = {
+  triage:{ turns:[
+    {u:1, time:'08:40', text:'把昨晚 staging 的 504 按 endpoint 分组，只看 P95 超过 2s 的。'},
+    {time:'08:40', thinkMs:'思考 12s', tools:[{n:'sentry.search_events',d:'2.1s'},{n:'sentry.aggregate',d:'0.8s'}],
+     think:'用户说「昨晚」但没给具体时间 —— 取 20:00 到今早 08:00，环境限定 staging。\n504 在 Sentry 里落在 transaction 层，按事件计数排序会把高频但很快的接口排到前面，所以得先按 endpoint 聚合再算 P95。\n另外 /v1/export 昨晚只有 4 次调用，P95 会被单个慢请求拉高，结论里必须标出来，不然会误导排期。',
+     answer:'昨晚 20:00–08:00、env=staging，有 3 个 endpoint 的 P95 越过 2s：\n\n·  /v1/search — P95 2.41s，391 次，占全部 504 的 94%\n·  /v1/index — P95 2.08s，22 次\n·  /v1/export — P95 3.90s，4 次\n\n/v1/export 虽然 P95 最高，但样本只有 4 次，是单个慢请求拉上去的，先别按它排期。真正要看的是 /v1/search —— 它的量级和另外两个差两个数量级，而且 504 集中在带分页参数的请求上。\n\n要我顺着这条拉最近三次部署的对比吗？'},
+    {u:1, time:'08:47', text:'/v1/search 这条给我看最近三次部署的对比。'},
+    {time:'08:47', thinkMs:'思考 9s', tools:[{n:'github.list_deployments',d:'1.2s'},{n:'sentry.compare_windows',d:'3.4s'}],
+     think:'三次部署的 SHA 从 GitHub 取。时间窗口按部署时间前后各 30 分钟切，避免混入预热流量。\nP95 用同一口径（排除冷启动），否则部署后的第一分钟会虚高。',
+     answer:'三次部署里只有 #2304 之后 P95 发生跳变：\n\n·  #2291（09-09 14:02）— 前 371ms / 后 380ms，无变化\n·  #2298（09-10 11:20）— 前 380ms / 后 374ms，无变化\n·  #2304（09-10 23:38）— 前 378ms / 后 2,410ms，↑ 537%\n\n跳变发生在合并后约 3 分钟，和 504 起量时间对得上。#2304 改的是 query planner 的 eager-load，在 search 的分页分支上形成 N+1，平均每请求多出 37 次查询。\n\n建议只回滚 planner 那部分改动，不用整个 PR 回退。'}
+  ], reply:{ time:'刚刚', thinkMs:'思考 4s', tools:[{n:'sentry.search_events',d:'1.9s'}],
+    think:'「同样的条件」沿用上一次的 endpoint 聚合口径，只把时间窗口换成今天 00:00 至现在。',
+    answer:'今天 00:00 到现在（env=staging），只有 /v1/search 的 P95 越过 2s：2.38s，213 次。另外两个 endpoint 都回到 400ms 以内 —— 反过来印证昨晚的 /v1/export 确实是单点噪声。\n\n回滚还没上 staging，所以 search 这条暂时没有变化。' } },
+
+  quant:{ turns:[
+    {u:1, time:'09:32', text:'Ticker 的报价提醒转给你了，NVDA 这个量能怎么看？'},
+    {time:'09:32', live:1, thinkMs:'正在思考…', tools:[{n:'market.intraday',d:'0.7s'},{n:'market.tape_imbalance',d:'1.4s'},{n:'quant.monte_carlo',d:'运行中'}],
+     think:'先判断这波放量的性质：要区分分布式抛压（多笔小单）和少数大单出货 —— 前者更像趋势反转，后者通常只是流动性事件。\n取 5 分钟级 K 线和逐笔成交，算卖方大单占比与盘口失衡。\n再跑蒙特卡洛，看在当前波动率下触及 -15% 风险线的概率。',
+     answer:'先给方向，蒙特卡洛还在跑。\n\n开盘 12 分钟成交量是 20 日均量的 2.4 倍，但卖方大单（>50 万股）占了成交额的 61%，集中在 09:33 和 09:36 两笔。这个结构更像流动性事件，不是分布式抛压。\n\n当前价距你设的 -15% 风险线还有 8.2 个点。初步倾向按原计划持有，等 10:00 的成交结构再确认一次。'}
+  ], reply:{ time:'刚刚', thinkMs:'思考 6s', tools:[{n:'quant.sensitivity',d:'5.2s'}],
+    think:'沿用当前持仓和 -15% 风险线，只改标的的波动率假设。',
+    answer:'按当前隐含波动率（41%）重跑，未来 5 个交易日触及 -15% 风险线的概率是 11.3%；若波动率升到 55%，概率升到 24.8%。\n\n两种情形下都不触发强制减仓，但第二种会让夏普从 1.42 掉到 1.05。' } },
+
+  filing:{ turns:[
+    {u:1, time:'09:44', text:'把 TSMC 近 8 个月的 HPC 占比整理成一张表，我要贴到周报。'},
+    {time:'09:45', thinkMs:'思考 7s', tools:[{n:'filings.fetch',d:'6.2s'},{n:'kb.write_note',d:'0.5s'}],
+     think:'月度营收公告只给总额和分部比例，HPC 绝对值要自己算。\n7 月那次公司调整了分部口径（把部分 IoT 归入 HPC），直接同比会高估，必须在表注里说明。',
+     answer:'8 行表格已写入知识库《TSMC 月度营收 2026》，列是 月份 / HPC 营收 / 占比 / 同比。\n\n·  占比从 3 月的 49% 一路升到 10 月的 57%，连续 5 个月扩张\n·  同比最高是 10 月的 +42.1%，最低是 4 月的 +21.4%\n\n注意 7 月公司调过分部口径（部分 IoT 归入 HPC），跨 7 月直接同比会高估约 1.8 个百分点 —— 我在表注里标了，贴周报时建议保留这句。'}
+  ], reply:{ time:'刚刚', thinkMs:'思考 3s', tools:[{n:'kb.export',d:'1.1s'}],
+    think:'导出为 Markdown 表格，保留表注。',
+    answer:'已导出 Markdown 版本，可直接粘贴。表注作为脚注跟在表格下方，不会被周报模板吃掉。' } },
+
+  scribe:{ turns:[
+    {u:1, time:'昨天 17:02', text:'把周三架构评审的录音转成纪要，待办指派到人。'},
+    {time:'昨天 17:09', thinkMs:'思考 21s', tools:[{n:'audio.transcribe',d:'4m12s'},{n:'kb.write_note',d:'0.6s'}],
+     think:'录音 68 分钟，先转写再按议题切段。\n待办的责任人要从上下文推断 —— 只有当某人明确说「我来」或被点名接受时才指派，其余标「待确认」，不猜。',
+     answer:'纪要已写入知识库《2026 Q3 架构评审纪要》，按 4 个议题分段。\n\n抽出 7 条待办：\n\n·  4 条能从上下文确定责任人（陈知远 2 条、苏禾 1 条、林越 1 条），已指派\n·  3 条只提到「我们应该…」没有人认领，标了「待确认」\n\n另外有两处我听不清具体数字（第 23 和第 51 分钟），在纪要里用 ⟨?⟩ 标出来了，麻烦你确认一下。'}
+  ], reply:{ time:'刚刚', thinkMs:'思考 2s', tools:[],
+    think:'直接改指派，无需重新转写。',
+    answer:'已把剩下 3 条「待确认」的待办指派给你，并在纪要里去掉了标记。' } }
+};
+
+const EMOJI = ['👍','✅','👀','🎯','🙏','🔥','🚀','⚡',
+  '🎉','💡','🤔','😮','😂','❤️','⚠️','❌',
+  '📌','⏰','📈','📉','💰','🐛','🔧','✍️'];
+
+const MENTIONS = [
+  {n:'Triage 分诊',a:1},{n:'Pipeline 流水线',a:1},{n:'Scribe 书记',a:1},
+  {n:'Scout 探针',a:1},{n:'Persona 用研',a:1},{n:'Ledger 账房',a:1},
+  {n:'Ticker 报价',a:1},{n:'Filing 财报',a:1},{n:'Quant 量化',a:1},
+  {n:'张幻阳'},{n:'陈知远'},{n:'苏禾'},{n:'林越'},{n:'王一帆'}
+];
+function segs(text){
+  const out = []; let i = 0, buf = '';
+  const s = text || '';
+  while(i < s.length){
+    if(s[i] === '@'){
+      let hit = null;
+      for(const m of MENTIONS){ if(s.startsWith('@' + m.n, i)){ hit = m; break; } }
+      if(hit){
+        if(buf){ out.push({plain:true, t:buf}); buf = ''; }
+        out.push({chip:true, t:'@' + hit.n,
+          bg: hit.a ? 'var(--atint)' : 'var(--utint)', fg: hit.a ? 'var(--agent)' : 'var(--user)'});
+        i += hit.n.length + 1; continue;
+      }
+    }
+    buf += s[i++];
+  }
+  if(buf) out.push({plain:true, t:buf});
+  return out;
+}
+const P = {
+  zy:{n:'陈知远',g:'知',bg:'var(--a1bg)',fg:'var(--a1fg)'},
+  sh:{n:'苏禾',g:'禾',bg:'var(--a2bg)',fg:'var(--a2fg)'},
+  ly:{n:'林越',g:'越',bg:'var(--a3bg)',fg:'var(--a3fg)'},
+  yf:{n:'王一帆',g:'帆',bg:'var(--a4bg)',fg:'var(--a4fg)'},
+  me:{n:'张幻阳',g:'幻',bg:'var(--a5bg)',fg:'var(--a5fg)'}
+};
+
+const PAL = {
+  blurple:{ name:'Discord 风', sw:['#2B2D31','#5865F2','#EB459E'],
+    light:{desk:'#C9CDD6',bg:'#FFFFFF',sub:'#F2F3F5',rail:'#E3E5E8',surface:'#FFFFFF',surface2:'#F7F8FA',
+      line:'#E3E5E8',line2:'#CFD2D8',ink:'#060607',ink2:'#4E5058',ink3:'#666971',
+      accent:'#5865F2',accent2:'#4752C4',tint:'#E8EAFE',ontint:'#4752C4',agent:'#B32275',atint:'#FCE7F3',
+      user:'#1668B8',utint:'#E1EFF9',
+      ok:'#1D6A3A',danger:'#BC2F28',warn:'#8A5D08',onacc:'#FFFFFF',
+      av:[['#E1E3FD','#4752C4'],['#FBE3F1','#B0287A'],['#DFF3E6','#1A6E3F'],['#FDEBDC','#9E5918'],['#E4EEF9','#2B5E8F']]},
+    darkBase:{desk:'#131416',bg:'#313338',sub:'#2B2D31',rail:'#1E1F22',surface:'#383A40',surface2:'#404249',
+      line:'#3F4147',line2:'#54575E',ink:'#F2F3F5',ink2:'#D5D8DC',ink3:'#ADB2B9',ok:'#4FC47F',danger:'#FF9395',warn:'#E5A94E'},
+    avDark:[['#3B4180','#C3C9FF'],['#4A2340','#F5AEDA'],['#1F3D2C','#84DDA8'],['#42311C','#E8C089'],['#22364A','#AFCFF2']],
+    dark:{accent:'#5865F2',accent2:'#7983F5',tint:'#2C2E40',ontint:'#A3ADF9',agent:'#F58EC4',atint:'#32212A',onacc:'#FFFFFF',
+      user:'#58B2F0',utint:'#11283A'} }
+};
+
+class Component extends DCLogic {
+  state = { theme:null, view:'chat', chan:'eng', ins:'thread', insOpen:true, cmdk:false, ob:false, obStep:0,
+    open:{}, draft:'', extra:{}, stream:null, thinkOpen:{}, trig:{t1:true,t2:true,t3:false}, obPick:{c1:true,c3:true},
+    hover:null, rx:{m0:{'👀':3}, m4:{'🎯':2}}, mine:{}, quote:null, profile:false, insExtra:{}, picker:null, insW:372, lastChan:'eng', sec:'chat' };
+
+  startStream(key, text){
+    clearInterval(this._t);
+    this.setState({ stream:{ key, n:0 } });
+    this._t = setInterval(() => this.setState(st => {
+      if(!st.stream || st.stream.key !== key) return null;
+      const n = st.stream.n + 2;
+      if(n >= text.length){ clearInterval(this._t); return { stream:{ key, n:text.length, done:true } }; }
+      return { stream:{ key, n } };
+    }), 26);
+  }
+  stopStream = () => {
+    clearInterval(this._t);
+    this.setState(st => st.stream ? { stream:{ key:st.stream.key, n:st.stream.n, done:true } } : null);
+  };
+
+  pushTab(st, id){
+    const k = st.chan, cur = st.insExtra[k] || [];
+    if(cur.indexOf(id) >= 0) return st.insExtra;
+    return Object.assign({}, st.insExtra, {[k]: cur.concat([id])});
+  }
+  dropTab(st, id){
+    const k = st.chan;
+    return Object.assign({}, st.insExtra, {[k]: (st.insExtra[k] || []).filter(x => x !== id)});
+  }
+
+  startResize = (e) => {
+    e.preventDefault();
+    const z = parseFloat(this._win && this._win.style.zoom) || 1;
+    const x0 = e.clientX, w0 = this.state.insW;
+    const move = (ev) => this.setState({ insW: Math.round(Math.max(300, Math.min(700, w0 - (ev.clientX - x0) / z))) });
+    const up = () => { window.removeEventListener('mousemove', move); window.removeEventListener('mouseup', up); document.body.style.cursor = ''; };
+    window.addEventListener('mousemove', move); window.addEventListener('mouseup', up);
+    document.body.style.cursor = 'col-resize';
+  };
+
+  openPicker(id){ return (e) => {
+    const btn = e && e.currentTarget, win = this._win;
+    let x = 560, y = 320;
+    if(btn && win){
+      const r = btn.getBoundingClientRect(), w = win.getBoundingClientRect();
+      const z = parseFloat(win.style.zoom) || 1, W = 284, H = 152;
+      x = (r.right - w.left) / z - W;
+      y = (r.bottom - w.top) / z + 6;
+      if(y + H > 884) y = (r.top - w.top) / z - H - 6;
+      x = Math.max(10, Math.min(x, 1440 - W - 10));
+      y = Math.max(52, y);
+    }
+    this.setState(s => ({ picker: (s.picker && s.picker.id === id) ? null : {id, x, y} }));
+  }; }
+
+  react(id,e){ return () => this.setState(s => {
+    const map = {...(s.rx[id]||{})}, mine = (s.mine[id]||[]).slice(), i = mine.indexOf(e);
+    if(i>=0){ mine.splice(i,1); map[e] = (map[e]||1) - 1; if(map[e]<=0) delete map[e]; }
+    else { mine.push(e); map[e] = (map[e]||0) + 1; }
+    return { rx:{...s.rx,[id]:map}, mine:{...s.mine,[id]:mine} };
+  }); }
+
+  componentDidUpdate(){
+    this.applyVars();
+    if(this._pendingScroll && this._sc){ this._pendingScroll = false; this._sc.scrollTop = this._sc.scrollHeight; }
+    const ch = this.state.chan;
+    if(ch !== this._chanSeen){
+      this._chanSeen = ch;
+      const h = ch.indexOf('ag:') === 0 ? HARNESS[ch.slice(3)] : null;
+      const live = h && h.turns.filter(t => t.live)[0];
+      if(live) this.startStream(ch + ':live', live.answer);
+      else { clearInterval(this._t); if(this.state.stream) this.setState({stream:null}); }
+    }
+  }
+  send(){
+    const t = (this.state.draft || '').trim(); if(!t) return;
+    this._pendingScroll = true;
+    const k = this.state.chan;
+    this.setState(s => ({ extra: Object.assign({}, s.extra, {[k]: (s.extra[k] || []).concat([{text:t, quote:s.quote}])}),
+      draft:'', quote:null }));
+    if(k.indexOf('ag:') === 0){
+      const h = HARNESS[k.slice(3)];
+      if(h && h.reply) this.startStream('reply:' + k, h.reply.answer);
+    }
+  }
+  pal(){ return 'blurple'; }
+  applyVars(){
+    const el = this._root; if(!el) return;
+    const p = PAL.blurple, dark = this.theme()==='dark';
+    const v = dark ? {...p.light, ...p.darkBase, ...p.dark, av:p.avDark} : {...p.light};
+    const fallback = { railink:v.ink2, railink2:v.ink, railline:v.line, railfield:v.surface,
+      railhover:v.surface2, railactbg:v.surface, railactink:(v.ontint || v.accent),
+      user: dark ? '#7FB2E4' : '#2B5FA8', utint: dark ? '#182A3C' : '#E4EDF8', ontint: v.accent,
+      gtint: dark ? '#122A20' : '#E6F2EA', dtint: dark ? '#291312' : '#FBE9E7',
+      ondanger: dark ? '#2A0F0E' : '#FFFFFF' };
+    Object.keys(fallback).forEach(k => { if(!v[k]) v[k] = fallback[k]; });
+    Object.keys(v).forEach(k => { if(k!=='av') el.style.setProperty('--'+k, v[k]); });
+    v.av.forEach((a,i) => { el.style.setProperty('--a'+(i+1)+'bg', a[0]); el.style.setProperty('--a'+(i+1)+'fg', a[1]); });
+    el.style.setProperty('--sh', dark ? '0 1px 2px rgba(0,0,0,.4),0 10px 30px rgba(0,0,0,.45)' : '0 1px 2px rgba(20,25,22,.05),0 10px 30px rgba(20,25,22,.08)');
+    el.style.setProperty('--shwin', dark ? '0 30px 90px rgba(0,0,0,.6),0 2px 8px rgba(0,0,0,.4)' : '0 30px 90px rgba(20,25,22,.26),0 2px 8px rgba(20,25,22,.13)');
+  }
+
+  componentDidMount(){
+    this.applyVars();
+    this.fit(); this._r = () => this.fit(); window.addEventListener('resize', this._r);
+    this._k = (e) => {
+      if((e.metaKey||e.ctrlKey) && e.key.toLowerCase()==='k'){ e.preventDefault(); this.setState(s=>({cmdk:!s.cmdk})); }
+      if(e.key==='Escape') this.setState({cmdk:false, profile:false, picker:null});
+    };
+    window.addEventListener('keydown', this._k);
+  }
+  componentWillUnmount(){ clearInterval(this._t); window.removeEventListener('resize', this._r); window.removeEventListener('keydown', this._k); }
+  fit(){
+    const el = this._win; if(!el) return;
+    const availW = (el.parentElement ? el.parentElement.clientWidth : window.innerWidth);
+    const availH = window.innerHeight || 900;
+    const z = Math.max(.32, Math.min(1, (availW - 24) / 1440, availH / 900));
+    el.style.zoom = z;
+  }
+  go(view){ return () => this.setState(s => ({ view, cmdk:false,
+    sec: view==='run' ? 'agent' : view,
+    chan: view==='chat' ? (s.lastChan || 'eng') : s.chan })); }
+  theme(){ return this.state.theme || this.props.theme || 'light'; }
+
+  renderVals(){
+    const S = this.state, dark = this.theme()==='dark';
+    const agSes = S.chan.indexOf('ag:') === 0;
+    const sesId = agSes ? S.chan.slice(3) : null;
+    const A = (on) => on ? 'var(--tint)' : 'transparent';
+    const nav = (id) => ({ bg: S.view===id ? 'var(--surface)' : 'transparent', fg: S.view===id ? 'var(--accent)' : 'var(--ink3)' });
+    const railDefs = [
+      {id:'inbox', name:'收件箱', label:'收件', icon:ICON.inbox, dot:'7'},
+      {id:'chat', name:'会话', label:'会话', icon:ICON.chat, dot:'3'},
+      {id:'agent', name:'我的 Agents', label:'Agent', icon:ICON.agents, dot:''}
+    ];
+    const railView = S.sec;
+    const rail = railDefs.map(r => {
+      const on = railView===r.id;
+      return {...r, bg: on?'var(--railactbg)':'transparent', fg: on?'var(--railactink)':'var(--railink)',
+        icon:{__html:r.icon}, go:this.go(r.id)};
+    });
+
+    // ── sidebar ──
+    const item = (o) => ({ r:'6px', w:'500', fg:'var(--ink2)', chipBg:'var(--surface2)', chipFg:'var(--ink3)', bg:'transparent', go:()=>{}, ...o });
+    const chanOn = (id) => S.chan===id && S.view==='chat';
+    const ch = (id,name,glyph,badge) => item({ name, glyph, r:'6px', chipBg:'transparent', chipFg:'var(--ink3)',
+      bg: chanOn(id)?'var(--surface)':'transparent', fg: chanOn(id)?'var(--ink)':'var(--ink2)', w: chanOn(id)?'600':'500',
+      badge, badgeBg:'var(--danger)', badgeFg:'var(--ondanger)', go:()=>this.setState({view:'chat',chan:id,lastChan:id,sec:'chat'}) });
+    const pp = (k,badge) => item({ name:P[k].n, glyph:P[k].g, r:'99px', chipBg:P[k].bg, chipFg:P[k].fg,
+      badge, badgeBg:'var(--danger)', badgeFg:'var(--ondanger)', go:()=>this.setState({view:'chat',chan:'dm'+k,lastChan:'dm'+k,sec:'chat'}) });
+    const ag = (id,name,glyph,live) => item({ name, glyph, chipBg:'var(--atint)', chipFg:'var(--agent)', live,
+      bg:(S.view==='agent'||S.view==='run')&&id==='triage'?'var(--surface)':'transparent',
+      fg:(S.view==='agent'||S.view==='run')&&id==='triage'?'var(--ink)':'var(--ink2)',
+      // highlight reflects the open detail page, not the section
+      go:()=>this.setState({view:'agent',sec:'agent'}) });
+
+    let sbTitle='会话', sbSub='⌘1', sbGroups=[];
+    if(S.sec==='chat'){
+      sbGroups=[
+        {name:'频道 CHANNELS', count:'7', items:[
+          ch('eng','工程 engineering','#','2'), ch('prod','产品路线图','#'), ch('rel','发布 releases','#'),
+          ch('mkt','市场研究 markets','#','3'), ch('growth','增长实验','#'), ch('fb','客户反馈','#','1'), ch('random','随便聊','#')]},
+        {name:'私聊 DIRECT', count:'5', items:[ pp('zy','1'), pp('ly'), pp('sh'), pp('yf'),
+          item({name:'Triage 分诊', glyph:'△', chipBg:'var(--atint)', chipFg:'var(--agent)', live:true, go:()=>this.setState({view:'chat',chan:'ag:triage',sec:'chat',ins:'thread'})}) ]},
+        {name:'话题 THREADS', count:'2', items:[
+          item({name:'504 回滚跟进', glyph:'▤', go:()=>this.setState({view:'chat',sec:'chat',ins:'thread',insOpen:true})}),
+          item({name:'定价页 A/B 结果', glyph:'▤'})]}
+      ];
+    } else if(S.sec==='agent'){
+      sbTitle='我的 Agents'; sbSub='9 已安装';
+      const sesItem = (id,name,glyph,badge,live) => {
+        const on = agSes && sesId===id;
+        return item({ name, glyph, chipBg:'var(--atint)', chipFg:'var(--agent)', live,
+          bg: on ? 'var(--surface)' : 'transparent', fg: on ? 'var(--ink)' : 'var(--ink2)', w: on ? '600' : '500',
+          badge, badgeBg:'var(--danger)', badgeFg:'var(--ondanger)',
+          go: () => this.setState({view:'chat', chan:'ag:'+id, sec:'agent', ins:'thread'}) });
+      };
+      sbGroups=[
+        {name:'会话 SESSIONS', count:'4', items:[
+          sesItem('triage','Triage · 504 分诊跟进','△','3'),
+          sesItem('quant','Quant · NVDA 阈值分析','∑','',true),
+          sesItem('filing','Filing · TSMC 月报','§'),
+          sesItem('scribe','Scribe · 周会纪要','✎')]},
+        {name:'运行中 RUNNING', count:'1', items:[ ag('triage','Triage 分诊','△',true) ]},
+        {name:'已启用 ENABLED', count:'6', items:[ ag('scout','Scout 探针','◎'), ag('pipeline','Pipeline 流水线','▷'), ag('persona','Persona 用研','◇'), ag('ticker','Ticker 报价','◷'), ag('filing','Filing 财报','§'), ag('quant','Quant 量化','∑') ]},
+        {name:'已暂停 PAUSED', count:'2', items:[ ag('scribe','Scribe 书记','✎'), ag('ledger','Ledger 账房','¥') ]}
+      ];
+    } else if(S.sec==='inbox'){
+      sbTitle='收件箱'; sbSub='7 未读';
+      sbGroups=[{name:'筛选 FILTERS', count:'', items:[
+        item({name:'全部', glyph:'◉', bg:'var(--surface)', fg:'var(--ink)', w:'600'}),
+        item({name:'@ 提及我的', glyph:'@', badge:'3', badgeBg:'var(--danger)', badgeFg:'var(--ondanger)'}),
+        item({name:'Agent 结果', glyph:'△', chipBg:'var(--atint)', chipFg:'var(--agent)', badge:'2', badgeBg:'var(--atint)', badgeFg:'var(--agent)'}),
+        item({name:'待我审批', glyph:'✓', badge:'2', badgeBg:'var(--danger)', badgeFg:'var(--ondanger)'}),
+        item({name:'已归档', glyph:'▢'})]}];
+    } else if(S.sec==='vm'){
+      sbTitle='运行机器'; sbSub='12 台';
+      sbGroups=[
+        {name:'状态 STATUS', count:'', items:[
+          item({name:'全部机器', glyph:'▤', bg:'var(--surface)', fg:'var(--ink)', w:'600'}),
+          item({name:'运行中', glyph:'●', chipBg:'var(--gtint)', chipFg:'var(--ok)', badge:'7', badgeBg:'var(--surface2)', badgeFg:'var(--ink2)'}),
+          item({name:'空闲', glyph:'○', badge:'2', badgeBg:'var(--surface2)', badgeFg:'var(--ink2)'}),
+          item({name:'挂起', glyph:'◌', badge:'2', badgeBg:'var(--surface2)', badgeFg:'var(--ink2)'}),
+          item({name:'异常', glyph:'▲', chipBg:'var(--dtint)', chipFg:'var(--danger)', badge:'1', badgeBg:'var(--danger)', badgeFg:'var(--ondanger)'})]},
+        {name:'集群 CLUSTERS', count:'3', items:[
+          item({name:'prod-sh 生产', glyph:'◱'}), item({name:'staging-sh 预发', glyph:'◲'}), item({name:'sandbox 沙箱', glyph:'◳'})]},
+        {name:'区域 REGIONS', count:'2', items:[
+          item({name:'上海 cn-sh-2', glyph:'沪'}), item({name:'新加坡 ap-sg-1', glyph:'新'})]}
+      ];
+    } else if(S.sec==='lib'){
+      sbTitle='知识库'; sbSub='42 文件';
+      sbGroups=[{name:'空间 SPACES', count:'4', items:[
+        item({name:'工程', glyph:'◱', bg:'var(--surface)', fg:'var(--ink)', w:'600'}),
+        item({name:'产品', glyph:'◲'}), item({name:'客户资料', glyph:'◳'}), item({name:'公司制度', glyph:'◰'})]},
+        {name:'来源 SOURCES', count:'3', items:[ item({name:'Notion 同步', glyph:'N'}), item({name:'GitHub Wiki', glyph:'G'}), item({name:'飞书文档', glyph:'F'}) ]}];
+    } else if(S.sec==='market'){
+      sbTitle='Agent 市场'; sbSub='38 模板';
+      sbGroups=[{name:'分类 CATEGORY', count:'', items:[
+        item({name:'全部模板', glyph:'◈', bg:'var(--surface)', fg:'var(--ink)', w:'600'}),
+        item({name:'工程与运维', glyph:'⌁'}), item({name:'产品与用研', glyph:'◇'}), item({name:'增长与市场', glyph:'◎'}),
+        item({name:'财务与行政', glyph:'¥'}), item({name:'自建 agent', glyph:'+'})]}];
+    } else {
+      sbTitle='设置'; sbSub='管理员';
+      sbGroups=[{name:'工作区 WORKSPACE', count:'', items:[
+        item({name:'成员与角色', glyph:'◍'}),
+        item({name:'Agent 权限矩阵', glyph:'▦', bg:'var(--surface)', fg:'var(--ink)', w:'600'}),
+        item({name:'数据源连接', glyph:'⌁'}), item({name:'用量与预算', glyph:'$'}), item({name:'审计日志', glyph:'☰'})]},
+        {name:'个人 PERSONAL', count:'', items:[ item({name:'通知偏好', glyph:'♪'}), item({name:'外观与主题', glyph:'◐'}), item({name:'快捷键', glyph:'⌘'}) ]}];
+    }
+
+    // ── messages ──
+    const mk = (o) => ({ isText:false, isRun:false, isDigest:false, isAgent:false, r:'99px', ...o });
+    const per = (k,time,text,extra) => mk({ who:P[k].n, glyph:P[k].g, bg:P[k].bg, fg:P[k].fg, time, text, isText:true, ...extra });
+    const toggleRun = (id) => () => this.setState(s=>({open:{...s.open,[id]:!s.open[id]}}));
+    const openThread = () => this.setState({ins:'thread', insOpen:true});
+    const open1 = !!S.open.r1;
+
+    const steps = [
+      {t:'09:15:02', k:'读取', label:'Sentry · 最近 24h 事件', meta:'1,284 events · 命中 /v1/search 的 504 共 391 条', dot:'var(--ok)'},
+      {t:'09:15:04', k:'关联', label:'GitHub · PR #2291 / #2304', meta:'2 PRs · 12 commits · 触碰 query_planner.py', dot:'var(--ok)'},
+      {t:'09:15:09', k:'比对', label:'query planner 变更 diff', meta:'#2304 引入 eager-load，search 路径产生 N+1', dot:'var(--ok)'},
+      {t:'09:15:14', k:'生成', label:'分诊报告', meta:'置信度 94% · 已写入知识库', dot:'var(--ok)'}
+    ];
+    const base = [
+      per('zy','09:12','v2.4 的 staging 从昨晚起间歇性 504，集中在 /v1/search。有人动过 query planner 吗？'),
+      per('sh','09:13','前端这块没动，只改了搜索结果卡片的骨架屏。'),
+      per('ly','09:15','@Triage 分诊 先扫一下，把相关 PR 和日志聚合到一起，@陈知远 我们 11 点要给客户答复。'),
+      mk({ who:'Triage 分诊', glyph:'△', bg:'var(--atint)', fg:'var(--agent)', r:'7px', time:'09:15', isAgent:true, isRun:true,
+        via:'由 @林越 在本频道触发', runId:'4821', runTitle:'分诊 staging 间歇性 504', runMeta:'14.2s · $0.031', runState:'已完成',
+        stepCount: open1 ? '4 / 4' : '4 步 · 3 个工具', toggleLabel: open1 ? '收起执行过程 ▲' : '展开执行过程 ▼',
+        open: open1, steps, toggle: toggleRun('r1'), openThread, openRun: this.go('run'),
+        runResult:'391 条 504 中 94% 落在 /v1/search 的分页分支，与 #2304 引入的 eager-load 改动强相关（N+1，平均多出 37 次查询）。建议先回滚 planner 改动再排期重做，预计 3 分钟内恢复。',
+        replies:'4' }),
+      per('zy','09:22','对上了，#2304 是我合的，我来回滚。', {baton:true}),
+      mk({ who:'Scout 探针', glyph:'◎', bg:'var(--atint)', fg:'var(--agent)', r:'7px', time:'09:30', isAgent:true, isDigest:true,
+        via:'每日 09:30 定时推送', digestTitle:'竞品与市场日报 · 9月10日', digestMeta:'扫描 24 个来源 · 8 条值得看 · 生成耗时 42s',
+        digestItems:[
+          {tag:'定价', bg:'var(--atint)', fg:'var(--agent)', text:'Northwind 把团队版从 $18 降到 $12/席，捆绑了他们的 agent 额度 —— 和我们上周讨论的打包策略撞了。'},
+          {tag:'发布', bg:'var(--tint)', fg:'var(--ontint)', text:'Kestrel 上线跨工作区搜索，社区反馈索引延迟明显（Reddit 有 2 条高赞吐槽）。'},
+          {tag:'招聘', bg:'var(--surface2)', fg:'var(--ink2)', text:'Northwind 新招 3 名 infra，JD 里出现 “multi-tenant agent runtime”。'}
+        ]}),
+      per('sh','09:41','设计这边把降级态的空状态也补一下，我 @Scribe 书记 记到会议纪要里了。',
+        {quote:{who:P.zy.n, glyph:P.zy.g, bg:P.zy.bg, fg:P.zy.fg, r:'99px', text:'对上了，#2304 是我合的，我来回滚。'}})
+    ];
+    const agm = (name,glyph,time,o) => mk({ who:name, glyph, bg:'var(--atint)', fg:'var(--agent)', r:'7px',
+      time, isAgent:true, ...o });
+    const chg = (v) => ({ chg:(v>0?'+':'') + v.toFixed(1) + '%',
+      chgFg: v>0 ? 'var(--ok)' : v<0 ? 'var(--danger)' : 'var(--ink2)',
+      chgBg: v>0 ? 'var(--gtint)' : v<0 ? 'var(--dtint)' : 'var(--surface2)' });
+    const tape = (sym,name,px,v) => ({ sym, name, px, ...chg(v) });
+    const bars = [ -0.4,0.9,1.6,2.2,1.1,-0.8,-1.9,-0.6,1.4,2.8,3.6,2.9,1.7,-0.5,-2.4,-3.1,-1.2,0.8,2.1,3.4,4.2,3.1,1.9,2.6 ]
+      .map(v => ({ h: Math.round(18 + Math.abs(v) * 9) + 'px', c: v >= 0 ? 'var(--ok)' : 'var(--danger)' }));
+
+    const mbase = [
+      agm('Ticker 报价','◷','08:55',{ isTape:true, via:'开盘前 35 分钟定时推送',
+        tapeTitle:'盘前观察池 · 半导体与算力', tapeMeta:'5 标的 · 数据延迟 15 分钟 · 09:30 再推一次',
+        tapeRows:[ tape('NVDA','英伟达','182.40',1.8), tape('TSM','台积电 ADR','241.06',0.9),
+          tape('ASML','阿斯麦','712.30',-0.4), tape('0700.HK','腾讯控股','512.50',2.1),
+          tape('AMD','超微半导','168.22',-1.2) ] }),
+      per('yf','09:02','英伟达盘前又拉了，我们上周减的那部分是不是减早了。@Quant 量化 把 Q3 那次减仓决策回测一下，用 -15% 的风险线。'),
+      agm('Quant 量化','∑','09:04',{ isStrat:true, via:'由 @王一帆 触发',
+        stratId:'B-0917', stratTitle:'回测 · Q3 减仓决策复盘', stratMeta:'区间 2026-07-01 → 今日 · 日频 · 含滑点',
+        stratMetrics:[{k:'年化',v:'+18.4%',fg:'var(--ok)'},{k:'最大回撤',v:'-12.6%',fg:'var(--ink)'},
+          {k:'夏普',v:'1.42',fg:'var(--ink)'},{k:'胜率',v:'58%',fg:'var(--ink)'}],
+        bars,
+        stratResult:'按原仓位持有到今天会多赚 2.3 个点，但 9 月 12 日那次回撤会打到 -19.1%，越过了你们设的 -15% 风险线并触发强制减仓 —— 风险调整后，上周减仓是对的。若把风险线放宽到 -20%，同期夏普从 1.42 降到 1.18。' }),
+      agm('Ticker 报价','◷','09:31',{ isAlert:true, via:'价格提醒触发',
+        alertSym:'NVDA', alertPx:'$179.42', alertRule:'跌破你设的 $180.00 阈值 · 开盘 12 分钟内 -1.6% · 成交量为 20 日均量的 2.4 倍',
+        ...chg(-1.6) }),
+      per('ly','09:33','@Filing 财报 台积电 10 月营收昨晚出了，帮我拆一下 HPC 那块的同比，和一致预期比。'),
+      agm('Filing 财报','§','09:33',{ isRun:true, runId:'5104', runTitle:'拆解 TSMC 2026-10 月营收', runMeta:'21.4s · $0.044',
+        runState:'已完成', stepCount: S.open.r2 ? '4 / 4' : '4 步 · 3 个工具',
+        toggleLabel: S.open.r2 ? '收起执行过程 ▲' : '展开执行过程 ▼', open: !!S.open.r2,
+        toggle: toggleRun('r2'), openThread, openRun: this.go('run'),
+        steps:[
+          {t:'09:33:04', k:'读取', label:'TSMC 月营收公告 · 中英双版本', meta:'investor.tsmc.com · 2 份 PDF · 6 页', dot:'var(--ok)'},
+          {t:'09:33:07', k:'提取', label:'分部营收 HPC / 手机 / IoT / 车用', meta:'4 个分部 · 近 8 个月序列', dot:'var(--ok)'},
+          {t:'09:33:12', k:'比对', label:'一致预期（12 家券商）', meta:'预期 +36.0% · 实际 +42.1%', dot:'var(--ok)'},
+          {t:'09:33:19', k:'生成', label:'拆解简报并写入知识库', meta:'/市场/TSMC/2026-10.md', dot:'var(--ok)'}
+        ],
+        runResult:'HPC 同比 +42.1%，营收占比从 51% 升到 57%，连续 5 个月扩张；智能手机同比 -3.4%。超出一致预期 6.1 个百分点，增量主要来自 CoWoS 产能释放而非涨价 —— 这一点对上游的 ASML 订单指引是正向信号。',
+        replies:'4' }),
+      per('yf','09:40','那 ASML 的订单指引更值得盯了，我把它加进观察池，阈值设 €700。',
+        {quote:{who:'Filing 财报', glyph:'§', bg:'var(--atint)', fg:'var(--agent)', r:'6px',
+          text:'HPC 同比 +42.1%，营收占比从 51% 升到 57%，连续 5 个月扩张…'}})
+    ];
+
+    const mthread = [
+      {who:'林越', glyph:'越', bg:P.ly.bg, fg:P.ly.fg, r:'99px', time:'09:35', text:'HPC 占比 57% 这个数，去年同期是多少？'},
+      {who:'Filing 财报', glyph:'§', bg:'var(--atint)', fg:'var(--agent)', r:'6px', time:'09:35', text:'去年同期 44.8%，两年前 31.2%。',
+        pill:'kb.read · TSMC 历史月报 ×24', pillMeta:'0.4s'},
+      {who:'王一帆', glyph:'帆', bg:P.yf.bg, fg:P.yf.fg, r:'99px', time:'09:37', text:'@Quant 量化 用这个占比做一次敏感性测试，看对我们持仓的影响。'},
+      {who:'Quant 量化', glyph:'∑', bg:'var(--atint)', fg:'var(--agent)', r:'6px', time:'09:38', text:'已排队，占用 vm-quant-01，预计 2 分钟出结果。',
+        pill:'backtest.sensitivity · 排队中', pillMeta:'ETA 2m'}
+    ].map(t => ({...t, segs: segs(t.text)}));
+
+    const mrunDetail = [
+      {k:'TOOL', label:'market.quote_snapshot', dur:'0.7s', dot:'var(--ok)', payload:'symbols: NVDA, TSM, ASML, 0700.HK, AMD\ndelay: 15m\n→ 5 quotes, 1 alert triggered (NVDA < 180.00)'},
+      {k:'TOOL', label:'filings.fetch', dur:'6.2s', dot:'var(--ok)', payload:'issuer: TSMC (2330.TW)\nperiod: 2026-10 monthly revenue\n→ 2 PDFs (zh-TW, en), 6 pages'},
+      {k:'THINK', label:'分部拆解与一致预期比对', dur:'11.8s', dot:'var(--agent)', payload:'HPC  +42.1% YoY  share 51% → 57%\nphone -3.4% YoY\nconsensus +36.0% → beat 6.1pp\ndriver: CoWoS capacity, not pricing'},
+      {k:'TOOL', label:'kb.write_note', dur:'0.5s', dot:'var(--ok)', payload:'path: /市场/TSMC/2026-10.md\n→ 已写入并索引'}
+    ];
+
+    const SES = {
+      triage:{ n:'Triage 分诊', g:'△', task:'504 分诊跟进', state:'空闲', live:false, msgs:[
+        per('me','08:40','把昨晚 staging 的 504 按 endpoint 分组，只看 P95 超过 2s 的。'),
+        agm('Triage 分诊','△','08:40',{ isRun:true, runId:'4818', runTitle:'按 endpoint 聚合 504', runMeta:'6.8s · $0.014',
+          runState:'已完成', stepCount: S.open.r3 ? '3 / 3' : '3 步 · 1 个工具',
+          toggleLabel: S.open.r3 ? '收起执行过程 ▲' : '展开执行过程 ▼', open: !!S.open.r3, toggle: toggleRun('r3'),
+          openThread, openRun: this.go('run'),
+          steps:[
+            {t:'08:40:02', k:'读取', label:'Sentry · env:staging status:504', meta:'1,284 events', dot:'var(--ok)'},
+            {t:'08:40:05', k:'聚合', label:'按 endpoint 分组 · 过滤 P95 > 2s', meta:'命中 3 个 endpoint', dot:'var(--ok)'},
+            {t:'08:40:08', k:'生成', label:'分组表', meta:'已附在下方', dot:'var(--ok)'}
+          ],
+          runResult:'只有 3 个 endpoint 的 P95 越过 2s：/v1/search（2.41s，391 次）、/v1/index（2.08s，22 次）、/v1/export（3.90s，4 次）。后两个量级很小，建议先只看 search。' }),
+        per('me','08:47','/v1/search 这条给我看最近三次部署的对比。'),
+        agm('Triage 分诊','△','08:47',{ isText:true,
+          text:'三次部署里只有 #2304 之后 P95 从 380ms 跳到 2.41s，另外两次无变化。要我直接开一个 Thread 发到 #engineering 吗？' }),
+        per('me','08:48','先不用，我自己贴过去。')
+      ]},
+      quant:{ n:'Quant 量化', g:'∑', task:'NVDA 阈值分析', state:'运行中', live:true, msgs:[
+        per('me','09:32','Ticker 的报价提醒转给你了，NVDA 这个量能怎么看？'),
+        agm('Quant 量化','∑','09:32',{ isText:true,
+          text:'正在跑 10,000 次蒙特卡洛，预计 2 分钟。先给方向：放量下跌，但卖压集中在两笔大单，不像趋势反转。' })
+      ]},
+      scribe:{ n:'Scribe 书记', g:'✎', task:'周会纪要整理', state:'空闲', live:false, msgs:[
+        per('me','昨天 17:02','把周三架构评审的录音转成纪要，待办指派到人。'),
+        agm('Scribe 书记','✎','昨天 17:09',{ isText:true,
+          text:'纪要已写入知识库《2026 Q3 架构评审纪要》，抽出 7 条待办，其中 4 条能从上下文确定责任人，剩下 3 条我标了「待确认」。' }),
+        per('me','昨天 17:15','剩下三条我来认领。')
+      ]},
+      filing:{ n:'Filing 财报', g:'§', task:'TSMC 月报拆解', state:'空闲', live:false, msgs:[
+        per('me','09:44','把 TSMC 近 8 个月的 HPC 占比整理成一张表，我要贴到周报。'),
+        agm('Filing 财报','§','09:45',{ isText:true,
+          text:'8 行表格已生成（月份 / HPC 营收 / 占比 / 同比），另外标出了 7 月那次口径调整 —— 直接对比会高估 1.8 个百分点，我在表注里写了。' })
+      ]}
+    };
+    const ses = agSes ? (SES[sesId] || SES.triage) : null;
+    const isM = S.chan === 'mkt';
+    const activeBase = agSes ? ses.msgs : (isM ? mbase : base);
+    const extraOf = S.extra[S.chan] || [];
+    const messages = activeBase.concat(extraOf.map((x,i)=>per('me','09:'+(45+i), x.text, x.quote ? {quote:x.quote} : null)));
+    messages.forEach((m,i) => {
+      const id = (agSes ? 'a' + sesId : isM ? 'k' : 'm') + i;
+      m.hovered = S.picker ? S.picker.id === id : S.hover === id;
+      m.togglePicker = this.openPicker(id);
+      m.onEnter = () => this.setState({hover:id});
+      m.onLeave = () => this.setState(s => s.hover===id ? {hover:null} : null);
+      m.rxUp = this.react(id,'👍'); m.rxOk = this.react(id,'✅'); m.rxEye = this.react(id,'👀');
+      const map = S.rx[id] || {}, own = S.mine[id] || [];
+      const keys = Object.keys(map).filter(k => map[k] > 0);
+      m.reactions = keys.length ? keys.map(k => ({ k, n:String(map[k]), go:this.react(id,k),
+        bd: own.includes(k) ? 'var(--accent)' : 'var(--line2)',
+        bg: own.includes(k) ? 'var(--tint)' : 'var(--surface)',
+        fg: own.includes(k) ? 'var(--ontint)' : 'var(--ink2)' })) : null;
+      m.handoff = () => this.setState({cmdk:true});
+      m.segs = m.isText ? segs(m.text) : null;
+      m.quoteThis = () => this.setState({ quote:{ who:m.who, glyph:m.glyph, bg:m.bg, fg:m.fg, r:m.r,
+        text: m.text || m.runResult || m.digestTitle || '' } });
+      if(!m.openThread) m.openThread = openThread;
+    });
+
+    const threadMsgs = [
+      {who:'林越', glyph:'越', bg:P.ly.bg, fg:P.ly.fg, r:'99px', time:'09:17', text:'先回滚，别等周五发布窗口。'},
+      {who:'陈知远', glyph:'知', bg:P.zy.bg, fg:P.zy.fg, r:'99px', time:'09:18', text:'同意。@Pipeline 流水线 帮我把 #2304 从 staging 回滚。'},
+      {who:'Pipeline 流水线', glyph:'▷', bg:'var(--atint)', fg:'var(--agent)', r:'6px', time:'09:19', text:'已回滚 #2304 并重新部署 staging，健康检查全绿。',
+        pill:'deploy staging · rollback 2304', pillMeta:'3m12s'},
+      {who:'林越', glyph:'越', bg:P.ly.bg, fg:P.ly.fg, r:'99px', time:'09:24', text:'504 降到 0 了，我盯 30 分钟再关掉话题。'}
+    ].map(t => ({...t, segs: segs(t.text)}));
+    const runDetail = [
+      {k:'TOOL', label:'sentry.search_events', dur:'2.1s', dot:'var(--ok)', payload:'query: "status:504 env:staging"\nwindow: 24h\n→ 1,284 events (391 on /v1/search)'},
+      {k:'TOOL', label:'github.list_pulls', dur:'0.9s', dot:'var(--ok)', payload:'since: 48h, base: main\n→ #2291 search-skeleton\n→ #2304 planner eager-load'},
+      {k:'THINK', label:'关联变更与错误分布', dur:'4.4s', dot:'var(--agent)', payload:'504 起始时间 2026-09-10T23:41Z\n#2304 合并 23:38Z → 3 分钟内起量，强相关'},
+      {k:'TOOL', label:'kb.write_note', dur:'0.6s', dot:'var(--ok)', payload:'path: /工程/事故/2026-09-11-504.md\n→ 已写入并索引'}
+    ];
+    const runFull = [
+      {t:'09:15:01', dur:'', k:'触发', label:'来自 #engineering 的 @ 提及', dot:'var(--agent)', tok:'—',
+        body:'林越 在 #engineering 中 @ 了本 agent，并附带上下文：最近 3 条消息、频道关联的 Sentry 项目与 GitHub 仓库。', code:''},
+      {t:'09:15:02', dur:'2.1s', k:'工具', label:'sentry.search_events', dot:'var(--ok)', tok:'1.2k tok',
+        body:'按环境与状态码检索最近 24 小时事件，按 endpoint 聚合。', code:'query:  status:504 env:staging\nwindow: 24h  group_by: endpoint\n\n→ 1,284 events\n  /v1/search      391  (30.5%)\n  /v1/index        22\n  其他            871  (多为已知超时)'},
+      {t:'09:15:04', dur:'0.9s', k:'工具', label:'github.list_pulls', dot:'var(--ok)', tok:'0.8k tok',
+        body:'拉取 48 小时内合并到 main 的 PR，过滤触碰检索链路的文件。', code:'#2291  search-skeleton        苏禾    web/ 12 files\n#2304  planner: eager-load    陈知远  core/query_planner.py'},
+      {t:'09:15:09', dur:'4.4s', k:'推理', label:'关联变更与错误分布', dot:'var(--agent)', tok:'3.4k tok',
+        body:'504 起量时间 23:41Z，#2304 合并时间 23:38Z，间隔 3 分钟；错误集中在带分页参数的查询。读取 diff 后确认 eager-load 在 search 路径上按页触发关联加载，形成 N+1（每次请求平均多 37 次查询）。#2291 仅改动前端渲染，排除。', code:''},
+      {t:'09:15:14', dur:'0.6s', k:'产出', label:'生成分诊报告并写入知识库', dot:'var(--ok)', tok:'1.1k tok',
+        body:'结论：回滚 #2304 的 planner 改动。置信度 94%。报告已写入知识库并在频道内发布，附带一键「指派」与「开 Thread」。', code:''}
+    ];
+    const runSummary = [
+      {k:'状态', v:'已完成'}, {k:'总耗时', v:'14.2s'}, {k:'模型', v:'claude-sonnet'},
+      {k:'Token', v:'6.5k in / 1.4k out'}, {k:'成本', v:'$0.031'}, {k:'工具调用', v:'3'}, {k:'置信度', v:'94%'}
+    ];
+    const artifacts = [
+      {ext:'MD', n:'2026-09-11-504-分诊报告.md', s:'4.2 KB · 已索引'},
+      {ext:'CSV', n:'sentry-504-events.csv', s:'391 行'},
+      {ext:'PNG', n:'错误时间分布.png', s:'1440×420'}
+    ];
+
+    // ── agent detail ──
+    const agentTabs = ['概览','触发与权限','运行历史','成本'].map((n,i)=>({n, bd:i===0?'var(--accent)':'transparent', fg:i===0?'var(--ink)':'var(--ink3)'}));
+    const agentStats = [
+      {k:'7 日运行', v:'38', d:'+12 环比', fg:'var(--ok)'},
+      {k:'平均耗时', v:'11.6s', d:'-2.3s', fg:'var(--ok)'},
+      {k:'7 日成本', v:'$1.18', d:'预算 $10/周', fg:'var(--ink3)'},
+      {k:'采纳率', v:'86%', d:'33/38 被人接受', fg:'var(--ink3)'}
+    ];
+    const tg = (id,k,n,c) => ({ k, n, c, bg:S.trig[id]?'var(--accent)':'var(--line2)', x:S.trig[id]?'18px':'2px',
+      toggle:()=>this.setState(s=>({trig:{...s.trig,[id]:!s.trig[id]}})) });
+    const triggers = [
+      tg('t1','@ 提及','在频道中被 @','channel in [engineering, releases]'),
+      tg('t2','事件','Sentry 新错误簇 > 50 事件/10min','severity >= error && env == staging'),
+      tg('t3','定时','每个工作日 09:00 巡检','cron 0 9 * * 1-5  · Asia/Shanghai')
+    ];
+    const sp = (g,n,d,lvl) => ({ g, n, d, lvl,
+      fg: lvl==='R/W'?'var(--ok)':(lvl==='—'?'var(--ink3)':'var(--ink2)'),
+      bg: lvl==='R/W'?'var(--tint)':(lvl==='—'?'transparent':'var(--surface2)') });
+    const scopes = [ sp('S','Sentry','读取事件与堆栈','R'), sp('G','GitHub','读 PR / 写评论','R/W'),
+      sp('K','知识库','写入分诊报告','R/W'), sp('N','Notion','产品文档','—') ];
+    const history = [
+      {id:'4821', n:'分诊 staging 间歇性 504', dur:'14.2s', cost:'$0.031', ago:'12 分钟前', dot:'var(--ok)'},
+      {id:'4809', n:'巡检：无异常簇', dur:'6.8s', cost:'$0.012', ago:'今天 09:00', dot:'var(--ink3)'},
+      {id:'4788', n:'分诊 webhook 重试风暴', dur:'22.5s', cost:'$0.048', ago:'昨天 17:22', dot:'var(--ok)'},
+      {id:'4771', n:'分诊失败：GitHub 速率限制', dur:'3.1s', cost:'$0.004', ago:'昨天 11:04', dot:'var(--danger)'},
+      {id:'4760', n:'巡检：无异常簇', dur:'7.2s', cost:'$0.011', ago:'9月9日', dot:'var(--ink3)'}
+    ];
+
+    const mkt = (g,n,by,d,tags,installs,inst) => ({ g, n, by, d, tags, installs,
+      bg: inst?'var(--tint)':'var(--atint)', fg: inst?'var(--ontint)':'var(--agent)',
+      btn: inst?'已安装':'安装', btnBg: inst?'transparent':'var(--accent)', btnFg: inst?'var(--ink2)':'var(--onacc)',
+      btnBd: inst?'var(--line2)':'var(--accent)' });
+    const market = [
+      mkt('△','Triage 分诊','Relay 官方','监听线上异常，聚合日志与近期变更，定位可疑 PR 并给出回滚建议。',['工程','Sentry','GitHub'],'1.2k 安装',true),
+      mkt('◎','Scout 探针','Relay 官方','每日扫描竞品官网、更新日志与社区讨论，生成一页式情报日报。',['市场','定时'],'890 安装',true),
+      mkt('▷','Pipeline 流水线','墨川内部','把部署、回滚、灰度开关收进聊天，动作全部留痕可撤销。',['工程','CI'],'内部 · 5 席',true),
+      mkt('✎','Scribe 书记','社区 · @hexi','会议与长话题自动成纪要，抽出待办并指派到人。',['协作','会议'],'2.4k 安装',false),
+      mkt('◇','Persona 用研','Relay 官方','聚合工单、评价与访谈，按主题聚类并追踪诉求变化趋势。',['产品','用研'],'640 安装',true),
+      mkt('¥','Ledger 账房','社区 · @mowen','订阅与云账单异动监控，超预算前 3 天在财务频道预警。',['财务'],'310 安装',false),
+      mkt('◷','Ticker 报价','Relay 官方','观察池盘前推送与价格阈值提醒，支持成交量异动与跨市场标的。',['金融','行情','定时'],'1.8k 安装',true),
+      mkt('§','Filing 财报','Relay 官方','财报与月度营收自动拆解，分部同比、一致预期偏离一次算清。',['金融','财报'],'1.1k 安装',true),
+      mkt('∑','Quant 量化','社区 · @sigma','策略回测与敏感性测试，输出夏普、回撤与风险线触发点。',['金融','回测'],'470 安装',true)
+    ];
+
+    const nb = (who,where,text,time,glyph,bg,fg,r,edge,action) => ({who,where,text,time,glyph,bg,fg,r,edge,action,segs:segs(text)});
+    const inbox = [
+      {name:'待我审批 · 2', items:[
+        nb('Triage 分诊','请求写权限 · GitHub','希望获得在 PR 上发表评论的权限，用于把分诊结论直接贴回 #2304。','8 分钟前','△','var(--atint)','var(--agent)','6px','var(--agent)','批准 24 小时'),
+        nb('Ledger 账房','请求安装 · 财务','王一帆 申请把 Ledger 装到工作区，需要读取云账单与订阅数据。','1 小时前','¥','var(--atint)','var(--agent)','6px','var(--agent)','批准安装')
+      ]},
+      {name:'提及我的 · 3', items:[
+        nb('林越','#engineering','@张幻阳 客户答复口径你来定一下，Triage 的结论我贴在话题里了。','12 分钟前','越',P.ly.bg,P.ly.fg,'99px','var(--accent)',''),
+        nb('苏禾','话题 · 定价页 A/B 结果','@张幻阳 第三组的转化差异到 95% 置信了，要不要提前结束实验？','40 分钟前','禾',P.sh.bg,P.sh.fg,'99px','var(--accent)',''),
+        nb('王一帆','#growth','@张幻阳 下周的增长评审能不能挪到周四上午？','昨天 18:10','帆',P.yf.bg,P.yf.fg,'99px','var(--accent)','')
+      ]},
+      {name:'Agent 结果 · 2', items:[
+        nb('Scout 探针','每日情报','竞品日报已生成，Northwind 降价那条建议你看一下。','今天 09:30','◎','var(--atint)','var(--agent)','6px','var(--line2)',''),
+        nb('Persona 用研','周报','本周工单里「搜索慢」主题上升 41%，已聚类 23 条原话。','昨天 20:00','◇','var(--atint)','var(--agent)','6px','var(--line2)','')
+      ]}
+    ];
+
+    const vmStats = [
+      {k:'运行中', v:'7 / 12', d:'2 空闲 · 2 挂起 · 1 异常', fg:'var(--ink3)'},
+      {k:'平均 CPU', v:'43%', d:'峰值 94% · vm-quant-01 回测中', fg:'var(--warn)'},
+      {k:'排队任务', v:'4', d:'含 1 个敏感性测试', fg:'var(--ink3)'},
+      {k:'本月成本', v:'$408', d:'预算 $500/月', fg:'var(--ok)'}
+    ];
+    const vmCols = ['机器','状态','承载 agent','CPU','内存','区域','运行时长','成本'];
+    const st = (s) => s==='运行中' ? {dot:'var(--ok)', fg:'var(--ok)', bg:'var(--gtint)'}
+      : s==='异常' ? {dot:'var(--danger)', fg:'var(--danger)', bg:'var(--dtint)'}
+      : s==='挂起' ? {dot:'var(--warn)', fg:'var(--ink2)', bg:'var(--surface2)'}
+      : {dot:'var(--ink3)', fg:'var(--ink2)', bg:'var(--surface2)'};
+    const vm = (n,s,ag,cpu,mem,reg,up,cost,alert) => {
+      const c = st(s);
+      return { n, s, ag, mem, reg, up, cost, alert, sDot:c.dot, sFg:c.fg, sBg:c.bg,
+        cpuN: cpu===null ? '—' : cpu + '%', cpuW: (cpu===null ? 0 : cpu) + '%',
+        cpuC: cpu===null ? 'var(--line2)' : (cpu >= 80 ? 'var(--danger)' : cpu >= 60 ? 'var(--warn)' : 'var(--ok)'),
+        agFg: ag==='—' ? 'var(--ink3)' : 'var(--agent)' };
+    };
+    const vms = [
+      vm('vm-triage-01','运行中','Triage 分诊',62,'3.1 / 8 GB','上海','14d 6h','$42'),
+      vm('vm-pipeline-01','运行中','Pipeline 流水线',38,'2.4 / 8 GB','上海','21d 2h','$58'),
+      vm('vm-build-02','运行中','Pipeline 流水线 · 构建',88,'12.4 / 16 GB','上海','31d 0h','$96'),
+      vm('vm-persona-01','运行中','Persona 用研',71,'5.8 / 8 GB','上海','6d 4h','$37'),
+      vm('vm-scout-01','运行中','Scout 探针',12,'1.1 / 4 GB','新加坡','9d 18h','$22'),
+      vm('vm-sandbox-03','空闲','—',2,'0.3 / 4 GB','上海','2d 1h','$8'),
+      vm('vm-sandbox-04','空闲','—',1,'0.2 / 4 GB','新加坡','2d 1h','$8'),
+      vm('vm-scribe-01','挂起','Scribe 书记',null,'—','上海','—','$0'),
+      vm('vm-ledger-01','挂起','Ledger 账房',null,'—','上海','—','$0'),
+      vm('vm-quant-01','运行中','Quant 量化 · 回测',94,'26.1 / 32 GB','上海','3d 9h','$118'),
+      vm('vm-market-01','运行中','Ticker 报价',18,'1.4 / 4 GB','新加坡','17d 3h','$16'),
+      vm('vm-triage-02','异常','Triage 分诊 · 备',null,'—','新加坡','4h 12m','$3','健康检查连续 3 次超时，已停止派发新任务')
+    ];
+
+    const libCols = ['文件','负责人','大小','Agent 引用','更新'];
+    const library = [
+      {ext:'MD', n:'2026-09-11-504-分诊报告.md', owner:'Triage', size:'4.2 KB', cited:'刚被引用', ago:'12 分钟前'},
+      {ext:'MD', n:'服务等级目标 SLO v3', owner:'陈知远', size:'18 KB', cited:'引用 84 次', ago:'3 天前'},
+      {ext:'PDF', n:'2026 Q3 架构评审纪要', owner:'林越', size:'1.1 MB', cited:'引用 27 次', ago:'1 周前'},
+      {ext:'MD', n:'事故响应手册（含回滚脚本）', owner:'陈知远', size:'32 KB', cited:'引用 152 次', ago:'2 周前'},
+      {ext:'CSV', n:'客户搜索慢反馈汇总', owner:'Persona', size:'240 KB', cited:'引用 41 次', ago:'昨天'},
+      {ext:'FIG', n:'降级态与空状态设计', owner:'苏禾', size:'—', cited:'未被引用', ago:'5 天前'}
+    ];
+
+    const permCols = ['SENTRY','GITHUB','知识库','NOTION','账单','行情 API'];
+    const cell = (v) => ({ v, fg: v==='R/W'?'var(--ok)':(v==='—'?'var(--ink3)':'var(--ink2)'),
+      bg: v==='R/W'?'var(--tint)':(v==='—'?'transparent':'var(--surface2)') });
+    const permRows = [
+      {g:'△', n:'Triage 分诊', cells:['R','R/W','R/W','—','—','—'].map(cell)},
+      {g:'◎', n:'Scout 探针', cells:['—','—','R/W','R','—','—'].map(cell)},
+      {g:'▷', n:'Pipeline 流水线', cells:['R','R/W','R','—','—','—'].map(cell)},
+      {g:'◇', n:'Persona 用研', cells:['—','—','R/W','R','—','—'].map(cell)},
+      {g:'✎', n:'Scribe 书记', cells:['—','—','R/W','R/W','—','—'].map(cell)},
+      {g:'¥', n:'Ledger 账房', cells:['—','—','R','—','R','—'].map(cell)},
+      {g:'◷', n:'Ticker 报价', cells:['—','—','R','—','—','R'].map(cell)},
+      {g:'§', n:'Filing 财报', cells:['—','—','R/W','R','—','R'].map(cell)},
+      {g:'∑', n:'Quant 量化', cells:['—','—','R/W','—','—','R'].map(cell)}
+    ];
+
+    // ── agent-session harness turns (streaming) ──
+    const H = agSes ? HARNESS[sesId] : null;
+    const streamOf = (key, full) => {
+      const st = S.stream;
+      if(st && st.key === key) return { shown: full.slice(0, st.n), streaming: !st.done };
+      return { shown: full, streaming: false };
+    };
+    const mkTurn = (t, key) => {
+      if(t.u) return { isUser:true, text:t.text, time:t.time };
+      const sr = key ? streamOf(key, t.answer) : { shown:t.answer, streaming:false };
+      const tk = key || ('t' + t.time);
+      const open = sr.streaming || !!S.thinkOpen[tk];
+      return { isAsk:true, time:t.time, name: ses.n, glyph: ses.g,
+        thinkLabel: sr.streaming ? t.thinkMs : t.thinkMs.replace('正在思考…','思考过程'),
+        think: t.think, thinkOpen: open, thinkChev: open ? '▲' : '▼',
+        toggleThink: () => this.setState(st => ({ thinkOpen: Object.assign({}, st.thinkOpen, {[tk]: !st.thinkOpen[tk]}) })),
+        tools: t.tools && t.tools.length ? t.tools : null,
+        shown: sr.shown, streaming: sr.streaming, caret: sr.streaming, doneActions: !sr.streaming };
+    };
+    let turns = [];
+    if(agSes && H){
+      turns = H.turns.map(t => mkTurn(t, t.live ? (S.chan + ':live') : null));
+      extraOf.forEach(x => turns.push({ isUser:true, text:x.text, time:'刚刚' }));
+      if(extraOf.length && H.reply) turns.push(mkTurn(Object.assign({}, H.reply), 'reply:' + S.chan));
+    }
+
+    // ── inspector tab stack ──
+    const TABDEF = { thread:'话题', run:'运行', bt:'回测', qa:'分析' };
+    const baseTabs = agSes ? [] : ['thread','run'];
+    const tabIds = baseTabs.concat(S.insExtra[S.chan] || []);
+    const activeIns = tabIds.indexOf(S.ins) >= 0 ? S.ins : tabIds[0];
+    const insTabs = tabIds.map(id => {
+      const closable = id === 'bt' || id === 'qa';
+      return { id, n: TABDEF[id],
+        bg: activeIns===id ? 'var(--surface)' : 'transparent',
+        fg: activeIns===id ? 'var(--ink)' : 'var(--ink3)',
+        pr: closable ? '5px' : '0px', closeW: closable ? '16px' : '0px',
+        closeOp: closable ? '1' : '0', closePe: closable ? 'auto' : 'none',
+        go: () => this.setState({ins:id}),
+        close: closable
+          ? () => this.setState(s => ({ insExtra: this.dropTab(s, id), ins: s.ins===id ? (baseTabs[0] || null) : s.ins }))
+          : () => {} };
+    });
+
+    let acc = 0;
+    const raw = [-0.4,0.9,1.6,2.2,1.1,-0.8,-1.9,-0.6,1.4,2.8,3.6,2.9,1.7,-0.5,-2.4,-3.1,-1.2,0.8,2.1,3.4,4.2,3.1,1.9,2.6];
+    const cum = raw.map(v => (acc += v));
+    const span = Math.max(...cum.map(Math.abs)) || 1;
+    const btCurve = cum.map(v => ({ h: Math.max(3, Math.round(Math.abs(v) / span * 46)) + 'px',
+      c: v >= 0 ? 'var(--ok)' : 'var(--danger)', top: v >= 0 ? 'auto' : '50%', bot: v >= 0 ? '50%' : 'auto' }));
+    const btMetrics = [
+      {k:'标的', v:'NVDA 单一持仓'}, {k:'区间', v:'07-01 → 09-11'}, {k:'频率', v:'日频 · 收盘'},
+      {k:'滑点/手续费', v:'0.05% / 0.01%'}, {k:'风险线', v:'-15% 回撤'}, {k:'基准', v:'等权持有'},
+      {k:'交易次数', v:'11'}, {k:'盈亏比', v:'2.1'}
+    ];
+    const qaSteps = [
+      {t:'09:32:08', k:'读取', label:'NVDA 5 分钟级行情', meta:'开盘至今 · 74 根 K 线', dot:'var(--ok)', done:true},
+      {t:'09:32:11', k:'比对', label:'20 日均量与盘口失衡', meta:'当前量为均量 2.4 倍 · 卖压占 61%', dot:'var(--ok)', done:true},
+      {t:'09:32:14', k:'模拟', label:'蒙特卡洛情景 · 10,000 次', meta:'', dot:'var(--agent)', done:false, running:true},
+      {t:'—', k:'待执行', label:'生成加减仓建议', meta:'等待上一步', dot:'var(--line2)', done:true}
+    ];
+
+    const cmdItem = (g,n,hint,kbd,r,chipBg,chipFg,go) => ({g,n,hint,kbd,r,chipBg,chipFg,bg:'transparent',go:go||(()=>this.setState({cmdk:false}))});
+    const cmdGroups = [
+      {name:'派活给 AGENT', items:[
+        cmdItem('△','让 Triage 分诊当前话题','Triage 分诊','⇥','6px','var(--atint)','var(--agent)', this.go('run')),
+        cmdItem('▷','回滚 staging 到上一个版本','Pipeline 流水线','','6px','var(--atint)','var(--agent)'),
+        cmdItem('∑','回测这个决策','Quant 量化','','6px','var(--atint)','var(--agent)'),
+        cmdItem('◷','给这个标的设报价提醒','Ticker 报价','','6px','var(--atint)','var(--agent)'),
+        cmdItem('✎','把这个话题整理成纪要','Scribe 书记','','6px','var(--atint)','var(--agent)')
+      ]},
+      {name:'跳转', items:[
+        cmdItem('#','工程 engineering','频道','','6px','transparent','var(--ink3)', ()=>this.setState({view:'chat',chan:'eng',lastChan:'eng',sec:'chat',cmdk:false})),
+        cmdItem('#','市场研究 markets','频道 · 3 未读','','6px','transparent','var(--ink3)', ()=>this.setState({view:'chat',chan:'mkt',lastChan:'mkt',sec:'chat',cmdk:false})),
+        cmdItem('△','Triage 分诊','Agent 配置','','6px','var(--atint)','var(--agent)', this.go('agent')),
+        cmdItem('▦','Agent 权限矩阵','设置','','6px','transparent','var(--ink3)', this.go('set')),
+        cmdItem('▥','运行机器','12 台 · 1 异常','','6px','transparent','var(--ink3)', this.go('vm')),
+        cmdItem('◈','Agent 市场','浏览模板','','6px','transparent','var(--ink3)', this.go('market')),
+        cmdItem('⚑','首次进入引导','重新走一遍','','6px','transparent','var(--ink3)', ()=>this.setState({ob:true, obStep:0, cmdk:false}))
+      ]}
+    ];
+
+    // ── onboarding ──
+    const obDefs = [
+      {n:'告诉我们团队在做什么', d:'用来给 agent 设定默认上下文', kicker:'第 1 步 / 共 3 步',
+        title:'你们主要靠什么把活干完？', desc:'Relay 会按你的选择预置频道结构与 agent 的默认权限范围。之后随时可以在设置里改。',
+        cards:[
+          {g:'⌁', n:'工程与发布', d:'代码评审、上线、线上异常响应', key:'c1'},
+          {g:'◇', n:'产品与用研', d:'需求讨论、用户反馈、实验结论', key:'c2'},
+          {g:'◎', n:'增长与市场', d:'投放、内容、竞品情报', key:'c3'},
+          {g:'¥', n:'财务与行政', d:'账单、报销、合同流转', key:'c4'}
+        ]},
+      {n:'邀请你的队友', d:'小团队建议一次全部拉进来', kicker:'第 2 步 / 共 3 步',
+        title:'把人先拉进来，agent 才有活干', desc:'Relay 的核心是人和 agent 在同一个话题里并行工作 —— 空工作区里的 agent 没有上下文。',
+        cards:[
+          {g:'@', n:'用邮箱邀请', d:'粘贴一串邮箱，一次发完', key:'c1'},
+          {g:'⌁', n:'从 GitHub 组织导入', d:'匹配已有成员与仓库权限', key:'c2'},
+          {g:'⧉', n:'生成邀请链接', d:'7 天有效，可限制邮箱域名', key:'c3'},
+          {g:'↷', n:'稍后再说', d:'先自己体验一遍', key:'c4'}
+        ]},
+      {n:'装上第一个 agent', d:'从模板开始最快', kicker:'第 3 步 / 共 3 步',
+        title:'挑一个现在就能帮上忙的', desc:'安装后它会出现在成员列表里，可以 @ 也可以私聊。所有数据权限都要你逐项批准。',
+        cards:[
+          {g:'△', n:'Triage 分诊', d:'线上异常自动定位可疑变更', key:'c1'},
+          {g:'◎', n:'Scout 探针', d:'每日竞品与市场情报日报', key:'c3'},
+          {g:'✎', n:'Scribe 书记', d:'长话题自动成纪要并派活', key:'c2'},
+          {g:'▷', n:'Pipeline 流水线', d:'在聊天里部署、回滚、开关灰度', key:'c4'}
+        ]}
+    ];
+    const cur = obDefs[S.obStep] || obDefs[0];
+    const obSteps = obDefs.map((o,i)=>({ n:o.n, d:o.d, i: i<S.obStep ? '✓' : String(i+1),
+      bg: i<S.obStep ? 'var(--accent)' : (i===S.obStep ? 'var(--surface)' : 'transparent'),
+      fg: i<S.obStep ? 'var(--onacc)' : (i===S.obStep ? 'var(--ontint)' : 'var(--ink3)'),
+      bd: i<=S.obStep ? 'var(--accent)' : 'var(--line2)',
+      tfg: i===S.obStep ? 'var(--ink)' : 'var(--ink2)' }));
+    const obCards = cur.cards.map(c => {
+      const on = !!S.obPick[c.key];
+      return { ...c, on, bd: on?'var(--accent)':'var(--line)', bg: on?'var(--tint)':'var(--surface)',
+        gBg: on?'var(--accent)':'var(--surface2)', gFg: on?'#fff':'var(--ink2)',
+        pick: ()=>this.setState(s=>({obPick:{...s.obPick,[c.key]:!s.obPick[c.key]}})) };
+    });
+
+    return {
+      theme: this.theme(),
+      rootRef: (el)=>{ this._root = el; if(el) this.applyVars(); },
+      winRef: (el)=>{ this._win = el; if(el) requestAnimationFrame(()=>this.fit()); },
+      scrollRef: (el)=>{ if(el && el !== this._sc){ this._sc = el; requestAnimationFrame(()=>{ el.scrollTop = el.scrollHeight; }); } },
+      toggleTheme: ()=>this.setState({theme: dark?'light':'dark'}),
+      isLight: !dark, isDark: dark, themeTitle: dark ? '切换到浅色' : '切换到深色',
+      rail, sbTitle, sbSub, sbGroups,
+      vChat:S.view==='chat', vAgent:S.view==='agent', vRun:S.view==='run',
+      vMarket:S.view==='market', vInbox:S.view==='inbox', vLib:S.view==='lib', vSet:S.view==='set', vVm:S.view==='vm',
+      vmStats, vmCols, vms,
+      chanName: agSes ? ses.n : isM ? '市场研究 markets' : '工程 engineering',
+      chanSlug: agSes ? '@' + sesId : isM ? '#mkt' : '#eng',
+      chanTopic: agSes ? ('当前任务：' + ses.task + ' · 私聊会话，只有你能看到') : isM ? '持仓、财报与策略回测 · Ticker 盘前推送 / 报价提醒已开' : '线上异常、发布窗口与架构讨论 · Triage / Pipeline 常驻',
+      isAgSes: agSes, agSesState: agSes ? ses.state : '', agSesLive: agSes ? ses.live : false,
+      chanFaces: agSes
+        ? [{i:ses.g,bg:'var(--atint)',fg:'var(--agent)',r:'6px'},{i:'幻',bg:P.me.bg,fg:P.me.fg,r:'99px'}]
+        : isM
+        ? [{i:'帆',bg:P.yf.bg,fg:P.yf.fg,r:'99px'},{i:'越',bg:P.ly.bg,fg:P.ly.fg,r:'99px'},{i:'幻',bg:P.me.bg,fg:P.me.fg,r:'99px'},{i:'◷',bg:'var(--atint)',fg:'var(--agent)',r:'6px'}]
+        : [{i:'知',bg:P.zy.bg,fg:P.zy.fg,r:'99px'},{i:'越',bg:P.ly.bg,fg:P.ly.fg,r:'99px'},{i:'禾',bg:P.sh.bg,fg:P.sh.fg,r:'99px'},{i:'△',bg:'var(--atint)',fg:'var(--agent)',r:'6px'}],
+      chanCount: agSes ? '你 + 1 agent' : isM ? '6 人 · 3 agent' : '12 人 · 3 agent',
+      composerHint: agSes ? ('和 ' + ses.n + ' 对话 — 直接派活或追问') : isM ? '发消息到 #markets — @agent 可直接派活' : '发消息到 #engineering — @agent 可直接派活',
+      messages, typing: agSes ? false : true, notAgSes: !agSes,
+      turns, stopStream: this.stopStream,
+      composerAgents: agSes
+        ? [{g:'↻',n:'再跑一次',pick:()=>this.setState({draft:'用同样的条件再跑一次，只看今天的数据。'})},
+           {g:'⤓',n:'存知识库',pick:()=>this.setState({draft:'把这次结论写进知识库，放到 /工程/事故 下。'})},
+           {g:'⚙',n:'配置触发',pick:()=>this.setState({view:'agent',sec:'agent'})}]
+        : isM
+        ? [{g:'◷',n:'Ticker',pick:()=>this.setState({draft:'@Ticker 报价 '})},{g:'§',n:'Filing',pick:()=>this.setState({draft:'@Filing 财报 '})},{g:'∑',n:'Quant',pick:()=>this.setState({draft:'@Quant 量化 '})}]
+        : [{g:'△',n:'Triage',pick:()=>this.setState({draft:'@Triage 分诊 '})},{g:'▷',n:'Pipeline',pick:()=>this.setState({draft:'@Pipeline 流水线 '})},{g:'✎',n:'Scribe',pick:()=>this.setState({draft:'@Scribe 书记 '})}],
+      draft:S.draft,
+      onDraft:(e)=>this.setState({draft:e.target.value}),
+      onSend:(e)=>{ if(e.key==='Enter'){ e.preventDefault(); this.send(); } },
+      sendBtn:()=>this.send(),
+      inspectorOpen:S.insOpen, toggleInspector:()=>this.setState(s=>({insOpen:!s.insOpen})),
+      insThread:activeIns==='thread', insRun:activeIns==='run', insBt:activeIns==='bt', insQa:activeIns==='qa',
+      insEmpty: tabIds.length === 0, insHasTabs: tabIds.length > 0,
+      insEmptyHints: [
+        {i:'01', n:'点消息下方的「N 条回复」', d:'把该条的话题回复拉进来，边读边回。'},
+        {i:'02', n:'点 agent 卡片的「查看回测详情 / 完整轨迹」', d:'作为新页签推进来，可以同时开几个来回切，✕ 关掉。'},
+        {i:'03', n:'拖左边缘', d:'宽度可在 300–700px 之间调整，读宽表格时拉大。'}
+      ],
+      goEngChannel: () => this.setState({view:'chat', chan:'eng', lastChan:'eng', sec:'chat', ins:'thread'}),
+      agSesFg: (agSes && ses.live) ? 'var(--agent)' : 'var(--ink2)',
+      agSesBg: (agSes && ses.live) ? 'var(--atint)' : 'var(--surface2)',
+      agSesDot: (agSes && ses.live) ? 'var(--agent)' : 'var(--ok)',
+      insW: S.insW + 'px', startResize: this.startResize,
+      pickerOpen: !!S.picker,
+      pickerX: S.picker ? S.picker.x + 'px' : '0px',
+      pickerY: S.picker ? S.picker.y + 'px' : '0px',
+      pickerEmoji: S.picker ? EMOJI.map(e => ({ e, go: () => { this.react(S.picker.id, e)(); this.setState({picker:null}); } })) : [],
+      closePicker: () => this.setState({picker:null}),
+      insTabs: insTabs, closeInspector:()=>this.setState({insOpen:false}),
+      inspectorShut: !S.insOpen, insToggleTitle: S.insOpen ? '收起侧栏' : '展开侧栏',
+      openBacktest:()=>this.setState(s=>({insOpen:true, ins:'bt', insExtra: this.pushTab(s,'bt')})),
+      openQuant:()=>this.setState(s=>({insOpen:true, ins:'qa', insExtra: this.pushTab(s,'qa')})),
+      btCurve, btMetrics, qaSteps,
+      threadMsgs: isM ? mthread : threadMsgs,
+      threadParentGlyph: isM ? '§' : '△', threadParentWho: isM ? 'Filing 财报' : 'Triage 分诊',
+      threadParentTime: isM ? '09:33' : '09:15',
+      threadParentText: isM ? 'HPC 同比 +42.1%，营收占比从 51% 升到 57%，连续 5 个月扩张；超出一致预期 6.1 个百分点。' : '94% 的 504 指向 #2304 引入的 N+1 查询，建议回滚 planner 的 eager-load 改动。',
+      runDetail: isM ? mrunDetail : runDetail,
+      runTitleIns: isM ? 'Filing 财报 · run #5104' : 'Triage 分诊 · run #4821',
+      runMetaIns: isM ? 'claude-sonnet · 21.4s · $0.044' : 'claude-sonnet · 14.2s · $0.031',
+      runGlyphIns: isM ? '§' : '△',
+      runFull, runSummary, artifacts,
+      agentTabs, agentStats, triggers, scopes, history, market, inbox, libCols, library, permCols, permRows, cmdGroups,
+      goRun:this.go('run'), goAgent:this.go('agent'), goSet:this.go('set'),
+      setBg: S.view==='set' ? 'var(--railactbg)' : 'transparent',
+      setFg: S.view==='set' ? 'var(--railactink)' : 'var(--railink)',
+      profileOpen: S.profile,
+      openProfile:()=>this.setState(s=>({profile:!s.profile})),
+      closeProfile:()=>this.setState({profile:false}),
+      stopProp:(e)=>e.stopPropagation(),
+      profileItems:[
+        {g:'◉', n:'设置状态', d:'产品 · 盯 v2.4 发布', go:()=>this.setState({profile:false})},
+        {g:'♪', n:'通知偏好', d:'仅 @ 与 agent 结果', go:()=>this.setState({profile:false, view:'set', sec:'set'})},
+        {g:'◐', n:'外观与主题', d: dark ? 'Discord 风 · 深色' : 'Discord 风 · 浅色',
+          go:()=>this.setState({profile:false, theme: dark ? 'light' : 'dark'})},
+        {g:'⌘', n:'快捷键', d:'', go:()=>this.setState({profile:false, cmdk:true})}
+      ],
+      quoteActive: !!S.quote,
+      quoteWho: S.quote ? S.quote.who : '', quoteText: S.quote ? S.quote.text : '',
+      quoteGlyph: S.quote ? S.quote.glyph : '', quoteBg: S.quote ? S.quote.bg : 'transparent',
+      quoteFg: S.quote ? S.quote.fg : 'var(--ink2)', quoteR: S.quote ? S.quote.r : '99px',
+      clearQuote:()=>this.setState({quote:null}),
+      cmdk:S.cmdk, openCmdk:()=>this.setState({cmdk:true}), closeCmdk:()=>this.setState({cmdk:false}),
+      onboarding:S.ob, openOnboarding:()=>this.setState({ob:true, obStep:0}), closeOnboarding:()=>this.setState({ob:false}),
+      obSteps, obCards, obKicker:cur.kicker, obTitle:cur.title, obDesc:cur.desc,
+      obProgress:'第 '+(S.obStep+1)+' 步 / 共 3 步',
+      obNextLabel: S.obStep===2 ? '进入工作区 →' : '下一步',
+      obBack:()=>this.setState(s=>({obStep:Math.max(0,s.obStep-1)})),
+      obNext:()=>{ if(S.obStep===2) this.setState({ob:false}); else this.setState(s=>({obStep:s.obStep+1})); }
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,105 @@
+/*
+ * 设计 token。值来自设计规格 README §Design Tokens，已通过对比度审计
+ * （14 组主题 × 明暗 × 48 对颜色，全部 ≥4.5:1），不要微调。
+ *
+ * 几个不是冗余的键：
+ *   --ontint    tint 底上的主色墨水（主色当文字用它，不是 --accent）
+ *   --gtint/--dtint  涨跌/状态语义底（不要借 --tint / --atint）
+ *   --ondanger  红底上的字（深色的 danger 是浅红，白字读不了）
+ *   --rail*     边栏专用一套，支持“深边栏 + 浅正文”
+ */
+:root {
+  --desk: #C9CDD6;
+  --bg: #FFFFFF;
+  --sub: #F2F3F5;
+  --rail: #E3E5E8;
+  --surface: #FFFFFF;
+  --surface2: #F7F8FA;
+  --line: #E3E5E8;
+  --line2: #CFD2D8;
+  --ink: #060607;
+  --ink2: #4E5058;
+  --ink3: #666971;
+  --accent: #5865F2;
+  --accent2: #4752C4;
+  --tint: #E8EAFE;
+  --ontint: #4752C4;
+  --agent: #B32275;
+  --atint: #FCE7F3;
+  --user: #1668B8;
+  --utint: #E1EFF9;
+  --ok: #1D6A3A;
+  --gtint: #E6F2EA;
+  --danger: #BC2F28;
+  --dtint: #FBE9E7;
+  --warn: #8A5D08;
+  --onacc: #FFFFFF;
+  --ondanger: #FFFFFF;
+
+  --railink: var(--ink2);
+  --railink2: var(--ink);
+  --railline: var(--line);
+  --railfield: var(--surface);
+  --railhover: var(--surface2);
+  --railactbg: var(--surface);
+  --railactink: var(--ontint);
+
+  --a1bg: #E1E3FD; --a1fg: #4752C4;
+  --a2bg: #FBE3F1; --a2fg: #B0287A;
+  --a3bg: #DFF3E6; --a3fg: #1A6E3F;
+  --a4bg: #FDEBDC; --a4fg: #9E5918;
+  --a5bg: #E4EEF9; --a5fg: #2B5E8F;
+
+  --sh: 0 1px 2px rgba(20, 25, 22, .05), 0 10px 30px rgba(20, 25, 22, .08);
+  --shwin: 0 30px 90px rgba(20, 25, 22, .26), 0 2px 8px rgba(20, 25, 22, .13);
+
+  --font: 'Instrument Sans', 'PingFang SC', 'Noto Sans SC', system-ui, sans-serif;
+  --mono: 'IBM Plex Mono', ui-monospace, Menlo, monospace;
+
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  --desk: #131416;
+  --bg: #313338;
+  --sub: #2B2D31;
+  --rail: #1E1F22;
+  --surface: #383A40;
+  --surface2: #404249;
+  --line: #3F4147;
+  --line2: #54575E;
+  --ink: #F2F3F5;
+  --ink2: #D5D8DC;
+  --ink3: #ADB2B9;
+  --accent: #5865F2;
+  --accent2: #7983F5;
+  --tint: #2C2E40;
+  --ontint: #A3ADF9;
+  --agent: #F58EC4;
+  --atint: #32212A;
+  --user: #58B2F0;
+  --utint: #11283A;
+  --ok: #4FC47F;
+  --gtint: #122A20;
+  --danger: #FF9395;
+  --dtint: #291312;
+  --warn: #E5A94E;
+  --onacc: #FFFFFF;
+  --ondanger: #2A0F0E;
+
+  --a1bg: #3B4180; --a1fg: #C3C9FF;
+  --a2bg: #4A2340; --a2fg: #F5AEDA;
+  --a3bg: #1F3D2C; --a3fg: #84DDA8;
+  --a4bg: #42311C; --a4fg: #E8C089;
+  --a5bg: #22364A; --a5fg: #AFCFF2;
+
+  --sh: 0 1px 2px rgba(0, 0, 0, .4), 0 10px 30px rgba(0, 0, 0, .45);
+  --shwin: 0 30px 90px rgba(0, 0, 0, .6), 0 2px 8px rgba(0, 0, 0, .4);
+
+  color-scheme: dark;
+}
+
+/* 动画。过渡：开关 .15s；其余交互态即时响应，不加过渡。 */
+@keyframes rl-shim  { 0% { background-position: -180% 0 } 100% { background-position: 180% 0 } }
+@keyframes rl-pulse { 0%, 100% { opacity: 1 } 50% { opacity: .35 } }
+@keyframes rl-up    { from { opacity: 0; transform: translateY(6px) } to { opacity: 1; transform: none } }

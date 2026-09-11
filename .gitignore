@@ -1,0 +1,16 @@
+node_modules/
+out/
+release/
+dist/
+.DS_Store
+*.log
+.env
+.env.*
+
+# 签名与公证凭据，永远不进仓库
+*.p8
+*.p12
+*.cer
+*.provisionprofile
+AuthKey_*
+.notary/

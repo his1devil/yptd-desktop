@@ -1,0 +1,39 @@
+{
+  "name": "yptd-desktop",
+  "productName": "yptd",
+  "version": "0.3.0",
+  "description": "人和 agent 在同一个话题里并行工作",
+  "main": "./out/main/index.js",
+  "author": "Antai Feng",
+  "license": "UNLICENSED",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "preview": "electron-vite preview",
+    "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
+    "test": "vitest run",
+    "dist": "electron-vite build && electron-builder --mac --arm64"
+  },
+  "dependencies": {
+    "@openim/electron-client-sdk": "3.8.3-patch.15.1",
+    "@tanstack/react-virtual": "^3.10.9",
+    "electron-updater": "^6.3.9",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "zustand": "^5.0.3"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "@vitejs/plugin-react": "^4.3.4",
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8",
+    "electron-vite": "^3.0.0",
+    "typescript": "^5.7.2",
+    "vite": "^6.0.0",
+    "vitest": "^3.0.0"
+  }
+}

@@ -1,0 +1,47 @@
+.rail {
+  width: 58px;
+  flex: none;
+  background: var(--rail);
+  border-right: 1px solid var(--railline);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 10px 0 10px;
+}
+
+.item {
+  width: 44px;
+  height: 44px;
+  border-radius: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 6px;
+  position: relative;
+  color: var(--railink);
+}
+.item:hover { background: var(--railhover); color: var(--railink2); }
+
+.active,
+.active:hover {
+  background: var(--railactbg);
+  color: var(--railactink);
+}
+
+.badge {
+  position: absolute;
+  top: 4px;
+  right: 5px;
+  min-width: 15px;
+  height: 15px;
+  padding: 0 4px;
+  border-radius: 99px;
+  background: var(--danger);
+  color: var(--ondanger);
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 15px;
+  text-align: center;
+}
+
+.spacer { flex: 1; }

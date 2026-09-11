@@ -1,0 +1,40 @@
+appId: com.zhanghuanyang.yptd
+productName: yptd
+copyright: Antai Feng
+directories:
+  output: release
+  buildResources: build
+files:
+  - out/**
+  - package.json
+# OpenIM 的 Go 核心是一个 dylib，随 app 一起进包、一起签名、一起公证。
+asarUnpack:
+  - node_modules/@openim/electron-client-sdk/assets/**
+  - node_modules/koffi/**
+mac:
+  category: public.app-category.social-networking
+  target:
+    - target: dmg
+      arch: [arm64]
+    - target: zip
+      arch: [arm64]
+  hardenedRuntime: true
+  gatekeeperAssess: false
+  entitlements: build/entitlements.mac.plist
+  entitlementsInherit: build/entitlements.mac.plist
+  minimumSystemVersion: '14.0'
+  notarize: true
+dmg:
+  contents:
+    - x: 150
+      y: 200
+    - x: 450
+      y: 200
+      type: link
+      path: /Applications
+  window:
+    width: 600
+    height: 380
+publish:
+  provider: generic
+  url: https://im.zhanghuanyang.com/dl/desktop/
