@@ -31,8 +31,19 @@
 .profile:hover { background: var(--railhover); }
 
 .who { display: flex; flex-direction: column; line-height: 1.2; }
-.name { font-size: 12.5px; font-weight: 600; color: var(--railink2); }
+.name { font-size: 12.5px; font-weight: 600; color: var(--railink2); white-space: nowrap; }
 .sig { font-size: 10.5px; color: var(--railink); white-space: nowrap; }
+
+/* 右侧的不可见镜像：和左边那一簇同宽，让搜索框在窗口里精确居中 */
+.balance {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  flex: none;
+  visibility: hidden;
+  pointer-events: none;
+}
+.balance .lights { border-right-color: transparent; }
 .chev { color: var(--railink); flex: none; margin-left: 1px; }
 
 .center {

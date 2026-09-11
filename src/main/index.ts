@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, shell } from 'electron'
+import { app, BrowserWindow, ipcMain, session, shell } from 'electron'
 import { join } from 'node:path'
 import { IPC } from '../shared/ipc'
 
@@ -23,6 +23,16 @@ function createWindow(): BrowserWindow {
   })
 
   win.once('ready-to-show', () => win.show())
+
+  // 开发用：YPTD_THEME=dark 起一个深色窗口截图对比 token。不进产品逻辑。
+  if (!app.isPackaged && process.env.YPTD_THEME) {
+    const theme = process.env.YPTD_THEME
+    win.webContents.on('did-finish-load', () => {
+      void win.webContents.executeJavaScript(
+        `document.documentElement.setAttribute('data-theme', ${JSON.stringify(theme)})`,
+      )
+    })
+  }
 
   // 全屏时红绿灯消失，渲染层不必再留 58px 的空
   win.on('enter-full-screen', () => win.webContents.send(IPC.windowFullscreen, true))
@@ -52,6 +62,21 @@ ipcMain.on(IPC.windowToggleMaximize, (e) => {
 ipcMain.on(IPC.windowClose, (e) => BrowserWindow.fromWebContents(e.sender)?.close())
 
 void app.whenReady().then(() => {
+  // CSP 只在打包后注入：开发时 Vite 和 React Refresh 要注入内联脚本，
+  // 一条严格的 script-src 会把渲染层整个拦成白屏。
+  if (app.isPackaged) {
+    session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+      callback({
+        responseHeaders: {
+          ...details.responseHeaders,
+          'Content-Security-Policy': [
+            "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; " +
+              "font-src 'self' data:; img-src 'self' data: https:; connect-src 'self' https: wss:",
+          ],
+        },
+      })
+    })
+  }
   createWindow()
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()

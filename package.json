@@ -7,7 +7,6 @@
   "author": "Antai Feng",
   "license": "UNLICENSED",
   "private": true,
-  "type": "module",
   "scripts": {
     "dev": "electron-vite dev",
     "build": "electron-vite build",

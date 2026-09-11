@@ -3,10 +3,8 @@
   <head>
     <meta charset="UTF-8" />
     <title>yptd</title>
-    <meta
-      http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: https:; connect-src 'self' https: wss:"
-    />
+    <!-- CSP 由主进程在打包后注入（见 main/index.ts）。开发时 Vite/React Refresh 要注入
+         内联脚本，写死在这里会把渲染层整个拦成白屏。 -->
   </head>
   <body>
     <div id="root"></div>
