@@ -45,7 +45,7 @@ export function setupUpdater(target: () => WebContents | null): void {
   autoUpdater.on('update-not-available', (info) => send({ kind: 'none', version: info.version, at: Date.now() }))
   autoUpdater.on('download-progress', (p) => send({ kind: 'downloading', version: status.kind === 'available' || status.kind === 'downloading' ? status.version : '', percent: Math.round(p.percent) }))
   autoUpdater.on('update-downloaded', (info) => send({ kind: 'ready', version: info.version }))
-  autoUpdater.on('error', (err) => send({ kind: 'error', message: err?.message ?? String(err), at: Date.now() }))
+  autoUpdater.on('error', (err) => send({ kind: 'error', message: firstLine(err), at: Date.now() }))
 
   async function check(): Promise<void> {
     if (!app.isPackaged) return
@@ -53,10 +53,16 @@ export function setupUpdater(target: () => WebContents | null): void {
     try {
       await autoUpdater.checkForUpdates()
     } catch (err) {
-      send({ kind: 'error', message: err instanceof Error ? err.message : String(err), at: Date.now() })
+      send({ kind: 'error', message: firstLine(err), at: Date.now() })
     }
   }
 
   setTimeout(() => { void check() }, 8_000)
   setInterval(() => { void check() }, CHECK_EVERY)
+}
+
+/** electron-updater 的错误信息带着整段响应头和调用栈；给人看的只要第一行。 */
+function firstLine(err: unknown): string {
+  const raw = err instanceof Error ? err.message : String(err)
+  return raw.split('\n')[0]?.trim().slice(0, 200) || '未知错误'
 }
