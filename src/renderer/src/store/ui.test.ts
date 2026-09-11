@@ -112,3 +112,31 @@ describe('主题', () => {
     expect(useUI.getState().theme).toBe('light')
   })
 })
+
+describe('新手欢迎页', () => {
+  it('打开任何会话就收起', () => {
+    useUI.setState({ welcome: true })
+    useUI.getState().open('sg_1')
+    expect(useUI.getState().welcome).toBe(false)
+  })
+
+  it('设置里「再看一遍」：回到会话区、主区清空、放欢迎页', () => {
+    useUI.setState({ welcome: false, section: 'set', conversationId: 'sg_1' })
+    useUI.getState().showWelcome()
+    const s = useUI.getState()
+    expect(s.welcome).toBe(true)
+    expect(s.section).toBe('chat')
+    expect(s.conversationId).toBeNull()
+  })
+
+  it('退出登录清掉上个账号留下的位置、引用和页签', () => {
+    useUI.setState({ conversationId: 'sg_1', lastChannelId: 'sg_1', quoteBy: { sg_1: 'm1' }, inspectorTabsBy: { sg_1: ['runs'] }, welcome: true })
+    useUI.getState().resetAll()
+    const s = useUI.getState()
+    expect(s.conversationId).toBeNull()
+    expect(s.lastChannelId).toBeNull()
+    expect(s.quoteBy).toEqual({})
+    expect(s.inspectorTabsBy).toEqual({})
+    expect(s.welcome).toBe(false)
+  })
+})

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Avatar, glyphOf, pairOf } from '../components/Avatar'
 import { errorClass, ghostClass, inputClass, primaryClass } from '../components/Dialog'
 import { api, type Invite } from '../im/api'
+import { DOWNLOADS } from '../im/auth'
 import { describe, useSession } from '../store/session'
 import { useUI, type SettingsPage } from '../store/ui'
 import { useUpdate } from '../store/update'
@@ -123,13 +124,19 @@ function Members() {
       await reload()
     } catch (e) { setErr(describe(e)) } finally { setBusy(false) }
   }
-  const copy = (code: string): void => { void navigator.clipboard.writeText(code); setCopied(code); window.setTimeout(() => setCopied(null), 1200) }
+  const copy = (key: string, text: string): void => { void navigator.clipboard.writeText(text); setCopied(key); window.setTimeout(() => setCopied(null), 1200) }
+  // 直接能贴给对方的一段：装哪个包、码是什么、多久内有效
+  const inviteText = (i: Invite): string => [
+    '邀请你加入 yptd（我们内部的频道 + agent 工作台）',
+    `1. 下载安装（macOS）：Apple 芯片 ${DOWNLOADS}yptd-latest-arm64.dmg ；Intel 芯片 ${DOWNLOADS}yptd-latest-x64.dmg`,
+    `2. 打开后按提示填邀请码：${i.code}（${fmtTime(i.expiresAt)} 前有效，只能用一次）`,
+  ].join('\n')
   const humans = roster.filter((p) => !p.isAgent)
   const agents = roster.filter((p) => p.isAgent)
 
   return (
     <>
-      <Section title="邀请" desc="一个邀请码进一个人，24 小时内有效。备注写上给谁，之后列表里能对上。">
+      <Section title="邀请" desc="一个邀请码进一个人，24 小时内有效。备注写上给谁，之后列表里能对上；「复制邀请文案」是一段能直接贴给对方的话，带下载地址和码。对方进来后，HALX 会私信告诉你。">
         <div className={styles.inline}>
           <input className={inputClass} value={note} onChange={(e) => setNote(e.target.value)} placeholder="给谁的（备注，可不填）" maxLength={60} onKeyDown={(e) => e.key === 'Enter' && void mint()} />
           <button className={primaryClass} disabled={busy} onClick={() => void mint()}>{busy ? '生成中…' : '生成邀请码'}</button>
@@ -140,7 +147,8 @@ function Members() {
               <div key={i.code} className={styles.freshRow}>
                 <span className={`${styles.code} mono`}>{i.code}</span>
                 <span className={styles.freshNote}>{i.note}</span>
-                <button className={ghostClass} onClick={() => copy(i.code)}>{copied === i.code ? '已复制' : '复制'}</button>
+                <button className={ghostClass} onClick={() => copy(`${i.code}:text`, inviteText(i))}>{copied === `${i.code}:text` ? '已复制' : '复制邀请文案'}</button>
+                <button className={ghostClass} onClick={() => copy(i.code, i.code)}>{copied === i.code ? '已复制' : '只复制码'}</button>
               </div>
             ))}
           </div>
@@ -155,7 +163,11 @@ function Members() {
                   <td className="mono">{i.code}</td>
                   <td className={styles.muted}>{i.note || '—'}</td>
                   <td className={`${styles.muted} mono`}>{fmtTime(i.expiresAt)}</td>
-                  <td><button className={styles.linkBtn} onClick={() => copy(i.code)}>{copied === i.code ? '已复制' : '复制'}</button></td>
+                  <td>
+                    <button className={styles.linkBtn} onClick={() => copy(`${i.code}:text`, inviteText(i))}>{copied === `${i.code}:text` ? '已复制' : '复制邀请文案'}</button>
+                    {' · '}
+                    <button className={styles.linkBtn} onClick={() => copy(i.code, i.code)}>{copied === i.code ? '已复制' : '只复制码'}</button>
+                  </td>
                 </tr>
               ))}
               {invites && invites.filter((i) => !i.expired).length === 0 && <tr><td colSpan={4} className={styles.muted}>现在没有可用的邀请码</td></tr>}
@@ -268,6 +280,7 @@ function About() {
         ) : (
           <button className={ghostClass} disabled={status.kind === 'checking' || status.kind === 'downloading' || status.kind === 'dev'} onClick={() => void check()}>检查更新</button>
         )}
+        <button className={ghostClass} onClick={() => useUI.getState().showWelcome()}>再看一遍新手引导</button>
       </div>
     </Section>
   )

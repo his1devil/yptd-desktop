@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ClipboardEvent, type KeyboardEvent } from 'react'
-import { plainText } from '../../../shared/model'
+import { summarize, type OutgoingAttachment } from '../../../shared/model'
 import { Avatar, glyphOf, pairOf } from '../components/Avatar'
 import { IconClose, IconFile, IconImage, IconPaperclip } from '../components/Icons'
+import { IMAGE_EXT, mimeOf } from '../im/files'
 import { mentionables, type Mentionable, type Place } from '../store/selectors'
 import { agentsOf, timeline, useSession } from '../store/session'
 import { useUI } from '../store/ui'
@@ -20,10 +21,9 @@ const LINE = 22
 
 interface Menu { start: number; query: string; index: number }
 
-/** 附件栏里的一项：图片带缩略图，文件带名字和大小；都已经有本机路径，发送时交给 SDK */
-interface Attachment { id: string; kind: 'image' | 'file'; name: string; path: string; bytes: number; preview: string | null }
+/** 附件栏里的一项：图片带缩略图和原始尺寸，文件带名字和大小；都已经有本机路径，发送时交给 SDK */
+type Attachment = OutgoingAttachment & { id: string }
 let nextAttachment = 1
-const IMAGE_EXT = /\.(png|jpe?g|gif|webp|bmp|heic)$/i
 const fmtBytes = (n: number): string => (n < 1024 ? `${n} B` : n < 1024 * 1024 ? `${(n / 1024).toFixed(0)} KB` : `${(n / 1024 / 1024).toFixed(1)} MB`)
 
 export function Composer({ place }: { place: Place }) {
@@ -43,13 +43,20 @@ export function Composer({ place }: { place: Place }) {
   const ref = useRef<HTMLTextAreaElement>(null)
 
   // ---- 附件：先进栏，看一眼、配上字再发 ----
+  // 主进程量一次：图给缩略图和原始尺寸，文件给大小。缩略图既是栏里的预览，也是发出去那一刻消息里先显示的图
+  const probe = async (path: string, name: string, mime: string): Promise<Attachment> => {
+    const info = await window.desktop.files.thumbnail(path)
+    const image = !!info?.dataURL
+    return {
+      id: `a${nextAttachment++}`, kind: image ? 'image' : 'file', name, path, mime,
+      bytes: info?.bytes ?? 0, natural: image && info ? { width: info.width, height: info.height } : null, preview: image && info ? info.dataURL : null,
+    }
+  }
   const addPaths = useCallback(async (paths: string[]) => {
     const items: Attachment[] = []
     for (const path of paths) {
       const name = path.split('/').pop() ?? path
-      const image = IMAGE_EXT.test(name)
-      const thumb = image ? await window.desktop.files.thumbnail(path) : null
-      items.push({ id: `a${nextAttachment++}`, kind: image && thumb ? 'image' : 'file', name, path, bytes: thumb?.bytes ?? 0, preview: thumb?.dataURL ?? null })
+      items.push(await probe(path, name, mimeOf(name)))
     }
     setAttachments((cur) => [...cur, ...items])
   }, [])
@@ -59,17 +66,21 @@ export function Composer({ place }: { place: Place }) {
       // 拖进来的有真实路径；粘贴板里的没有，先落成临时文件
       let path = window.desktop.files.pathFor(f)
       if (!path) path = await window.desktop.files.stash(f.name || `pasted-${Date.now()}.png`, await f.arrayBuffer())
-      const image = f.type.startsWith('image/')
-      items.push({ id: `a${nextAttachment++}`, kind: image ? 'image' : 'file', name: f.name || (path.split('/').pop() ?? '文件'), path, bytes: f.size, preview: image ? URL.createObjectURL(f) : null })
+      const name = f.name || (path.split('/').pop() ?? '文件')
+      const item = await probe(path, name, f.type || mimeOf(name))
+      items.push(f.size && !item.bytes ? { ...item, bytes: f.size } : item)
     }
     setAttachments((cur) => [...cur, ...items])
   }, [])
-  const removeAttachment = (aid: string): void => setAttachments((cur) => {
-    const gone = cur.find((a) => a.id === aid)
-    if (gone?.preview?.startsWith('blob:')) URL.revokeObjectURL(gone.preview)
-    return cur.filter((a) => a.id !== aid)
-  })
+  const removeAttachment = (aid: string): void => setAttachments((cur) => cur.filter((a) => a.id !== aid))
   useEffect(() => composerBus.onAttach((files) => { void addFiles(files) }), [addFiles])
+  // 没发出去的那条整个回来，改一改再发
+  useEffect(() => composerBus.onRestore((cid, d) => {
+    if (cid !== id) return
+    setDraft(d.text)
+    setAttachments(d.attachments.map((a) => ({ ...a, id: `a${nextAttachment++}` })))
+    if (d.quote) setQuote(id, d.quote)
+  }), [id, setQuote])
 
   useEffect(() => { drafts.set(id, draft) }, [id, draft])
 
@@ -119,28 +130,23 @@ export function Composer({ place }: { place: Place }) {
 
   const pick = useCallback((c: Mentionable) => { if (menu) insertAt(`@${c.name} `, menu.start) }, [menu, insertAt])
 
-  // 文字和附件一起发：文字一条，图片和文件各一条，按栏里的顺序依次发，连着的图会并成一行
+  // 文字和附件是一条消息。带附件的那条先在消息流里出现（发送中），上传完换成真的；输入框立刻可以接着打
   const send = useCallback(() => {
     const text = draft.replace(/\s+$/, '').replace(/^\n+/, '')
     if (!text.trim() && attachments.length === 0) return
     if (sending) return
     const ids = candidates.filter((c) => text.includes(`@${c.name}`)).map((c) => c.id)
-    const batch = attachments
+    const batch = attachments.map(({ id: _id, ...a }) => a)
     setDraft('')
     drafts.delete(id)
     setAttachments([])
     if (quoteId) setQuote(id, null)
     setMenu(null)
+    const s = useSession.getState()
+    const opts = { quote: quoteId ?? undefined, mentions: ids.length ? ids : undefined }
+    if (batch.length) { void s.sendRich(id, text, { ...opts, attachments: batch }); return }
     setSending(true)
-    void (async () => {
-      const s = useSession.getState()
-      if (text.trim()) await s.send(id, text, { quote: quoteId ?? undefined, mentions: ids.length ? ids : undefined })
-      for (const a of batch) {
-        if (a.kind === 'image') await s.sendPicture(id, a.path)
-        else await s.sendFile(id, a.path, a.name)
-        if (a.preview?.startsWith('blob:')) URL.revokeObjectURL(a.preview)
-      }
-    })().finally(() => setSending(false))
+    void s.send(id, text, opts).finally(() => setSending(false))
   }, [draft, attachments, sending, candidates, id, quoteId, setQuote])
 
   const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>): void => {
@@ -193,7 +199,7 @@ export function Composer({ place }: { place: Place }) {
             <Avatar glyph={glyphOf(quoted.senderName)} pair={pairOf(quoted.sender)} size={20} kind={quoted.isAgent ? 'agent' : 'human'} src={quoted.senderAvatar} />
             <div className={styles.quoteText}>
               <div className={styles.quoteWho}>引用 {quoted.senderName}</div>
-              <div className={styles.quoteExcerpt}>{plainText(quoted.body).replace(/\s*\n\s*/g, ' ')}</div>
+              <div className={styles.quoteExcerpt}>{summarize(quoted).replace(/\s*\n\s*/g, ' ')}</div>
             </div>
             <button className={styles.quoteClose} title="取消引用" onClick={() => setQuote(id, null)}><IconClose /></button>
           </div>

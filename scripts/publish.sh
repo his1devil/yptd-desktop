@@ -50,6 +50,8 @@ done
 # shellcheck disable=SC2086
 scp -q $FILES "${HOST}:${DIR}/"
 ssh "${HOST}" "chmod 644 ${DIR}/*"
+# 稳定的「最新版」链接：邀请文案里写的是它，发版不用改文案
+ssh "${HOST}" "cd ${DIR} && for a in ${ARCHES}; do ln -sfn yptd-${VER}-\$a.dmg yptd-latest-\$a.dmg; done"
 echo "== 线上 latest-mac.yml"
 curl -fsS https://im.zhanghuanyang.com/dl/desktop/latest-mac.yml | grep -E "^version|url:"
 echo "已发布 v${VER}。"

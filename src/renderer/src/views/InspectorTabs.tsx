@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Avatar, glyphOf } from '../components/Avatar'
 import { api, type AgentProfile as Profile, type RunSummary } from '../im/api'
+import { loadAgents } from '../store/agents'
 import type { Place } from '../store/selectors'
 import { useRuns } from '../store/runs'
 import { useSession } from '../store/session'
@@ -8,9 +9,6 @@ import { useUI } from '../store/ui'
 import styles from './InspectorTabs.module.css'
 
 /** 右侧栏的两个基础页签内容：agent 的资料、一个会话里的运行记录。 */
-
-let agentsCache: Promise<Profile[]> | null = null
-const loadAgents = (): Promise<Profile[]> => (agentsCache ??= api.agents().catch((e) => { agentsCache = null; throw e }))
 
 export function AgentProfile({ place }: { place: Place }) {
   const [profile, setProfile] = useState<Profile | null>(null)

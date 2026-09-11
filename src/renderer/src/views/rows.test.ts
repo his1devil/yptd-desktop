@@ -4,7 +4,7 @@ import { buildRows } from './rows'
 
 const base = (id: string, at: number, over: Partial<Message> = {}): Message => ({
   id, conversation: 'sg_1', sender: 'a', senderName: 'A', senderAvatar: null, sentAt: at, seq: 0,
-  body: { kind: 'text', text: id }, quote: null, reactions: [], sendState: 'sent', mentionsMe: false,
+  body: { kind: 'text', text: id }, attachments: [], quote: null, reactions: [], sendState: 'sent', mentionsMe: false,
   isAgent: false, agentTag: null, transient: false, runID: null, mentions: [], agentMentions: [], dayIndex: 1, ...over,
 })
 const pic = (id: string, at: number, sender = 'a'): Message => base(id, at, { sender, body: { kind: 'picture', url: `u/${id}`, name: id, natural: null } })

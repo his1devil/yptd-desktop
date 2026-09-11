@@ -17,6 +17,9 @@ export const DEFAULT_SERVER: ServerConfig = {
   ws: 'wss://im.zhanghuanyang.com/ws',
 }
 
+/** 安装包的稳定地址（publish.sh 每次发版把 latest 链接指到新版）；邀请文案里写它 */
+export const DOWNLOADS = 'https://im.zhanghuanyang.com/dl/desktop/'
+
 /** OpenIM 的平台 id。服务端拿它做多端登录策略，每条消息也带着。 */
 export const PLATFORM_ID = 4 // macOS
 
@@ -36,6 +39,22 @@ export async function register(cfg: ServerConfig, invite: string, nickname: stri
   return post(`${cfg.server}/v1/register`, {
     invite_code: invite, nickname, ...(userID ? { user_id: userID } : {}), platform_id: PLATFORM_ID,
   })
+}
+
+export interface InviteCheck {
+  valid: boolean
+  reason: 'invalid' | 'unknown' | 'used' | 'expired' | null
+  expiresAt: number | null
+  /** 发这个码的人的昵称，服务端知道的话 */
+  invitedBy: string | null
+}
+
+/** 注册前先问一句这个码能不能用：抄错、用过、过期当场说清，不用填完名字再失败 */
+export async function checkInvite(cfg: ServerConfig, code: string): Promise<InviteCheck> {
+  const res = await window.desktop.http({ url: `${cfg.server}/v1/invites/check`, method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code }) })
+  check(res)
+  const r = JSON.parse(res.text) as { valid?: boolean; reason?: InviteCheck['reason']; expires_at?: number; invited_by?: string }
+  return { valid: !!r.valid, reason: r.reason ?? null, expiresAt: r.expires_at ?? null, invitedBy: r.invited_by ?? null }
 }
 
 export async function login(cfg: ServerConfig, deviceToken: string): Promise<AuthSession> {

@@ -1,6 +1,6 @@
 import type { MessageItem } from '@openim/wasm-client-sdk'
 import type {
-  AgentIdentity, Body, ConversationId, Message, MessageId, PixelSize, QuotePreview, Reaction,
+  AgentIdentity, Attachment, Body, ConversationId, Message, MessageId, PixelSize, QuotePreview, Reaction,
 } from '../../../shared/model'
 
 /**
@@ -66,9 +66,12 @@ export class Translator {
     const ct = raw.contentType
     if (ct >= ContentType.notificationFrom && ct <= ContentType.notificationTo) return null
     if (this.isReaction(raw)) return null
-    const body = this.body(raw)
+    let body = this.body(raw)
     if (!body) return null
 
+    // 文字和附件一条消息：附件在 ex 里；没打字时正文是给别的端看的占位（"[图片]"），这里不显示它
+    const rich = parseRich(raw.ex)
+    if (rich?.textless && body.kind === 'text') body = { kind: 'text', text: '' }
     const text = body.kind === 'text' ? body.text : ''
     const mentioned = raw.atTextElem?.atUserList ?? []
     const mentions = text.includes('@') ? (text.match(MENTION) ?? []) : []
@@ -87,6 +90,7 @@ export class Translator {
       sentAt: raw.sendTime ?? 0,
       seq: raw.seq ?? 0,
       body,
+      attachments: rich?.attachments ?? [],
       quote: this.quote(raw),
       reactions: this.reactionsOn(id),
       sendState: raw.status === 3 ? 'failed' : raw.status === 1 ? 'sending' : 'sent',
@@ -223,9 +227,51 @@ export function runOf(ex: string | undefined): string | null {
   return p && (p.yptd === 'pending' || p.yptd === 'run') && p.run ? p.run : null
 }
 
-function parseEx(ex: string | undefined): { yptd?: string; run?: string } | null {
+interface Ex { yptd?: string; run?: string; a?: RichAtt[]; t?: number }
+
+function parseEx(ex: string | undefined): Ex | null {
   if (!ex) return null
-  try { return JSON.parse(ex) as { yptd?: string; run?: string } } catch { return null }
+  try { return JSON.parse(ex) as Ex } catch { return null }
+}
+
+// ---- 文字 + 附件一条消息 ---------------------------------------------------------
+//
+// 消息本身还是文本（101/106），别的端和服务端照旧读到文字、@ 和引用；附件列表放在 ex：
+//   {"yptd":"rich","a":[{"k":"i","u":url,"n":name,"s":bytes,"w":W,"h":H},{"k":"f",…}],"t":1}
+// t=0 表示发的人没打字，正文是给不认识 ex 的端看的占位（"[图片]"），认识的端把它藏掉。
+
+/** ex 里一个附件：k 类型（i 图 / f 文件），u 地址，n 名字，s 字节，w/h 图片原始尺寸 */
+interface RichAtt { k: 'i' | 'f'; u: string; n: string; s: number; w?: number; h?: number }
+
+export function richEx(attachments: Attachment[], hasText: boolean): string {
+  const a: RichAtt[] = attachments.map((x) => ({
+    k: x.kind === 'image' ? 'i' : 'f', u: x.url, n: x.name, s: x.bytes,
+    ...(x.natural ? { w: x.natural.width, h: x.natural.height } : {}),
+  }))
+  return JSON.stringify({ yptd: 'rich', a, t: hasText ? 1 : 0 })
+}
+
+export function parseRich(ex: string | undefined): { attachments: Attachment[]; textless: boolean } | null {
+  const p = parseEx(ex)
+  if (!p || p.yptd !== 'rich' || !Array.isArray(p.a)) return null
+  const attachments: Attachment[] = []
+  for (const x of p.a) {
+    if (!x || typeof x.u !== 'string' || !x.u) continue
+    attachments.push({
+      kind: x.k === 'i' ? 'image' : 'file', url: x.u, name: typeof x.n === 'string' && x.n ? x.n : '文件', bytes: typeof x.s === 'number' ? x.s : 0,
+      natural: x.k === 'i' && typeof x.w === 'number' && typeof x.h === 'number' && x.w > 0 && x.h > 0 ? { width: x.w, height: x.h } : null,
+    })
+  }
+  return { attachments, textless: p.t === 0 }
+}
+
+/** 没打字时的正文：给不认识 ex 的端、会话列表和通知看 */
+export function placeholderFor(attachments: Attachment[]): string {
+  const images = attachments.filter((a) => a.kind === 'image').length
+  const parts: string[] = []
+  if (images) parts.push(images > 1 ? `[图片]×${images}` : '[图片]')
+  for (const a of attachments) if (a.kind === 'file') parts.push(`[文件] ${a.name}`)
+  return parts.join(' ') || '[附件]'
 }
 
 export function parseReaction(data: string | undefined): ReactionPayload | null {

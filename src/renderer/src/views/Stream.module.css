@@ -6,6 +6,11 @@
 .empty { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 0 40px; text-align: center; }
 .emptyTitle { font-size: 14px; font-weight: 600; letter-spacing: 0; }
 .emptyDesc { font-size: 12.5px; color: var(--ink3); }
+.starters { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 14px; max-width: 520px; }
+.starter { height: 30px; padding: 0 12px; border-radius: 99px; border: 1px solid var(--line2); background: var(--surface); font-size: 12.5px; color: var(--ink2); }
+.starter:hover { border-color: var(--accent); color: var(--ontint); background: var(--tint); }
+.retry { margin-top: 10px; height: 30px; padding: 0 14px; border-radius: 8px; border: 1px solid var(--line2); font-size: 12.5px; font-weight: 500; color: var(--ink2); }
+.retry:hover { background: var(--surface2); color: var(--ink); }
 
 /* 日期分隔：线 + 等宽药丸 + 线 */
 .day { display: flex; align-items: center; gap: 12px; padding: 6px 24px 14px; }
@@ -159,7 +164,14 @@
 
 /* 画廊：同一个人连发的图并排 */
 .gallery { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 3px; max-width: 760px; }
-.galleryItem { border-radius: 8px; overflow: hidden; border: 1px solid var(--line); background: var(--surface2); flex: none; }
+.galleryItem { border-radius: 8px; overflow: hidden; border: 1px solid var(--line); background: var(--surface2) center / cover no-repeat; flex: none; }
+/* 一条消息里的附件块：图的画廊 + 文件卡，竖着排 */
+.att { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; margin-top: 4px; }
+.attSending { opacity: .78; }
+.attFade { opacity: 0; transition: opacity var(--dur-slow) var(--ease-out); }
+.attLoaded { opacity: 1; }
+.bubble .att { margin-top: 6px; }
+.bubble .state { margin-top: 4px; }
 .galleryItem img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .galleryItem:hover { border-color: var(--line2); }
 .bubbleGallery { padding: 6px; background: transparent; border-color: transparent; }

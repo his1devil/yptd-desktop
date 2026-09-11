@@ -1,11 +1,13 @@
 import { create } from 'zustand'
-import type { Conversation, ConversationId, ConversationKind, Member, Message, MessageId, Person, Reaction } from '../../../shared/model'
-import { plainText } from '../../../shared/model'
+import type { Attachment, Conversation, ConversationId, ConversationKind, Member, Message, MessageId, OutgoingAttachment, Person, Reaction } from '../../../shared/model'
+import { summarize } from '../../../shared/model'
 import { DEFAULT_SERVER, clearCredential, loadCredential, login, register, roster, saveCredential, setServerAuth, AuthError, type ServerConfig } from '../im/auth'
 import { api } from '../im/api'
 import { im, SdkEvent, type ConversationItem, type GroupMemberItem, type MessageItem } from '../im/client'
-import { Translator, directId, reactionData } from '../im/translate'
+import { Translator, dayIndex, directId, placeholderFor, reactionData, richEx } from '../im/translate'
 import { Timeline } from '../im/timeline'
+import { mimeOf, objectName, rememberPreview } from '../im/files'
+import { composerBus } from '../views/composerBus'
 import { useUI } from './ui'
 
 /**
@@ -20,7 +22,7 @@ export type Phase =
   | { kind: 'signedOut' }
   | { kind: 'connecting'; what: string }
   | { kind: 'ready' }
-  | { kind: 'failed'; why: string }
+  | { kind: 'failed'; why: string; code?: string }
 
 interface SessionState {
   phase: Phase
@@ -45,10 +47,12 @@ interface SessionState {
   register(invite: string, nickname: string): Promise<void>
   signOut(): Promise<void>
   open(id: ConversationId): Promise<void>
+  /** 第一页还没到（或上次没到）就去拉；到过了什么都不做。消息流挂上来时调，重启后恢复的会话靠它加载。 */
+  ensure(id: ConversationId): Promise<void>
   loadOlder(id: ConversationId): Promise<void>
   send(id: ConversationId, text: string, opts?: { quote?: MessageId; mentions?: string[] }): Promise<void>
-  sendPicture(id: ConversationId, path: string): Promise<void>
-  sendFile(id: ConversationId, path: string, name: string): Promise<void>
+  /** 文字和附件一条消息：先在时间线上摆一条「发送中」，传完文件、发出去后换成服务端回显 */
+  sendRich(id: ConversationId, text: string, opts: { quote?: MessageId; mentions?: string[]; attachments: OutgoingAttachment[] }): Promise<void>
   react(id: ConversationId, target: MessageId, emoji: string): Promise<void>
   revoke(id: ConversationId, target: MessageId): Promise<void>
   loadMembers(groupID: string): Promise<void>
@@ -108,6 +112,8 @@ export const useSession = create<SessionState>()((set, get) => ({
       set({ hasCredential: true })
       return s
     })
+    // 新账号：主区先是欢迎页，打开任何会话就收起
+    if (get().phase.kind === 'ready') useUI.getState().setWelcome(true)
   },
 
   async signOut() {
@@ -116,17 +122,23 @@ export const useSession = create<SessionState>()((set, get) => ({
     try { await im.logout() } catch { /* 已经断了也无妨 */ }
     await clearCredential()
     timelines.clear()
+    firstPage.clear()
+    useUI.getState().resetAll()
     set({ phase: { kind: 'signedOut' }, hasCredential: false, conversations: [], members: {}, me: '', myName: '', connected: false })
   },
 
   async open(id) {
     useUI.getState().open(id, { agent: kindOf(id, get()) === 'agent_session' })
-    const t = timeline(id)
-    if (t.length === 0) await loadPage(set, get, id, '')
+    await get().ensure(id)
     const c = get().conversations.find((x) => x.id === id)
     // 还没聊过的会话（从名册点开的 agent）在 SDK 里不存在，标已读会报错
     if (c) void im.markRead(id).then(() => refreshConversations(set, get)).catch(() => {})
     if (c?.groupID && !get().members[c.groupID]) void get().loadMembers(c.groupID)
+  },
+
+  async ensure(id) {
+    const t = timeline(id)
+    if (t.status === 'idle' || t.status === 'failed') await loadPage(set, get, id, '')
   },
 
   async loadOlder(id) {
@@ -137,53 +149,38 @@ export const useSession = create<SessionState>()((set, get) => ({
   },
 
   async send(id, text, opts) {
-    const c = get().conversations.find((x) => x.id === id)
-    const to = c?.groupID ? { groupID: c.groupID } : { userID: c?.peerID ?? peerFrom(id, get().me) }
     try {
-      let quoted: MessageItem | undefined
-      if (opts?.quote) {
-        const found = await im.find(id, [opts.quote])
-        // findMessageList 回的是 findResultItems，不是 searchResultItems（那是 searchLocalMessages 的）
-        quoted = found.findResultItems?.[0]?.messageList?.[0]
-      }
-      let created: MessageItem
-      if (opts?.mentions?.length) {
-        const names = Object.fromEntries(get().roster.map((p) => [p.userID, p.nickname]))
-        created = await im.createAt(text, opts.mentions, names, quoted)
-      } else if (quoted) {
-        created = await im.createQuote(text, quoted)
-      } else {
-        created = await im.createText(text)
-      }
-      const echo = await im.send(created, to)
+      const echo = await im.send(await composeText(get, id, text, opts), recipientOf(get, id))
       absorb(set, get, translator.messages([echo]), id)
     } catch (e) {
       set({ notice: `发送失败：${describe(e)}` })
     }
   },
 
-  async sendPicture(id, path) {
-    const c = get().conversations.find((x) => x.id === id)
-    const to = c?.groupID ? { groupID: c.groupID } : { userID: c?.peerID ?? peerFrom(id, get().me) }
+  async sendRich(id, text, opts) {
+    const local = localMessage(get, id, text, opts.attachments, opts.quote)
+    timeline(id).upsert(local)
+    bump(set)
     try {
-      const created = await im.createImage(path)
-      if (!created) throw new Error('这个文件建不出图片消息')
-      const echo = await im.send(created, to)
+      // 逐个传：地址回来了才能写进消息；对象名带唯一前缀，同名文件不会互相覆盖
+      const uploaded: Attachment[] = []
+      for (const a of opts.attachments) {
+        const { url } = await im.upload(a.path, objectName(a.name), a.mime, 'attachment')
+        rememberPreview(url, a.preview)
+        uploaded.push({ kind: a.kind, url, name: a.name, bytes: a.bytes, natural: a.natural })
+      }
+      // 正文还是文本消息：服务端和别的端照旧读到文字和 @；附件在 ex 里。没打字就放个占位
+      const created = await composeText(get, id, text.trim() ? text : placeholderFor(uploaded), opts)
+      created.ex = richEx(uploaded, !!text.trim())
+      const echo = await im.send(created, recipientOf(get, id))
+      timeline(id).remove(local.id)
       absorb(set, get, translator.messages([echo]), id)
     } catch (e) {
-      set({ notice: `图片没发出去：${describe(e)}` })
-    }
-  },
-
-  async sendFile(id, path, name) {
-    const c = get().conversations.find((x) => x.id === id)
-    const to = c?.groupID ? { groupID: c.groupID } : { userID: c?.peerID ?? peerFrom(id, get().me) }
-    try {
-      const created = await im.createFile(path, name)
-      const echo = await im.send(created, to)
-      absorb(set, get, translator.messages([echo]), id)
-    } catch (e) {
-      set({ notice: `文件没发出去：${describe(e)}` })
+      timeline(id).remove(local.id)
+      bump(set)
+      set({ notice: `发送失败：${describe(e)}` })
+      // 文字和文件原样回到输入框，人改一改再发，不用重新找文件
+      composerBus.restore(id, { text, attachments: opts.attachments, quote: opts.quote ?? null })
     }
   },
 
@@ -279,6 +276,44 @@ export const useSession = create<SessionState>()((set, get) => ({
   },
 }))
 
+function recipientOf(get: Get, id: ConversationId): { groupID?: string; userID?: string } {
+  const c = get().conversations.find((x) => x.id === id)
+  return c?.groupID ? { groupID: c.groupID } : { userID: c?.peerID ?? peerFrom(id, get().me) }
+}
+
+/** 建一条文本消息：有 @ 走 at 消息（引用塞在里面），只有引用走 quote 消息，否则纯文本 */
+async function composeText(get: Get, id: ConversationId, text: string, opts?: { quote?: MessageId; mentions?: string[] }): Promise<MessageItem> {
+  let quoted: MessageItem | undefined
+  if (opts?.quote) {
+    const found = await im.find(id, [opts.quote])
+    // findMessageList 回的是 findResultItems，不是 searchResultItems（那是 searchLocalMessages 的）
+    quoted = found.findResultItems?.[0]?.messageList?.[0]
+  }
+  if (opts?.mentions?.length) {
+    const names = Object.fromEntries(get().roster.map((p) => [p.userID, p.nickname]))
+    return im.createAt(text, opts.mentions, names, quoted)
+  }
+  if (quoted) return im.createQuote(text, quoted)
+  return im.createText(text)
+}
+
+let localSeq = 0
+/** 发送中的那条：先摆在时间线末尾，图用本机缩略图。回显到了就把它换掉 */
+function localMessage(get: Get, id: ConversationId, text: string, attachments: OutgoingAttachment[], quote?: MessageId): Message {
+  const s = get()
+  const now = Date.now()
+  const q = quote ? timeline(id).get(quote) : undefined
+  return {
+    id: `local_${now}_${++localSeq}`, conversation: id, sender: s.me, senderName: s.myName || s.me,
+    senderAvatar: s.avatars[s.me] ?? s.myAvatar, sentAt: now, seq: Number.MAX_SAFE_INTEGER,
+    body: { kind: 'text', text },
+    attachments: attachments.map((a) => ({ kind: a.kind, url: a.preview ?? '', name: a.name, bytes: a.bytes, natural: a.natural })),
+    quote: q ? { messageId: q.id, senderID: q.sender, senderName: q.senderName, excerpt: summarize(q).replace(/\s*\n\s*/g, ' ') } : null,
+    reactions: [], sendState: 'sending', mentionsMe: false, isAgent: false, agentTag: null, transient: false, runID: null,
+    mentions: [], agentMentions: [], dayIndex: dayIndex(now),
+  }
+}
+
 /** 一个会话没了（退群/解散）：列表里去掉，正看着它就退到空 */
 function dropConversation(set: Set, get: Get, id: ConversationId): void {
   timelines.delete(id)
@@ -319,7 +354,8 @@ async function connect(set: Set, get: Get, authenticate: () => Promise<{ userID:
     await refreshConversations(set, get)
     void loadAvatars(set, people.map((p) => p.userID))
   } catch (e) {
-    set({ phase: { kind: 'failed', why: describe(e) } })
+    // 错误码留给登录页：怪邀请码的退回第一步，怪名字的留在第二步
+    set({ phase: { kind: 'failed', why: describe(e), code: e instanceof AuthError ? e.code : undefined } })
   }
 }
 
@@ -353,6 +389,11 @@ function subscribe(set: Set, get: Get): void {
       const current = useUI.getState().conversationId
       const c = current ? get().conversations.find((x) => x.id === current) : undefined
       if (c?.groupID) void get().loadMembers(c.groupID)
+      // 同步前拉到的第一页可能是本地库里的空页；同步完了、还是空的就再要一次
+      if (current && timeline(current).length === 0 && timeline(current).status === 'ready') {
+        timeline(current).status = 'idle'
+        void get().ensure(current)
+      }
     }),
     im.on(SdkEvent.OnSyncServerFailed, () => set({ syncing: false })),
     im.on(SdkEvent.OnConversationChanged, () => void refreshConversations(set, get)),
@@ -428,18 +469,33 @@ async function refreshConversations(set: Set, get: Get): Promise<void> {
   }
 }
 
+/** 正在路上的第一页，按会话记：open() 和消息流挂载会同时要，只发一次请求 */
+const firstPage = new Map<ConversationId, Promise<void>>()
+
 async function loadPage(set: Set, get: Get, id: ConversationId, before: string): Promise<void> {
-  try {
-    const page = await im.history(id, before, PAGE)
-    const msgs = translator.messages(page.messageList ?? [])
-    const t = timeline(id)
-    if (before) t.prepend(msgs); else for (const m of msgs) t.upsert(m)
-    t.hasMore = !page.isEnd && msgs.length > 0
-    applyReactionChanges(set, get)
-    bump(set)
-  } catch (e) {
-    set({ notice: `加载历史失败：${describe(e)}` })
+  const t = timeline(id)
+  if (!before) {
+    const running = firstPage.get(id)
+    if (running) return running
   }
+  const work = (async () => {
+    if (!before) { t.status = 'loading'; t.error = null; bump(set) }
+    try {
+      const page = await im.history(id, before, PAGE)
+      const msgs = translator.messages(page.messageList ?? [])
+      if (before) t.prepend(msgs); else for (const m of msgs) t.upsert(m)
+      t.hasMore = !page.isEnd && msgs.length > 0
+      if (!before) t.status = 'ready'
+      applyReactionChanges(set, get)
+      bump(set)
+    } catch (e) {
+      // 第一页没到：消息流上画出来并给「重试」，别只弹一句就留一屏骨架
+      if (!before) { t.status = 'failed'; t.error = describe(e); bump(set) }
+      else set({ notice: `加载历史失败：${describe(e)}` })
+    }
+  })()
+  if (!before) { firstPage.set(id, work); void work.finally(() => firstPage.delete(id)) }
+  return work
 }
 
 function absorb(set: Set, get: Get, msgs: Message[], into?: ConversationId): void {
@@ -468,7 +524,7 @@ function maybeNotify(get: Get, m: Message): void {
   const direct = m.conversation.startsWith('si_')
   if (!m.mentionsMe && !direct) return
   const title = direct ? m.senderName : `${m.senderName} 在 #${c?.title ?? '频道'}`
-  const n = new Notification(title, { body: plainText(m.body).slice(0, 140), silent: false })
+  const n = new Notification(title, { body: summarize(m).slice(0, 140), silent: false })
   n.onclick = () => { window.focus(); void get().open(m.conversation) }
 }
 
@@ -514,7 +570,7 @@ export function kindOf(id: ConversationId, s: Pick<SessionState, 'conversations'
 function previewOf(latest: MessageItem): string {
   const m = translator.message(latest)
   if (!m) return ''
-  return plainText(m.body).replace(/\s*\n\s*/g, ' ').slice(0, 80)
+  return summarize(m).replace(/\s*\n\s*/g, ' ').slice(0, 80)
 }
 
 function safeParse(s: string): MessageItem | null {

@@ -48,6 +48,9 @@ const bridge: DesktopBridge = {
     pathFor: (file) => webUtils.getPathForFile(file),
     thumbnail: (path) => ipcRenderer.invoke(IPC.fileThumbnail, path),
   },
+  clipboard: {
+    readText: () => ipcRenderer.invoke(IPC.clipboardReadText),
+  },
 }
 
 contextBridge.exposeInMainWorld('desktop', bridge)

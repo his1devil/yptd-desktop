@@ -10,6 +10,7 @@ import { composerBus } from '../views/composerBus'
 import { Inbox } from '../views/Inbox'
 import { Settings } from '../views/Settings'
 import { Stream } from '../views/Stream'
+import { Welcome } from '../views/Welcome'
 import styles from './MainArea.module.css'
 
 /**
@@ -20,6 +21,7 @@ export function MainArea() {
   const section = useUI((s) => s.section)
   const conversationId = useUI((s) => s.conversationId)
   const place = usePlace(conversationId)
+  const welcome = useUI((s) => s.welcome)
   const [dragging, setDragging] = useState(false)
 
   if (section === 'inbox') return <main className={styles.main}><Inbox /></main>
@@ -38,7 +40,7 @@ export function MainArea() {
     composerBus.attach([...e.dataTransfer.files])
   }
 
-  if (!place) return <main className={styles.main}><Landing /></main>
+  if (!place) return <main className={styles.main}>{welcome ? <Welcome /> : <Landing />}</main>
 
   return (
     <main className={styles.main} onDragOver={onDragOver} onDragLeave={() => setDragging(false)} onDrop={onDrop}>

@@ -78,7 +78,7 @@ function Header({ title, action }: { title: string; action?: ReactNode }) {
   )
 }
 
-function Group({ title, children, empty }: { title: string; children: ReactNode[]; empty?: string }) {
+function Group({ title, children, empty }: { title: string; children: ReactNode[]; empty?: ReactNode }) {
   return (
     <section className={styles.group}>
       <div className={`${styles.groupTitle} mono`}>{title}</div>
@@ -134,10 +134,10 @@ function ChatList() {
     <>
       <Header title="会话" action={<button className={styles.headBtn} title="新建频道" onClick={() => useUI.getState().openDialog({ kind: 'newChannel' })}><IconPlus /></button>} />
       <div className={styles.scroll}>
-        <Group title="频道 CHANNELS" empty="还没有频道">
+        <Group title="频道 CHANNELS" empty={<>还没有频道 · <button className={styles.emptyAction} onClick={() => useUI.getState().openDialog({ kind: 'newChannel' })}>新建一个</button></>}>
           {channels.map((c) => <ConversationItem key={c.id} c={c} active={c.id === conversationId} />)}
         </Group>
-        <Group title="私聊 DIRECT" empty="还没有私聊">
+        <Group title="私聊 DIRECT" empty={<>还没有私聊 · <button className={styles.emptyAction} onClick={() => useUI.getState().setPalette(true)}>⌘K 找人</button></>}>
           {dms.map((c) => <ConversationItem key={c.id} c={c} active={c.id === conversationId} />)}
         </Group>
         <Group title="AGENTS">

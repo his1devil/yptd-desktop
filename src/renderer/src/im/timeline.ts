@@ -6,10 +6,16 @@ import type { Message, MessageId } from '../../../shared/model'
  * 几千条消息里找一条、改一条（回应、撤回）都是 O(1)；新消息到达是追加，
  * 不是整个数组重排。往上翻一页是一次拼接。
  */
+export type TimelineStatus = 'idle' | 'loading' | 'ready' | 'failed'
+
 export class Timeline {
   private items: Message[] = []
   private index = new Map<MessageId, number>()
   hasMore = true
+  /** 第一页到了没：idle 还没要过，loading 在路上，ready 到了（可能是空的），failed 没到。
+   *  消息流按它决定画骨架、画空态还是画「重试」——不能用 hasMore 猜，猜错就是永远的骨架。 */
+  status: TimelineStatus = 'idle'
+  error: string | null = null
 
   get messages(): readonly Message[] { return this.items }
   get length(): number { return this.items.length }

@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, ipcMain, nativeImage, net, safeStorage, session, shell } from 'electron'
+import { app, BrowserWindow, clipboard, dialog, ipcMain, nativeImage, net, safeStorage, session, shell } from 'electron'
 import { mkdirSync, readFileSync, statSync, unlinkSync, writeFileSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { IPC, type HttpRequest, type HttpResponse, type StreamBatch } from '../shared/ipc'
@@ -126,7 +126,8 @@ ipcMain.handle(IPC.dialogPickFiles, async (e, kind: 'image' | 'any') => {
 ipcMain.handle(IPC.fileThumbnail, (_e, path: string) => {
   try {
     const img = nativeImage.createFromPath(path)
-    if (img.isEmpty()) return null
+    // 不是图：没有缩略图，但大小还是要的（文件卡上显示）
+    if (img.isEmpty()) return { dataURL: '', width: 0, height: 0, bytes: statSync(path).size }
     const { width, height } = img.getSize()
     const scale = Math.min(1, 320 / Math.max(width, height))
     const small = scale < 1 ? img.resize({ width: Math.round(width * scale), height: Math.round(height * scale), quality: 'good' }) : img
@@ -140,6 +141,9 @@ ipcMain.handle(IPC.fileStash, (_e, name: string, bytes: ArrayBuffer | Uint8Array
   writeFileSync(file, Buffer.from(bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes)))
   return file
 })
+
+// 登录页预填邀请码用；渲染进程读剪贴板要权限弹窗，主进程不用
+ipcMain.handle(IPC.clipboardReadText, () => clipboard.readText())
 
 // 开发用：YPTD_DEV_CDP=9222 开远程调试口，联调脚本能在页面里跑 JS、截图。打包后不认。
 if (!app.isPackaged && process.env.YPTD_DEV_CDP) app.commandLine.appendSwitch('remote-debugging-port', process.env.YPTD_DEV_CDP)

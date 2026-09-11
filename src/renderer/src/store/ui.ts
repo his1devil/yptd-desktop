@@ -40,6 +40,8 @@ interface UIState {
   notifications: boolean
   /** 搜索结果要跳到的那条消息；消息流看到它在时间线里就滚过去并清掉 */
   jumpTo: { conversationId: string; messageId: string } | null
+  /** 新账号第一次进来：主区先放欢迎页。打开任何会话或点「先逛逛」就收起；持久化，没收起前重启还在 */
+  welcome: boolean
 
   setTheme(theme: Theme): void
   toggleTheme(): void
@@ -61,6 +63,11 @@ interface UIState {
   setJumpTo(target: { conversationId: string; messageId: string } | null): void
   /** 离开/解散了一个频道：正看着它就退到空 */
   forgetConversation(conversationId: string): void
+  setWelcome(on: boolean): void
+  /** 设置里「再看一遍」：回到会话区、主区清空、放欢迎页 */
+  showWelcome(): void
+  /** 退出登录：上个账号留下的位置、引用、页签都不该带给下一个 */
+  resetAll(): void
 }
 
 export const INSPECTOR_MIN = 300
@@ -87,6 +94,7 @@ export const useUI = create<UIState>()(
       inboxFilter: 'all',
       notifications: true,
       jumpTo: null,
+      welcome: false,
 
       setTheme: (theme) => {
         applyTheme(theme)
@@ -111,6 +119,7 @@ export const useUI = create<UIState>()(
           // 否则主区还是设置页，什么都没发生
           section: opts?.section ?? (s.section === 'chat' || s.section === 'agent' ? s.section : 'chat'),
           lastChannelId: isAgent ? s.lastChannelId : conversationId,
+          welcome: false,
         }))
       },
 
@@ -152,6 +161,12 @@ export const useUI = create<UIState>()(
           conversationId: s.conversationId === conversationId ? null : s.conversationId,
           lastChannelId: s.lastChannelId === conversationId ? null : s.lastChannelId,
         })),
+      setWelcome: (welcome) => set({ welcome }),
+      showWelcome: () => set({ welcome: true, section: 'chat', conversationId: null }),
+      resetAll: () => set({
+        section: 'chat', conversationId: null, lastChannelId: null, inspectorTabsBy: {}, inspectorTab: null,
+        quoteBy: {}, dialog: null, paletteOpen: false, jumpTo: null, welcome: false,
+      }),
     }),
     {
       name: 'yptd.ui',
@@ -170,6 +185,7 @@ export const useUI = create<UIState>()(
         conversationId: s.conversationId,
         section: s.section,
         notifications: s.notifications,
+        welcome: s.welcome,
       }),
     },
   ),

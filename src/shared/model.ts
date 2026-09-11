@@ -56,6 +56,30 @@ export type Body =
 
 export type SendState = 'sending' | 'sent' | 'failed'
 
+/**
+ * 随消息一起发的文件。一条消息可以带几张图和几个文件，它们和文字是同一条消息，
+ * 而不是各发一条——渲染成一段：文字、并排的图、文件卡。
+ */
+export interface Attachment {
+  kind: 'image' | 'file'
+  url: string
+  name: string
+  bytes: number
+  /** 图片的原始尺寸。发送前就量好放进消息里，收到的一端不用等图片加载就能排版 */
+  natural: PixelSize | null
+}
+
+/** 输入框里还没发出去的附件：有本机路径（交给 SDK 上传）和一张缩略图（发出去之前先显示它） */
+export interface OutgoingAttachment {
+  kind: 'image' | 'file'
+  name: string
+  path: string
+  bytes: number
+  mime: string
+  natural: PixelSize | null
+  preview: string | null
+}
+
 export interface Message {
   id: MessageId
   conversation: ConversationId
@@ -65,6 +89,8 @@ export interface Message {
   sentAt: number
   seq: number
   body: Body
+  /** 和文字同一条消息里的图和文件；普通消息是空数组 */
+  attachments: Attachment[]
   quote: QuotePreview | null
   reactions: Reaction[]
   sendState: SendState
@@ -105,4 +131,15 @@ export const plainText = (b: Body): string => {
     case 'file': return b.name
     case 'unsupported': return b.label
   }
+}
+
+/** 一条消息的一句话：正文，加上附件的占位——会话列表、通知、复制、引用都用它 */
+export function summarize(m: Pick<Message, 'body' | 'attachments'>): string {
+  const parts: string[] = []
+  const text = plainText(m.body).trim()
+  if (text) parts.push(text)
+  const images = m.attachments.filter((a) => a.kind === 'image').length
+  if (images) parts.push(images > 1 ? `[图片]×${images}` : '[图片]')
+  for (const a of m.attachments) if (a.kind === 'file') parts.push(`[文件] ${a.name}`)
+  return parts.join(' ')
 }

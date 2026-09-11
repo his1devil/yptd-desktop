@@ -106,3 +106,15 @@
 .recoverActions { display: flex; align-items: center; gap: 10px; }
 .ghost { height: 32px; padding: 0 14px; border-radius: 8px; border: 1px solid var(--line2); font-size: 13px; font-weight: 500; color: var(--ink2); }
 .ghost:hover { background: var(--surface2); color: var(--ink); }
+
+/* 三步走：做完的步骤打勾，当前的高亮；卡片底部一行说明 */
+.stepDone { color: var(--ink2); }
+.stepDone .stepNo { background: var(--tint); color: var(--ontint); border-color: var(--tint); }
+.stepsFoot { margin-top: auto; font-size: 11px; color: var(--ink3); }
+.kicker { font-size: 10.5px; font-weight: 600; letter-spacing: .1em; color: var(--ontint); margin-bottom: 10px; }
+.codeInput { font-size: 16px; letter-spacing: .08em; }
+.whoRow { display: flex; align-items: flex-end; gap: 14px; margin-bottom: 16px; }
+.whoRow .field { margin-bottom: 0; }
+.grow { flex: 1; }
+.actionBtns { display: flex; gap: 8px; flex: none; }
+.content { animation: global(rl-fade) var(--dur) var(--ease-out) both; }

@@ -1,0 +1,33 @@
+.wrap { flex: 1; min-height: 0; overflow-y: auto; display: flex; justify-content: center; padding: 48px 40px; animation: global(rl-fade) var(--dur) var(--ease-out) both; }
+.col { width: 100%; max-width: 720px; display: flex; flex-direction: column; }
+.eyebrow { font-size: 10.5px; font-weight: 600; letter-spacing: .1em; color: var(--ontint); }
+.title { margin: 10px 0 0; font-size: 26px; font-weight: 600; letter-spacing: -.02em; line-height: 1.2; }
+.lead { margin: 10px 0 0; font-size: 13.5px; line-height: 1.7; color: var(--ink2); max-width: 520px; text-wrap: pretty; }
+
+.tips { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 26px; }
+.tip { display: flex; flex-direction: column; gap: 8px; padding: 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); animation: global(rl-rise) var(--dur-slow) var(--ease-out) both; }
+.tip:nth-child(2) { animation-delay: 40ms; }
+.tip:nth-child(3) { animation-delay: 80ms; }
+.tipIcon { width: 28px; height: 28px; border-radius: 7px; background: var(--tint); color: var(--ontint); display: flex; align-items: center; justify-content: center; }
+.tipTitle { font-size: 13px; font-weight: 600; line-height: 1.4; text-wrap: balance; }
+.tipDesc { font-size: 12px; line-height: 1.6; color: var(--ink3); text-wrap: pretty; }
+
+.section { margin-top: 30px; font-size: 10.5px; font-weight: 600; letter-spacing: .1em; color: var(--ink3); }
+.agents { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 12px; }
+.agent { display: flex; align-items: flex-start; gap: 12px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+.agent:hover { border-color: var(--line2); box-shadow: var(--sh); }
+.agentText { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.agentHead { display: flex; align-items: center; gap: 8px; }
+.agentName { font-size: 13.5px; font-weight: 600; }
+.agentTag { font-size: 9.5px; font-weight: 700; letter-spacing: .07em; color: var(--agent); background: var(--atint); padding: 1px 6px; border-radius: 4px; }
+.agentDesc { font-size: 12px; line-height: 1.55; color: var(--ink2); text-wrap: pretty; }
+.agentGo { flex: none; align-self: center; height: 28px; padding: 0 11px; border-radius: 7px; border: 1px solid var(--line2); font-size: 12px; font-weight: 500; color: var(--ink2); }
+.agentGo:hover { border-color: var(--accent); color: var(--ontint); background: var(--tint); }
+
+.foot { margin-top: 30px; padding-top: 18px; border-top: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.footText { font-size: 12px; line-height: 1.6; color: var(--ink3); max-width: 380px; text-wrap: pretty; }
+.footBtns { display: flex; gap: 8px; flex: none; }
+.ghost { height: 31px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--line2); font-size: 12.5px; font-weight: 500; color: var(--ink2); }
+.ghost:hover { background: var(--surface2); color: var(--ink); }
+.primary { height: 31px; padding: 0 14px; border-radius: 8px; background: var(--accent); color: var(--onacc); font-size: 12.5px; font-weight: 600; }
+.primary:hover { background: var(--accent2); }

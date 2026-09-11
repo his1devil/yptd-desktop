@@ -81,3 +81,5 @@
 .scroll { animation: global(rl-fade) var(--dur-fast) var(--ease-out) both; }
 .item { transition: background-color var(--dur-fast), color var(--dur-fast); }
 .side { transition: background-color var(--dur-slow), border-color var(--dur-slow); }
+.emptyAction { color: var(--ontint); font-size: inherit; font-weight: 500; }
+.emptyAction:hover { text-decoration: underline; }

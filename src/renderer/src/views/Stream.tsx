@@ -1,10 +1,12 @@
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { useVirtualizer, type VirtualItem, type Virtualizer } from '@tanstack/react-virtual'
-import type { Message, MessageId, PixelSize, QuotePreview } from '../../../shared/model'
-import { plainText } from '../../../shared/model'
+import type { Attachment, Message, MessageId, PixelSize, QuotePreview } from '../../../shared/model'
+import { summarize } from '../../../shared/model'
 import { Avatar, glyphOf, pairOf } from '../components/Avatar'
 import { IconCopy, IconEmoji, IconFile, IconHandoff, IconMore, IconQuote, IconUndo } from '../components/Icons'
+import { previewFor } from '../im/files'
 import { visible } from '../im/timeline'
+import { useAgentProfiles } from '../store/agents'
 import type { Place } from '../store/selectors'
 import { timeline, useSession } from '../store/session'
 import { useUI } from '../store/ui'
@@ -26,6 +28,8 @@ import styles from './Stream.module.css'
 const QUICK = ['👍', '✅', '👀'] as const
 export const EMOJI = ['👍', '✅', '👀', '🎯', '🙏', '🔥', '🚀', '⚡', '😂', '🤔', '👏', '❤️', '🎉', '😮', '😢', '💯', '🫡', '👌', '🤝', '🧐', '☕', '🐛', '✨', '📌']
 const TOP_PAD = 14
+/** 和 agent 还没聊过时给的几句开场，点一下进输入框 */
+const STARTERS = ['你能帮我做什么？', '用三句话介绍你自己', '帮我看看这个：']
 
 // 估高只用于第一次布局，量过之后按真实高度
 function estimate(row: Row): number {
@@ -34,12 +38,23 @@ function estimate(row: Row): number {
   if (row.kind === 'gallery') return 52 + 180 * Math.ceil(row.messages.length / 4)
   const m = row.message
   let h = 52
+  h += attachmentsHeight(m.attachments)
   if (m.runID) h += 96
   if (m.body.kind === 'text') h += Math.ceil(m.body.text.length / 70) * 22
   else if (m.body.kind === 'picture') h += (fit(m.body.natural)?.height ?? 220) + 6
   else h += 56
   if (m.quote) h += 34
   if (m.reactions.length) h += 34
+  return h
+}
+
+/** 附件块的估高：图按画廊那套（≤2 张 200 高，更多 150 高，一行最多 4 张），文件卡 58 一张 */
+function attachmentsHeight(a: Attachment[]): number {
+  const imgs = a.filter((x) => x.kind === 'image').length
+  const files = a.length - imgs
+  let h = 0
+  if (imgs) h += (imgs <= 2 ? 200 : 150) * Math.ceil(imgs / 4) + 6
+  if (files) h += files * 58
   return h
 }
 
@@ -67,6 +82,8 @@ export function Stream({ place }: { place: Place }) {
   const me = useSession((s) => s.me)
   const loadingOlder = useSession((s) => s.loadingOlder)
   const setQuote = useUI((s) => s.setQuote)
+  const profiles = useAgentProfiles()
+  const agentDesc = harness ? profiles?.find((p) => p.userID === place.peer?.userID)?.description : undefined
   // eslint-disable-next-line react-hooks/exhaustive-deps -- tick 是时间线的版本号
   const rows = useMemo(() => buildRows(visible(timeline(id).messages)), [id, tick])
   const [popover, setPopover] = useState<Popover | null>(null)
@@ -76,6 +93,10 @@ export function Stream({ place }: { place: Place }) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const atBottom = useRef(true)
   const requesting = useRef(false)
+
+  // 第一页：点会话打开的路径已经在拉了，这里兜住另一条——重启后从上次的会话直接挂上来，
+  // 没人点过它。ensure 是幂等的，拉过就不会再拉。
+  useEffect(() => { void useSession.getState().ensure(id) }, [id])
 
   // 进场动效。第一批到屏幕上的行按从上到下的次序错开 22ms 依次浮起——"瀑布"；
   // 之后新来的消息各自浮起一次；往上翻出来的历史不动（它不是新东西）。
@@ -168,7 +189,7 @@ export function Stream({ place }: { place: Place }) {
   const revoke = useCallback((mid: MessageId) => { void useSession.getState().revoke(id, mid) }, [id])
   const copy = useCallback((mid: MessageId) => {
     const m = timeline(id).get(mid)
-    if (m) void navigator.clipboard.writeText(plainText(m.body))
+    if (m) void navigator.clipboard.writeText(summarize(m))
   }, [id])
   const openPopover = useCallback<Anchor>((mid, kind, rect) => setPopover({ id: mid, kind, anchor: rect }), [])
   const closePopover = useCallback(() => setPopover(null), [])
@@ -199,18 +220,31 @@ export function Stream({ place }: { place: Place }) {
     else { jumpTries.current = 0; setJumpTo(null) }
   }, [jumpTo, rows, id, jump, maybeLoadOlder, setJumpTo])
 
-  const empty = rows.length === 0 && !timeline(id).hasMore
-  const loading = rows.length === 0 && timeline(id).hasMore
+  const status = timeline(id).status
+  const failed = rows.length === 0 && status === 'failed'
+  const empty = rows.length === 0 && status === 'ready'
+  const loading = rows.length === 0 && !failed && !empty
 
   return (
     <div className={styles.wrap}>
       <div ref={scrollRef} className={styles.scroll} onScroll={onScroll}>
         {loading ? (
           <Skeleton harness={harness} />
+        ) : failed ? (
+          <div className={styles.empty}>
+            <div className={styles.emptyTitle}>消息没加载出来</div>
+            <div className={styles.emptyDesc}>{timeline(id).error}</div>
+            <button className={styles.retry} onClick={() => void useSession.getState().ensure(id)}>重试</button>
+          </div>
         ) : empty ? (
           <div className={styles.empty}>
             <div className={styles.emptyTitle}>{harness ? `和 ${place.title} 的对话从这里开始` : '这里还没有消息'}</div>
-            <div className={styles.emptyDesc}>{harness ? '直接说要做什么，回答会出现在这里。' : '说点什么，或者 @ 一个 agent 派活。'}</div>
+            <div className={styles.emptyDesc}>{harness ? (agentDesc || '直接说要做什么，回答会出现在这里。') : '说点什么，或者 @ 一个 agent 派活。'}</div>
+            {harness && (
+              <div className={styles.starters}>
+                {STARTERS.map((s) => <button key={s} className={styles.starter} onClick={() => composerBus.insert(s)}>{s}</button>)}
+              </div>
+            )}
           </div>
         ) : (
           <div className={styles.inner} style={{ height: total }}>
@@ -376,6 +410,7 @@ const MessageRow = memo(function MessageRow({ message: m, gallery, pinned, flash
         ) : (
           <Body message={m} onImage={onImage} />
         )}
+        {m.attachments.length > 0 && <Attachments message={m} onImage={onImage} />}
         {m.reactions.length > 0 && (
           <div className={styles.rx}>
             {m.reactions.map((r) => (
@@ -406,6 +441,8 @@ function Body({ message: m, onImage, large }: { message: Message; onImage(shot: 
   const b = m.body
   switch (b.kind) {
     case 'text':
+      // 只有附件、没打字的消息：正文是空的，不占一行
+      if (!b.text) return null
       return (
         <div className={`${styles.text} ${large ? styles.textLg : ''}`}>
           <Rich text={b.text} mentions={m.mentions} agentMentions={m.agentMentions} />
@@ -432,6 +469,56 @@ function Body({ message: m, onImage, large }: { message: Message; onImage(shot: 
     case 'unsupported':
       return <div className={styles.unsupported}>{b.label}</div>
   }
+}
+
+/**
+ * 一条消息里的附件：图并排成画廊（按原始尺寸排版，不等图加载），文件是卡。
+ * 发送中的那条：图是本机缩略图；回显换成服务端地址时，缩略图铺在底下，真图加载完淡入，不闪。
+ */
+function Attachments({ message: m, onImage }: { message: Message; onImage(shot: Shot): void }) {
+  const imgs = m.attachments.filter((a) => a.kind === 'image')
+  const files = m.attachments.filter((a) => a.kind === 'file')
+  const sending = m.sendState === 'sending'
+  const h = imgs.length <= 2 ? 200 : 150
+  return (
+    <div className={`${styles.att} ${sending ? styles.attSending : ''}`}>
+      {imgs.length > 0 && (
+        <div className={styles.gallery}>
+          {imgs.map((a, i) => {
+            const w = a.natural && a.natural.height > 0 ? Math.min(h * 2, Math.max(Math.round(h * 0.55), Math.round(h * a.natural.width / a.natural.height))) : h
+            const under = previewFor(a.url)
+            return (
+              <button
+                key={i} className={styles.galleryItem} title={a.name}
+                style={{ width: w, height: h, backgroundImage: under ? `url(${under})` : undefined }}
+                onClick={() => { if (!sending) onImage({ url: a.url, name: a.name }) }}
+              >
+                <img
+                  src={a.url} alt={a.name} draggable={false} loading="lazy"
+                  className={under ? styles.attFade : undefined}
+                  onLoad={(e) => { if (under) e.currentTarget.classList.add(styles.attLoaded ?? '') }}
+                />
+              </button>
+            )
+          })}
+        </div>
+      )}
+      {files.map((a, i) => {
+        const inner = (
+          <>
+            <span className={styles.fileIcon}><IconFile /></span>
+            <span className={styles.fileText}>
+              <span className={styles.fileName}>{a.name}</span>
+              <span className={`${styles.fileMeta} mono`}>{sending ? '上传中…' : bytes(a.bytes)}</span>
+            </span>
+          </>
+        )
+        return sending
+          ? <span key={i} className={styles.file}>{inner}</span>
+          : <a key={i} className={styles.file} href={a.url} target="_blank" rel="noreferrer" title="在浏览器里下载">{inner}</a>
+      })}
+    </div>
+  )
 }
 
 /** 几张图并排：统一 180 高，按各自比例给宽，装不下就换行。点开全屏。 */
@@ -468,11 +555,15 @@ interface TurnProps {
 
 const Turn = memo(function Turn({ message: m, gallery, mine, flash, onCopy, onQuote, onImage }: TurnProps) {
   if (mine) {
+    // 只有图没有字：泡泡退成透明，图自己就是消息
+    const bare = !!gallery || (m.body.kind === 'text' && !m.body.text && m.attachments.length > 0 && !m.quote)
     return (
       <div className={`${styles.turnUser} ${flash ? styles.flash : ''}`}>
-        <div className={`${styles.bubble} ${gallery ? styles.bubbleGallery : ''}`}>
+        <div className={`${styles.bubble} ${bare ? styles.bubbleGallery : ''}`}>
           {m.quote && <div className={styles.bubbleQuote}>{m.quote.senderName}：{m.quote.excerpt}</div>}
           {gallery ? <Gallery messages={gallery} onImage={onImage} /> : <Body message={m} onImage={onImage} />}
+          {m.attachments.length > 0 && <Attachments message={m} onImage={onImage} />}
+          {m.sendState === 'sending' && <div className={styles.state}>发送中…</div>}
           {m.sendState === 'failed' && <div className={styles.stateBad}>没发出去</div>}
         </div>
       </div>
@@ -488,6 +579,7 @@ const Turn = memo(function Turn({ message: m, gallery, mine, flash, onCopy, onQu
       </div>
       <div className={styles.turnBody}>
         {gallery ? <Gallery messages={gallery} onImage={onImage} /> : m.runID ? <RunBody message={m} live={m.transient} /> : <Body message={m} onImage={onImage} large />}
+        {m.attachments.length > 0 && <Attachments message={m} onImage={onImage} />}
       </div>
       {!m.transient && <div className={styles.turnActions}>
         <button className={styles.turnBtn} title="复制" onClick={() => onCopy(m.id)}><IconCopy /></button>

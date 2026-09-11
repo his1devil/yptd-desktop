@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { MessageItem } from '@openim/wasm-client-sdk'
-import { Translator, conversationOf, dayIndex, dayLabel, directId, isTransient, reactionData } from './translate'
+import { summarize, type Attachment } from '../../../shared/model'
+import { Translator, conversationOf, dayIndex, dayLabel, directId, isTransient, parseRich, placeholderFor, reactionData, richEx } from './translate'
 
 /**
  * 从上一版 Swift 客户端移植过来的用例。每一条都对应真实部署上踩过的一个坑，
@@ -196,5 +197,49 @@ describe('引用', () => {
       quoteElem: { text: '收到', quoteMessage: { clientMsgID: 'q1', sendID: 'a', senderNickname: '阿花', textElem: { content: '原话在此' } } },
     } as never)
     expect(m?.quote).toEqual({ messageId: 'q1', senderID: 'a', senderName: '阿花', excerpt: '原话在此' })
+  })
+})
+
+// ---- 文字 + 附件一条消息 ---------------------------------------------------------
+const img = (name = 'a.png'): Attachment => ({ kind: 'image', url: `https://x/${name}`, name, bytes: 10, natural: { width: 400, height: 300 } })
+const pdf: Attachment = { kind: 'file', url: 'https://x/b.pdf', name: 'b.pdf', bytes: 20, natural: null }
+
+describe('文字 + 附件一条消息', () => {
+  it('ex 里的附件读出来：图带原始尺寸，文件带大小；正文照旧', () => {
+    const m = t().message(raw({ textElem: { content: '看这个' }, ex: richEx([img(), pdf], true) }))!
+    expect(m.body).toEqual({ kind: 'text', text: '看这个' })
+    expect(m.attachments).toEqual([img(), pdf])
+    expect(summarize(m)).toBe('看这个 [图片] [文件] b.pdf')
+  })
+
+  it('没打字：正文是给别的端看的占位，这端藏掉；摘要还是 [图片]', () => {
+    const atts = [img(), img('c.png')]
+    const m = t().message(raw({ textElem: { content: placeholderFor(atts) }, ex: richEx(atts, false) }))!
+    expect(m.body).toEqual({ kind: 'text', text: '' })
+    expect(m.attachments).toHaveLength(2)
+    expect(summarize(m)).toBe('[图片]×2')
+  })
+
+  it('@消息也能带附件', () => {
+    const m = t().message(raw({ contentType: 106, atTextElem: { text: '@HALX 看图', atUserList: ['agentbot'] }, ex: richEx([img()], true) }))!
+    expect(m.body).toEqual({ kind: 'text', text: '@HALX 看图' })
+    expect(m.attachments).toEqual([img()])
+  })
+
+  it('别的 ex（run/pending/回应）不算附件，坏 JSON 也不算', () => {
+    expect(parseRich('{"yptd":"run","run":"r1"}')).toBeNull()
+    expect(parseRich('{"yptd":"rich"}')).toBeNull()
+    expect(parseRich('{')).toBeNull()
+    expect(t().message(raw({ ex: '{"yptd":"run","run":"r1"}' }))!.attachments).toEqual([])
+    // 地址缺了的项跳过，别渲染一个空框
+    expect(parseRich('{"yptd":"rich","a":[{"k":"i","u":"","n":"x"},{"k":"f","u":"https://x/y","n":"y"}],"t":1}')!.attachments).toEqual([
+      { kind: 'file', url: 'https://x/y', name: 'y', bytes: 0, natural: null },
+    ])
+  })
+
+  it('占位文案', () => {
+    expect(placeholderFor([img()])).toBe('[图片]')
+    expect(placeholderFor([img(), img('c.png'), pdf])).toBe('[图片]×2 [文件] b.pdf')
+    expect(placeholderFor([])).toBe('[附件]')
   })
 })

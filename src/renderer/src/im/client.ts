@@ -77,13 +77,6 @@ export const im = {
   createQuote: (text: string, message: MessageItem) =>
     unwrap(sdk.createQuoteMessage({ text, message: JSON.stringify(message) })),
   createCustom: (data: string, description: string) => unwrap(sdk.createCustomMessage({ data, description, extension: '' })),
-  createImage: (path: string) => unwrap(sdk.createImageMessageFromFullPath(path)),
-  async createFile(fileFullPath: string, fileName: string): Promise<MessageItem> {
-    // 这个方法的返回类型里带一个空串：路径读不出来时 SDK 不报错，给个空
-    const m = await unwrap(sdk.createFileMessageFromFullPath(fileFullPath, fileName))
-    if (!m) throw new IMError(-1, '这个文件读不出来')
-    return m
-  },
 
   /** 发出去，回来的是服务端记录的那条：真 id、真时间、真图片地址——别信自己手里的那份。 */
   send(message: MessageItem, to: { groupID?: string; userID?: string }): Promise<MessageItem> {
@@ -94,8 +87,9 @@ export const im = {
     unwrap(sdk.findMessageList([{ conversationID, clientMsgIDList }])),
 
   setSelf: (info: { nickname?: string; faceURL?: string }) => unwrap(sdk.setSelfInfo(info)),
-  upload: (filepath: string, name: string) =>
-    unwrap(sdk.uploadFile({ filepath, name, contentType: '', uuid: `${Date.now()}-${name}`, cause: 'avatar' })),
+  /** 传一个本机文件到对象存储，回它的公开地址。`name` 是对象名——同名会盖掉前一个，附件要带唯一前缀 */
+  upload: (filepath: string, name: string, contentType = '', cause = 'avatar') =>
+    unwrap(sdk.uploadFile({ filepath, name, contentType, uuid: `${Date.now()}-${name}`, cause })),
 
   createGroup: (groupName: string, memberUserIDs: string[]) =>
     unwrap(sdk.createGroup({ memberUserIDs, groupInfo: { groupName, groupType: 2 }, adminUserIDs: [] })),
