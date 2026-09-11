@@ -56,6 +56,15 @@
   --font: 'Instrument Sans', 'PingFang SC', 'Noto Sans SC', system-ui, sans-serif;
   --mono: 'IBM Plex Mono', ui-monospace, Menlo, monospace;
 
+  /* 图标栏与标题栏红绿灯区同宽。原生红绿灯 52px 宽，放在 x=10 正好居中，58px 装不下。 */
+  --rail-w: 72px;
+
+  /* 动效：只动 opacity / transform，进出用 ease-out，位移不超过 10px。 */
+  --ease-out: cubic-bezier(.2, .8, .2, 1);
+  --dur-fast: 120ms;
+  --dur: 180ms;
+  --dur-slow: 260ms;
+
   color-scheme: light;
 }
 
@@ -99,7 +108,16 @@
   color-scheme: dark;
 }
 
-/* 动画。过渡：开关 .15s；其余交互态即时响应，不加过渡。 */
+/* 动画。开关和进出有过渡，悬停等交互态即时响应。 */
 @keyframes rl-shim  { 0% { background-position: -180% 0 } 100% { background-position: 180% 0 } }
 @keyframes rl-pulse { 0%, 100% { opacity: 1 } 50% { opacity: .35 } }
 @keyframes rl-up    { from { opacity: 0; transform: translateY(6px) } to { opacity: 1; transform: none } }
+@keyframes rl-fade  { from { opacity: 0 } to { opacity: 1 } }
+@keyframes rl-rise  { from { opacity: 0; transform: translateY(10px) } to { opacity: 1; transform: none } }
+@keyframes rl-pop   { from { opacity: 0; transform: scale(.82) } 60% { transform: scale(1.04) } to { opacity: 1; transform: none } }
+
+/* 系统关了动效就全关，包括进场的瀑布 */
+@media (prefers-reduced-motion: reduce) {
+  :root { --dur-fast: 0ms; --dur: 0ms; --dur-slow: 0ms; }
+  *, *::before, *::after { animation-duration: 0ms !important; animation-delay: 0ms !important; transition-duration: 0ms !important; }
+}

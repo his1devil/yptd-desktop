@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react'
 import { IconAgents, IconChat, IconInbox, IconMoon, IconSettings, IconSun } from '../components/Icons'
 import { useSession } from '../store/session'
 import { useUI, type Section } from '../store/ui'
@@ -10,8 +11,8 @@ const NAV: { id: Section; name: string; Icon: typeof IconInbox }[] = [
 ]
 
 /**
- * 图标栏 58px，纯图标无文字。高亮读的是 section，不是会话——同一个 agent
- * 会话从私聊列表打开时这里仍亮着「会话」。
+ * 图标栏，纯图标无文字。高亮读的是 section，不是会话——同一个 agent
+ * 会话从私聊列表打开时这里仍亮着「会话」。高亮底是一块会滑的板。
  */
 export function Rail() {
   const section = useUI((s) => s.section)
@@ -23,30 +24,35 @@ export function Rail() {
   const unread = useSession((s) => s.conversations.reduce((n, c) => n + c.unread, 0))
   const badges: Partial<Record<Section, number>> = { inbox: mentioned, chat: unread }
 
+  const refs = useRef<Partial<Record<Section, HTMLButtonElement | null>>>({})
+  const [y, setY] = useState<number | null>(null)
+  useEffect(() => {
+    const el = refs.current[section]
+    setY(el ? el.offsetTop : null)
+  }, [section])
+
+  const item = (id: Section, name: string, Icon: typeof IconInbox) => (
+    <button
+      key={id}
+      ref={(el) => { refs.current[id] = el }}
+      className={`${styles.item} ${section === id ? styles.active : ''}`}
+      title={name}
+      onClick={() => go(id)}
+    >
+      <Icon />
+      {badges[id] ? <span className={`${styles.badge} mono`}>{badges[id]! > 99 ? '99+' : badges[id]}</span> : null}
+    </button>
+  )
+
   return (
     <nav className={styles.rail}>
-      {NAV.map(({ id, name, Icon }) => (
-        <button
-          key={id}
-          className={`${styles.item} ${section === id ? styles.active : ''}`}
-          title={name}
-          onClick={() => go(id)}
-        >
-          <Icon />
-          {badges[id] ? <span className={`${styles.badge} mono`}>{badges[id]! > 99 ? '99+' : badges[id]}</span> : null}
-        </button>
-      ))}
+      <div className={styles.indicator} style={{ transform: `translateY(${y ?? 0}px)`, opacity: y === null ? 0 : 1 }} />
+      {NAV.map(({ id, name, Icon }) => item(id, name, Icon))}
       <div className={styles.spacer} />
       <button className={styles.item} title={theme === 'dark' ? '切到浅色' : '切到深色'} onClick={toggleTheme}>
         {theme === 'dark' ? <IconMoon /> : <IconSun />}
       </button>
-      <button
-        className={`${styles.item} ${section === 'set' ? styles.active : ''}`}
-        title="设置"
-        onClick={() => go('set')}
-      >
-        <IconSettings />
-      </button>
+      {item('set', '设置', IconSettings)}
     </nav>
   )
 }

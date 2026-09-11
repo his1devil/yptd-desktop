@@ -14,6 +14,8 @@ body {
   text-rendering: optimizeLegibility;
   overflow: hidden;
   user-select: none;
+  /* 切主题时几块大底色一起渐变，文字跟着底色走 */
+  transition: background-color var(--dur-slow), color var(--dur-slow);
 }
 
 button {

@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { useVirtualizer, type VirtualItem, type Virtualizer } from '@tanstack/react-virtual'
 import type { Message, MessageId, PixelSize, QuotePreview } from '../../../shared/model'
 import { plainText } from '../../../shared/model'
@@ -94,6 +94,31 @@ export function Stream({ place }: { place: Place }) {
   const atBottom = useRef(true)
   const requesting = useRef(false)
 
+  // 进场动效。第一批到屏幕上的行按从上到下的次序错开 22ms 依次浮起——"瀑布"；
+  // 之后新来的消息各自浮起一次；往上翻出来的历史不动（它不是新东西）。
+  // 每行的延迟只在第一次渲染时定下来，之后不改：改动 animation-delay 会让动画重放。
+  const firstRowsAt = useRef<number | null>(null)
+  const initial = useRef<{ keys: Set<string>; newestAt: number } | null>(null)
+  const enterDelay = useRef(new Map<string, number>())
+  if (rows.length > 0 && initial.current === null) {
+    firstRowsAt.current = performance.now()
+    let newestAt = 0
+    for (const r of rows) if (r.kind !== 'day' && r.message.sentAt > newestAt) newestAt = r.message.sentAt
+    initial.current = { keys: new Set(rows.map((r) => r.key)), newestAt }
+  }
+  const entering = firstRowsAt.current !== null && performance.now() - firstRowsAt.current < 600
+  const motionOf = (row: Row, order: number): { cls: string; style: CSSProperties } => {
+    const init = initial.current
+    if (init?.keys.has(row.key)) {
+      let delay = enterDelay.current.get(row.key)
+      if (delay === undefined && entering) { delay = Math.min(order, 14) * 22; enterDelay.current.set(row.key, delay) }
+      return delay === undefined ? { cls: '', style: {} } : { cls: styles.enter ?? '', style: { animationDelay: `${delay}ms` } }
+    }
+    // 不在第一批里：比第一批都新的才是"新消息"，旧的是翻出来的历史
+    const fresh = row.kind !== 'day' && init !== null && row.message.sentAt >= init.newestAt
+    return { cls: fresh ? styles.fresh ?? '' : '', style: {} }
+  }
+
   const virtualizer = useVirtualizer({
     count: rows.length,
     getScrollElement: () => scrollRef.current,
@@ -188,19 +213,24 @@ export function Stream({ place }: { place: Place }) {
   }, [jumpTo, rows, id, jump, maybeLoadOlder, setJumpTo])
 
   const empty = rows.length === 0 && !timeline(id).hasMore
+  const loading = rows.length === 0 && timeline(id).hasMore
 
   return (
     <div className={styles.wrap}>
       <div ref={scrollRef} className={styles.scroll} onScroll={onScroll}>
-        {empty ? (
+        {loading ? (
+          <Skeleton harness={harness} />
+        ) : empty ? (
           <div className={styles.empty}>
             <div className={styles.emptyTitle}>{harness ? `和 ${place.title} 的对话从这里开始` : '这里还没有消息'}</div>
             <div className={styles.emptyDesc}>{harness ? '直接说要做什么，回答会出现在这里。' : '说点什么，或者 @ 一个 agent 派活。'}</div>
           </div>
         ) : (
           <div className={styles.inner} style={{ height: total }}>
-            {virtualizer.getVirtualItems().map((v) => {
+            {virtualizer.getVirtualItems().map((v, i, items) => {
               const row = rows[v.index]!
+              // 瀑布从视口里第一行开始数，上面预渲染的几行不占位次
+              const motion = motionOf(row, Math.max(0, i - firstVisible(items, scrollRef.current)))
               return (
                 <div
                   key={v.key}
@@ -209,6 +239,8 @@ export function Stream({ place }: { place: Place }) {
                   className={styles.vrow}
                   style={{ transform: `translateY(${v.start - TOP_PAD}px)` }}
                 >
+                  {/* 动效放在内层：外层的 transform 是虚拟列表的定位，动画一碰它整列就叠到一起 */}
+                  <div className={motion.cls} style={motion.style}>
                   {row.kind === 'day' ? (
                     <DaySep label={row.label} />
                   ) : row.kind === 'pending' && !row.message.runID ? (
@@ -224,6 +256,7 @@ export function Stream({ place }: { place: Place }) {
                       onReact={react} onQuote={quote} onHandoff={handoff} onJump={jump} onImage={setShot} onPopover={openPopover}
                     />
                   )}
+                  </div>
                 </div>
               )
             })}
@@ -243,7 +276,32 @@ export function Stream({ place }: { place: Place }) {
   )
 }
 
+/** 视口顶端之上还预渲染了几行；瀑布的次序从真正看得见的第一行算起 */
+function firstVisible(items: readonly VirtualItem[], el: HTMLDivElement | null): number {
+  const top = (el?.scrollTop ?? 0) + TOP_PAD
+  const i = items.findIndex((v) => v.end > top)
+  return i < 0 ? 0 : i
+}
+
 // ---- 行 ---------------------------------------------------------------------------
+
+/** 第一页还没到：几行呼吸的骨架，占着位置，来了就换成真行浮起 */
+function Skeleton({ harness }: { harness: boolean }) {
+  const widths = [62, 38, 74, 46, 58]
+  return (
+    <div className={styles.skel}>
+      {widths.map((w, i) => (
+        <div key={i} className={harness && i % 2 === 1 ? styles.skelRowRight : styles.skelRow} style={{ animationDelay: `${i * 60}ms` }}>
+          {!(harness && i % 2 === 1) && <span className={styles.skelAvatar} />}
+          <span className={styles.skelLines}>
+            <span className={styles.skelLine} style={{ width: '18%' }} />
+            <span className={styles.skelLine} style={{ width: `${w}%` }} />
+          </span>
+        </div>
+      ))}
+    </div>
+  )
+}
 
 /** 发送者头像：优先用他现在的头像，没有再用消息里烤进去的那张 */
 function SenderAvatar({ id, name, fallback, size, agent, style }: { id: string; name: string; fallback: string | null; size: number; agent: boolean; style?: React.CSSProperties }) {

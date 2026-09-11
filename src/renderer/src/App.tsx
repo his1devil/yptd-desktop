@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Toast } from './components/Toast'
+import { UpdateBanner } from './components/UpdateBanner'
 import { TitleBar } from './shell/TitleBar'
 import { Rail } from './shell/Rail'
 import { ContextSidebar } from './shell/ContextSidebar'
@@ -62,6 +63,7 @@ export function App() {
         <Inspector />
       </div>
       <Toast />
+      <UpdateBanner />
       <CommandPalette />
       <ChannelDialogsMount />
     </div>

@@ -4,6 +4,7 @@ import { errorClass, ghostClass, inputClass, primaryClass } from '../components/
 import { api, type Invite } from '../im/api'
 import { describe, useSession } from '../store/session'
 import { useUI, type SettingsPage } from '../store/ui'
+import { useUpdate } from '../store/update'
 import styles from './Settings.module.css'
 
 /**
@@ -20,6 +21,7 @@ export function Settings() {
         {page === 'notify' && <Notify />}
         {page === 'appearance' && <Appearance />}
         {page === 'keys' && <Keys />}
+        {page === 'about' && <About />}
       </div>
     </div>
   )
@@ -31,6 +33,7 @@ export const SETTINGS_PAGES: { id: SettingsPage; name: string; group: 'workspace
   { id: 'notify', name: '通知', group: 'personal' },
   { id: 'appearance', name: '外观', group: 'personal' },
   { id: 'keys', name: '快捷键', group: 'personal' },
+  { id: 'about', name: '关于与更新', group: 'personal' },
 ]
 
 function Section({ title, desc, children }: { title: string; desc?: string; children: React.ReactNode }) {
@@ -229,6 +232,42 @@ function Keys() {
             {rows.map(([k, d]) => <tr key={k}><td><kbd className={`${styles.kbd} mono`}>{k}</kbd></td><td>{d}</td></tr>)}
           </tbody>
         </table>
+      </div>
+    </Section>
+  )
+}
+
+function About() {
+  const status = useUpdate((s) => s.status)
+  const check = useUpdate((s) => s.check)
+  const install = useUpdate((s) => s.install)
+  const [version, setVersion] = useState('')
+  useEffect(() => { void window.desktop.version().then(setVersion) }, [])
+  const line = (() => {
+    switch (status.kind) {
+      case 'dev': return '开发模式没有安装包，不检查更新。'
+      case 'idle': return '还没检查过。'
+      case 'checking': return '正在检查…'
+      case 'none': return `已经是最新版（${fmtTime(status.at)} 检查过）。`
+      case 'available': return `发现新版本 v${status.version}，正在准备下载。`
+      case 'downloading': return `正在下载 v${status.version} · ${status.percent}%`
+      case 'ready': return `v${status.version} 已下载好，重启就装上。`
+      case 'error': return `检查失败：${status.message}`
+    }
+  })()
+  return (
+    <Section title="关于与更新" desc="启动后 8 秒查一次，之后每 4 小时一次。有新版会后台下好，不打断你；不点「重启安装」的话，下次退出时也会装上。">
+      <dl className={styles.facts}>
+        <dt>当前版本</dt><dd className="mono">v{version || '…'}</dd>
+        <dt>更新状态</dt><dd>{line}</dd>
+        <dt>更新源</dt><dd className="mono">im.zhanghuanyang.com/dl/desktop/</dd>
+      </dl>
+      <div className={styles.inline}>
+        {status.kind === 'ready' ? (
+          <button className={primaryClass} onClick={install}>重启安装 v{status.version}</button>
+        ) : (
+          <button className={ghostClass} disabled={status.kind === 'checking' || status.kind === 'downloading' || status.kind === 'dev'} onClick={() => void check()}>检查更新</button>
+        )}
       </div>
     </Section>
   )

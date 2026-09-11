@@ -11,7 +11,7 @@
 }
 
 .lights {
-  width: 58px;
+  width: var(--rail-w);
   height: 100%;
   flex: none;
   border-right: 1px solid var(--railline);
@@ -69,3 +69,5 @@
 .search:hover { border-color: var(--railink); color: var(--railink2); }
 .searchText { flex: 1; font-size: 12px; text-align: left; }
 .kbd { font-size: 10px; color: var(--railink); }
+
+.bar { transition: background-color var(--dur-slow), border-color var(--dur-slow); }

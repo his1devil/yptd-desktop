@@ -1,4 +1,4 @@
-.backdrop { position: fixed; inset: 0; z-index: 65; background: rgba(6, 6, 7, .32); display: flex; justify-content: center; align-items: flex-start; padding-top: 96px; animation: rl-up .1s ease-out; }
+.backdrop { position: fixed; inset: 0; z-index: 65; background: rgba(6, 6, 7, .32); display: flex; justify-content: center; align-items: flex-start; padding-top: 96px; animation: global(rl-up) .1s ease-out; }
 .panel { width: 580px; max-height: min(560px, calc(100vh - 140px)); display: flex; flex-direction: column; background: var(--bg); border: 1px solid var(--line2); border-radius: 13px; box-shadow: var(--shwin); overflow: hidden; }
 .inputRow { display: flex; align-items: center; gap: 10px; padding: 0 14px; height: 48px; border-bottom: 1px solid var(--line); color: var(--ink3); }
 .input { flex: 1; height: 100%; font-size: 14px; color: var(--ink); user-select: text; }

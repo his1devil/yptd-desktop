@@ -2,7 +2,7 @@
   position: fixed; inset: 0; z-index: 70;
   background: rgba(6, 6, 7, .42);
   display: flex; align-items: center; justify-content: center;
-  animation: rl-up .12s ease-out;
+  animation: global(rl-up) .12s ease-out;
 }
 .card {
   max-width: calc(100vw - 48px); max-height: calc(100vh - 80px);

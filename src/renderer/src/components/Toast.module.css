@@ -4,7 +4,7 @@
   padding: 9px 10px 9px 14px; border-radius: 9px;
   background: var(--surface); border: 1px solid var(--line2); box-shadow: var(--shwin);
   border-left: 2px solid var(--danger);
-  animation: rl-up .14s ease-out;
+  animation: global(rl-up) .14s ease-out;
 }
 .text { font-size: 12.5px; line-height: 1.5; color: var(--ink); }
 .close { width: 22px; height: 22px; border-radius: 6px; display: flex; align-items: center; justify-content: center; color: var(--ink3); flex: none; }

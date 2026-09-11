@@ -23,11 +23,13 @@
 /* 悬浮条：挂在行的右上角，压在上一行底部 */
 .bar {
   position: absolute; top: -14px; right: 24px; z-index: 4;
-  display: none; align-items: center; gap: 1px;
+  display: flex; align-items: center; gap: 1px;
   background: var(--surface); border: 1px solid var(--line2); border-radius: 8px;
   box-shadow: var(--sh); padding: 2px;
+  opacity: 0; transform: translateY(4px); pointer-events: none;
+  transition: opacity var(--dur-fast), transform var(--dur-fast) var(--ease-out);
 }
-.row:hover .bar, .pinned .bar { display: flex; }
+.row:hover .bar, .pinned .bar { opacity: 1; transform: none; pointer-events: auto; }
 .barEmoji { width: 31px; height: 27px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 17px; line-height: 1; }
 .barEmoji:hover { background: var(--surface2); }
 .barSep { width: 1px; height: 17px; background: var(--line); margin: 0 3px; }
@@ -89,7 +91,7 @@
   height: 18px; width: 190px; border-radius: 5px;
   background: linear-gradient(90deg, var(--surface2) 12%, var(--line) 38%, var(--surface2) 62%);
   background-size: 220% 100%;
-  animation: rl-shim 1.5s linear infinite;
+  animation: global(rl-shim) 1.5s linear infinite;
 }
 
 /* harness 形态 */
@@ -121,7 +123,7 @@
 .popover {
   position: fixed; width: 284px; border-radius: 11px;
   background: var(--surface); border: 1px solid var(--line2); box-shadow: var(--shwin);
-  padding: 9px; animation: rl-up .12s ease-out;
+  padding: 9px; animation: global(rl-up) .12s ease-out;
 }
 .menuPop { width: 196px; padding: 5px; }
 .popHead { display: flex; align-items: center; gap: 8px; padding: 0 2px 8px; font-size: 9.5px; color: var(--ink3); }
@@ -135,3 +137,22 @@
 .menuItem:hover { background: var(--surface2); }
 .menuDanger { color: var(--danger); }
 .menuDanger:hover { background: var(--dtint); }
+
+/* ---- 动效 ---- */
+.wrap { animation: global(rl-fade) var(--dur) var(--ease-out) both; }
+.enter { animation: global(rl-rise) var(--dur-slow) var(--ease-out) both; }
+.fresh { animation: global(rl-rise) var(--dur) var(--ease-out) both; }
+.chip, .chipAdd { animation: global(rl-pop) var(--dur) var(--ease-out) both; }
+
+/* 骨架 */
+.skel { padding: 8px 24px; display: flex; flex-direction: column; gap: 18px; }
+.skelRow, .skelRowRight { display: flex; gap: 11px; align-items: flex-start; animation: global(rl-fade) var(--dur) var(--ease-out) both; }
+.skelRowRight { justify-content: flex-end; }
+.skelAvatar { width: 30px; height: 30px; border-radius: 99px; background: var(--surface2); flex: none; }
+.skelLines { flex: 1; display: flex; flex-direction: column; gap: 8px; max-width: 560px; }
+.skelRowRight .skelLines { align-items: flex-end; }
+.skelLine {
+  height: 12px; border-radius: 5px;
+  background: linear-gradient(90deg, var(--surface2) 12%, var(--line) 38%, var(--surface2) 62%);
+  background-size: 220% 100%; animation: global(rl-shim) 1.5s linear infinite;
+}

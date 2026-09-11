@@ -2,7 +2,7 @@
   position: fixed; inset: 0; z-index: 60;
   background: rgba(6, 6, 7, .78);
   display: flex; align-items: center; justify-content: center;
-  animation: rl-up .12s ease-out;
+  animation: global(rl-up) .12s ease-out;
 }
 .img { max-width: 92vw; max-height: 86vh; border-radius: 8px; box-shadow: var(--shwin); background: #000; }
 .bar {

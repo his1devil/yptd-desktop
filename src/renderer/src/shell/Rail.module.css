@@ -1,7 +1,8 @@
 .rail {
-  width: 58px;
+  width: var(--rail-w);
   flex: none;
   background: var(--rail);
+  position: relative;
   border-right: 1px solid var(--railline);
   display: flex;
   flex-direction: column;
@@ -19,13 +20,23 @@
   margin-bottom: 6px;
   position: relative;
   color: var(--railink);
+  transition: color var(--dur-fast);
+  z-index: 1;
 }
 .item:hover { background: var(--railhover); color: var(--railink2); }
+.active, .active:hover { background: transparent; color: var(--railactink); }
 
-.active,
-.active:hover {
+/* 高亮底是一块会滑的板，从上一个位置滑到当前位置 */
+.indicator {
+  position: absolute;
+  left: calc((var(--rail-w) - 44px) / 2);
+  top: 0;
+  width: 44px;
+  height: 44px;
+  border-radius: 11px;
   background: var(--railactbg);
-  color: var(--railactink);
+  transition: transform var(--dur-slow) var(--ease-out), opacity var(--dur-fast);
+  z-index: 0;
 }
 
 .badge {
@@ -45,3 +56,5 @@
 }
 
 .spacer { flex: 1; }
+
+.rail { transition: background-color var(--dur-slow), border-color var(--dur-slow); }

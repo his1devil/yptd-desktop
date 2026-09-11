@@ -63,11 +63,13 @@ export function Inspector() {
   useEffect(() => () => { document.body.style.cursor = '' }, [])
 
   // 收件箱和设置没有"当前会话"，右侧栏在那里只会显示上一个频道的成员，误导
-  if (!open || section === 'inbox' || section === 'set') return null
+  const shown = open && section !== 'inbox' && section !== 'set'
 
+  // 收起是宽度从 372 到 0 的过渡而不是直接消失；里面的内容保持原宽被裁掉，不重排
   return (
-    <aside className={styles.side} style={{ width }}>
-      <div className={styles.handle} onMouseDown={onDown} />
+    <aside className={`${styles.side} ${shown ? '' : styles.shut}`} style={{ width: shown ? width : 0 }} aria-hidden={!shown}>
+      <div className={styles.inner} style={{ width }}>
+      {shown && <div className={styles.handle} onMouseDown={onDown} />}
       <div className={styles.head}>
         <div className={styles.tabs}>
           {tabs.map((id) => {
@@ -106,6 +108,7 @@ export function Inspector() {
         ) : (
           <EmptyState />
         )}
+      </div>
       </div>
     </aside>
   )

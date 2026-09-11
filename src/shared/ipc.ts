@@ -27,7 +27,22 @@ export const IPC = {
   streamOpen: 'stream:open',
   streamClose: 'stream:close',
   streamEvent: 'stream:event',
+  /** 自动更新：主进程 → 渲染进程推状态；渲染进程可以要求检查、安装 */
+  updateStatus: 'update:status',
+  updateStatusGet: 'update:statusGet',
+  updateCheck: 'update:check',
+  updateInstall: 'update:install',
 } as const
+
+export type UpdateStatus =
+  | { kind: 'dev' }
+  | { kind: 'idle' }
+  | { kind: 'checking' }
+  | { kind: 'none'; version: string; at: number }
+  | { kind: 'available'; version: string }
+  | { kind: 'downloading'; version: string; percent: number }
+  | { kind: 'ready'; version: string }
+  | { kind: 'error'; message: string; at: number }
 
 /** 一批 SSE 事件。主进程按 ~30ms 攒一批再发，几百个 token 的 delta 不会变成几百次 IPC */
 export interface StreamBatch {
@@ -61,6 +76,14 @@ export interface DesktopBridge {
     delete(key: string): Promise<void>
   }
   http(req: HttpRequest): Promise<HttpResponse>
+  update: {
+    status(): Promise<UpdateStatus>
+    onStatus(listener: (status: UpdateStatus) => void): () => void
+    /** 立刻检查一次；结果通过 onStatus 回来 */
+    check(): Promise<void>
+    /** 已下载好时：退出并装上 */
+    install(): void
+  }
   stream: {
     /** 打开一条 SSE，返回流 id；事件通过 onBatch 回来 */
     open(url: string, headers?: Record<string, string>): Promise<number>

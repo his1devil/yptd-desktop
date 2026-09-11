@@ -1,7 +1,7 @@
 import { contextBridge, ipcRenderer, webUtils } from 'electron'
 // OpenIM 官方 SDK 的渲染桥：把 sdk 方法调用转成 IPC 到主进程里的 dylib，事件反向回推。
 import '@openim/electron-client-sdk/preload'
-import { IPC, type DesktopBridge, type StreamBatch } from '../shared/ipc'
+import { IPC, type DesktopBridge, type StreamBatch, type UpdateStatus } from '../shared/ipc'
 
 const bridge: DesktopBridge = {
   platform: process.platform as 'darwin' | 'win32' | 'linux',
@@ -23,6 +23,16 @@ const bridge: DesktopBridge = {
     delete: (key) => ipcRenderer.invoke(IPC.secretDelete, key),
   },
   http: (req) => ipcRenderer.invoke(IPC.httpFetch, req),
+  update: {
+    status: () => ipcRenderer.invoke(IPC.updateStatusGet),
+    onStatus(listener) {
+      const handler = (_: unknown, s: UpdateStatus): void => listener(s)
+      ipcRenderer.on(IPC.updateStatus, handler)
+      return () => ipcRenderer.removeListener(IPC.updateStatus, handler)
+    },
+    check: () => ipcRenderer.invoke(IPC.updateCheck),
+    install: () => ipcRenderer.send(IPC.updateInstall),
+  },
   stream: {
     open: (url, headers) => ipcRenderer.invoke(IPC.streamOpen, url, headers ?? {}),
     close: (id) => ipcRenderer.send(IPC.streamClose, id),

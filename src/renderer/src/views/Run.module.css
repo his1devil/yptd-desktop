@@ -1,8 +1,8 @@
 /* 公用 */
 .body { display: flex; flex-direction: column; gap: 10px; max-width: 760px; }
 .text { font-size: 14px; line-height: 1.8; color: var(--ink); white-space: pre-wrap; text-wrap: pretty; overflow-wrap: anywhere; user-select: text; }
-.caret { display: inline-block; width: 2px; height: 15px; background: var(--agent); margin-left: 3px; vertical-align: -2px; animation: rl-pulse .9s steps(2) infinite; }
-.pulse { animation: rl-pulse 1.4s ease-in-out infinite; }
+.caret { display: inline-block; width: 2px; height: 15px; background: var(--agent); margin-left: 3px; vertical-align: -2px; animation: global(rl-pulse) .9s steps(2) infinite; }
+.pulse { animation: global(rl-pulse) 1.4s ease-in-out infinite; }
 .line { flex: 1; height: 1px; background: var(--line); }
 .chev { font-size: 9.5px; color: var(--ink3); flex: none; }
 .waiting { color: var(--ink3); font-size: 13px; }
@@ -27,7 +27,7 @@
 .tool { display: flex; align-items: center; gap: 7px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); padding: 3px 9px; flex: none; }
 .tool:hover, .toolOpen { border-color: var(--line2); background: var(--surface2); }
 .dot { width: 5px; height: 5px; border-radius: 1.5px; background: var(--ok); flex: none; }
-.dot_running, .dot_pending { background: var(--agent); animation: rl-pulse 1s ease-in-out infinite; }
+.dot_running, .dot_pending { background: var(--agent); animation: global(rl-pulse) 1s ease-in-out infinite; }
 .dot_error { background: var(--danger); }
 .toolName { font-size: 10.5px; color: var(--ink2); white-space: nowrap; }
 .toolDur { font-size: 10.5px; color: var(--ink3); white-space: nowrap; }
@@ -71,7 +71,7 @@
 .cardTitle { font-size: 12.5px; font-weight: 600; flex: 1; min-width: 0; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .cardMeta { font-size: 10.5px; color: var(--ink2); white-space: nowrap; flex: none; }
 .pill { font-size: 10.5px; font-weight: 700; color: var(--ok); background: var(--bg); border: 1px solid var(--line); border-radius: 99px; padding: 1px 8px; white-space: nowrap; flex: none; }
-.pill_running { color: var(--agent); animation: rl-pulse 1.4s ease-in-out infinite; }
+.pill_running { color: var(--agent); animation: global(rl-pulse) 1.4s ease-in-out infinite; }
 .pill_error { color: var(--danger); }
 .pill_cancelled { color: var(--ink3); }
 
@@ -93,3 +93,5 @@
 
 .result { padding: 11px 13px 12px; display: flex; flex-direction: column; gap: 10px; }
 .result .text { font-size: 13.5px; line-height: 1.66; }
+
+.steps, .thinkBody, .detail { animation: global(rl-fade) var(--dur-fast) var(--ease-out) both; }

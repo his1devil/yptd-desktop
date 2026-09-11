@@ -4,6 +4,8 @@ copyright: Antai Feng
 directories:
   output: release
   buildResources: build
+# 两种产物同名规则：yptd-0.3.0-arm64.dmg / .zip，latest-mac.yml 里指的就是那个 zip
+artifactName: ${productName}-${version}-${arch}.${ext}
 files:
   - out/**
   - package.json
@@ -13,6 +15,7 @@ asarUnpack:
   - node_modules/koffi/**
 mac:
   category: public.app-category.social-networking
+  icon: build/icon.icns
   target:
     - target: dmg
       arch: [arm64]

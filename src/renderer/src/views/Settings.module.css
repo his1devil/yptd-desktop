@@ -43,3 +43,9 @@
 .choiceOn { border-color: var(--accent); box-shadow: 0 0 0 3px var(--tint); }
 .swatch { width: 34px; height: 24px; border-radius: 6px; background: linear-gradient(135deg, #FFFFFF 55%, #E3E5E8 55%); border: 1px solid var(--line2); }
 .swatchDark { background: linear-gradient(135deg, #313338 55%, #1E1F22 55%); }
+
+.wrap { animation: global(rl-fade) var(--dur-fast) var(--ease-out) both; }
+
+.facts { margin: 0; display: grid; grid-template-columns: 84px 1fr; gap: 10px 14px; font-size: 13px; align-items: baseline; }
+.facts dt { color: var(--ink3); }
+.facts dd { margin: 0; color: var(--ink); line-height: 1.5; }

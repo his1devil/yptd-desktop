@@ -3,6 +3,7 @@ import { mkdirSync, readFileSync, unlinkSync, writeFileSync, existsSync } from '
 import { join } from 'node:path'
 import { IPC, type HttpRequest, type HttpResponse, type StreamBatch } from '../shared/ipc'
 import { attachOpenIM, disposeOpenIM } from './openim'
+import { setupUpdater } from './updater'
 
 // ---- 凭据 --------------------------------------------------------------------
 // 设备 token 用 safeStorage 加密后落在 userData 下。macOS 上 safeStorage 的密钥在
@@ -139,10 +140,11 @@ function createWindow(): BrowserWindow {
   const win = new BrowserWindow({
     ...DESIGN,
     show: false,
-    // 无边框 + 自定义标题栏。macOS 保留原生红绿灯，不自绘；
-    // 位置 (18,18) 让它们落在标题栏 58px 的红绿灯区里，与图标栏同宽。
+    // 无边框 + 自定义标题栏。macOS 保留原生红绿灯，不自绘。
+    // 三个灯一共 52px 宽，x=10 让它们在 72px 的红绿灯区（与图标栏同宽）里居中；
+    // 标题栏 48px 高，灯 12px，y=18 垂直居中。
     titleBarStyle: 'hiddenInset',
-    trafficLightPosition: { x: 18, y: 18 },
+    trafficLightPosition: { x: 10, y: 18 },
     backgroundColor: '#FFFFFF',
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
@@ -212,7 +214,8 @@ void app.whenReady().then(() => {
       })
     })
   }
-  createWindow()
+  const win = createWindow()
+  setupUpdater(() => (win.isDestroyed() ? null : win.webContents))
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
   })

@@ -24,6 +24,9 @@
 .count { flex: none; min-width: 18px; height: 18px; padding: 0 6px; border-radius: 99px; background: var(--line2); color: var(--ink); font-size: 10.5px; font-weight: 600; line-height: 18px; text-align: center; }
 .countAt { background: var(--accent); color: var(--onacc); }
 .pill { font-size: 10px; font-weight: 700; color: var(--ok); background: var(--bg); border: 1px solid var(--line); border-radius: 99px; padding: 0 7px; line-height: 16px; flex: none; }
-.pill_running { color: var(--agent); animation: rl-pulse 1.4s ease-in-out infinite; }
+.pill_running { color: var(--agent); animation: global(rl-pulse) 1.4s ease-in-out infinite; }
 .pill_error { color: var(--danger); }
 .pill_cancelled { color: var(--ink3); }
+
+.wrap { animation: global(rl-fade) var(--dur-fast) var(--ease-out) both; }
+.card { transition: box-shadow var(--dur-fast), border-color var(--dur-fast); }
