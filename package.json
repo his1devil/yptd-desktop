@@ -1,7 +1,7 @@
 {
   "name": "yptd-desktop",
   "productName": "yptd",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "人和 agent 在同一个话题里并行工作",
   "main": "./out/main/index.js",
   "author": "Antai Feng",
