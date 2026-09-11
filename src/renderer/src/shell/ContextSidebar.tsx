@@ -4,7 +4,8 @@ import { Avatar, glyphOf, pairOf } from '../components/Avatar'
 import { IconPlus } from '../components/Icons'
 import { directId } from '../im/translate'
 import { agentsOf, useSession } from '../store/session'
-import { useUI, type Section } from '../store/ui'
+import { useUI, type InboxFilter, type Section } from '../store/ui'
+import { SETTINGS_PAGES } from '../views/Settings'
 import styles from './ContextSidebar.module.css'
 
 /**
@@ -15,8 +16,56 @@ export function ContextSidebar() {
   const section = useUI((s) => s.section)
   return (
     <aside className={styles.side}>
-      {section === 'chat' ? <ChatList /> : section === 'agent' ? <AgentList /> : <Static section={section} />}
+      {section === 'chat' ? <ChatList /> : section === 'agent' ? <AgentList /> : section === 'set' ? <SettingsList /> : section === 'inbox' ? <InboxList /> : <Static section={section} />}
     </aside>
+  )
+}
+
+function SettingsList() {
+  const page = useUI((s) => s.settingsPage)
+  const setPage = useUI((s) => s.setSettingsPage)
+  const group = (g: 'workspace' | 'personal') => SETTINGS_PAGES.filter((p) => p.group === g).map((p) => (
+    <button key={p.id} className={`${styles.item} ${page === p.id ? styles.active : ''}`} onClick={() => setPage(p.id)}>
+      <span className={styles.dot} />
+      <span className={styles.text}><span className={styles.name}>{p.name}</span></span>
+    </button>
+  ))
+  return (
+    <>
+      <Header title="设置" />
+      <div className={styles.scroll}>
+        <Group title="工作区 WORKSPACE">{group('workspace')}</Group>
+        <Group title="个人 PERSONAL">{group('personal')}</Group>
+      </div>
+    </>
+  )
+}
+
+function InboxList() {
+  const filter = useUI((s) => s.inboxFilter)
+  const setFilter = useUI((s) => s.setInboxFilter)
+  const conversations = useSession((s) => s.conversations)
+  const mentions = conversations.filter((c) => c.unread > 0 && (c.mentioned || c.kind === 'dm' || c.kind === 'agent_session')).length
+  const items: { id: InboxFilter; name: string; badge?: number }[] = [
+    { id: 'all', name: '全部' },
+    { id: 'mention', name: '@提及我的 / 私聊', badge: mentions },
+    { id: 'agent', name: 'Agent 结果' },
+  ]
+  return (
+    <>
+      <Header title="收件箱" />
+      <div className={styles.scroll}>
+        <Group title="筛选 FILTER">
+          {items.map((it) => (
+            <button key={it.id} className={`${styles.item} ${filter === it.id ? styles.active : ''}`} onClick={() => setFilter(it.id)}>
+              <span className={styles.dot} />
+              <span className={styles.text}><span className={styles.name}>{it.name}</span></span>
+              {it.badge ? <span className={`${styles.count} mono`}>{it.badge}</span> : null}
+            </button>
+          ))}
+        </Group>
+      </div>
+    </>
   )
 }
 
@@ -83,7 +132,7 @@ function ChatList() {
 
   return (
     <>
-      <Header title="会话" action={<button className={styles.headBtn} title="新建频道（即将支持）"><IconPlus /></button>} />
+      <Header title="会话" action={<button className={styles.headBtn} title="新建频道" onClick={() => useUI.getState().openDialog({ kind: 'newChannel' })}><IconPlus /></button>} />
       <div className={styles.scroll}>
         <Group title="频道 CHANNELS" empty="还没有频道">
           {channels.map((c) => <ConversationItem key={c.id} c={c} active={c.id === conversationId} />)}
@@ -126,21 +175,13 @@ function AgentList() {
 
 // ---- 还没接真数据的区段，保留设计稿的分组骨架 ----------------------------------------
 
-const STATIC: Record<Exclude<Section, 'chat' | 'agent'>, { heading: string; groups: { title: string; items: string[] }[] }> = {
-  inbox: { heading: '收件箱', groups: [{ title: '筛选 FILTER', items: ['全部', '@提及我的', 'Agent 结果', '已归档'] }] },
-  set: {
-    heading: '设置',
-    groups: [
-      { title: '工作区 WORKSPACE', items: ['成员与邀请'] },
-      { title: '个人 PERSONAL', items: ['资料', '通知', '外观'] },
-    ],
-  },
+const STATIC: Record<Exclude<Section, 'chat' | 'agent' | 'set' | 'inbox'>, { heading: string; groups: { title: string; items: string[] }[] }> = {
   vm: { heading: '运行机器', groups: [] },
   lib: { heading: '知识库', groups: [] },
   market: { heading: 'Agent 市场', groups: [] },
 }
 
-function Static({ section }: { section: Exclude<Section, 'chat' | 'agent'> }) {
+function Static({ section }: { section: Exclude<Section, 'chat' | 'agent' | 'set' | 'inbox'> }) {
   const { heading, groups } = STATIC[section]
   return (
     <>

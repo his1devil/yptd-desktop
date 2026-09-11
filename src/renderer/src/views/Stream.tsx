@@ -169,6 +169,24 @@ export function Stream({ place }: { place: Place }) {
     window.setTimeout(() => setFlash((f) => (f === mid ? null : f)), 1400)
   }, [rows, virtualizer])
 
+  // 别处（⌘K、收件箱、运行列表）要跳到某条消息：在时间线里就滚过去，不在就往前翻几页找
+  const jumpTo = useUI((s) => s.jumpTo)
+  const setJumpTo = useUI((s) => s.setJumpTo)
+  const jumpTries = useRef(0)
+  useEffect(() => {
+    if (!jumpTo || jumpTo.conversationId !== id) return
+    const i = rows.findIndex((r) => r.kind === 'msg' && r.message.id === jumpTo.messageId)
+    if (i >= 0) {
+      jumpTries.current = 0
+      setJumpTo(null)
+      // 等这帧画完再滚，不然量高还是估的
+      requestAnimationFrame(() => jump(jumpTo.messageId))
+      return
+    }
+    if (timeline(id).hasMore && jumpTries.current < 8) { jumpTries.current++; maybeLoadOlder() }
+    else { jumpTries.current = 0; setJumpTo(null) }
+  }, [jumpTo, rows, id, jump, maybeLoadOlder, setJumpTo])
+
   const empty = rows.length === 0 && !timeline(id).hasMore
 
   return (

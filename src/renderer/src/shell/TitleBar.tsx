@@ -1,6 +1,7 @@
 import { Avatar, glyphOf, pairOf } from '../components/Avatar'
 import { IconChevronDown, IconSearch } from '../components/Icons'
 import { useSession } from '../store/session'
+import { useUI } from '../store/ui'
 import styles from './TitleBar.module.css'
 
 /**
@@ -17,10 +18,12 @@ export function TitleBar({ fullscreen }: { fullscreen: boolean }) {
   const myName = useSession((s) => s.myName)
   const myAvatar = useSession((s) => s.avatars[s.me] ?? s.myAvatar)
   const connected = useSession((s) => s.connected)
+  const setPalette = useUI((s) => s.setPalette)
+  const setSettingsPage = useUI((s) => s.setSettingsPage)
   const cluster = (
     <>
       {!fullscreen && <div className={styles.lights} />}
-      <button className={styles.profile} title="个人中心" tabIndex={0}>
+      <button className={styles.profile} title="资料与设置" tabIndex={0} onClick={() => setSettingsPage('profile')}>
         <Avatar glyph={glyphOf(myName || me)} pair={pairOf(me)} size={27} src={myAvatar} presence={connected ? 'online' : 'offline'} ring="var(--rail)" />
         <span className={styles.who}>
           <span className={styles.name}>{myName || me}</span>
@@ -34,7 +37,7 @@ export function TitleBar({ fullscreen }: { fullscreen: boolean }) {
     <header className={styles.bar}>
       {cluster}
       <div className={styles.center}>
-        <button className={styles.search} title="搜索、跳转、派活（⌘K）">
+        <button className={styles.search} title="搜索、跳转、派活（⌘K）" onClick={() => setPalette(true)}>
           <IconSearch />
           <span className={styles.searchText}>搜索消息、频道、agent…</span>
           <kbd className={`${styles.kbd} mono`}>⌘K</kbd>

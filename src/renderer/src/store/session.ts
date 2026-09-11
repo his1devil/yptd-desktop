@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import type { Conversation, ConversationId, ConversationKind, Member, Message, MessageId, Person, Reaction } from '../../../shared/model'
 import { plainText } from '../../../shared/model'
 import { DEFAULT_SERVER, clearCredential, loadCredential, login, register, roster, saveCredential, setServerAuth, AuthError, type ServerConfig } from '../im/auth'
+import { api } from '../im/api'
 import { im, SdkEvent, type ConversationItem, type GroupMemberItem, type MessageItem } from '../im/client'
 import { Translator, directId, reactionData } from '../im/translate'
 import { Timeline } from '../im/timeline'
@@ -52,6 +53,15 @@ interface SessionState {
   revoke(id: ConversationId, target: MessageId): Promise<void>
   loadMembers(groupID: string): Promise<void>
   dismissNotice(): void
+
+  createChannel(name: string, memberIDs: string[]): Promise<ConversationId>
+  renameChannel(groupID: string, name: string): Promise<void>
+  inviteToChannel(groupID: string, userIDs: string[]): Promise<void>
+  leaveChannel(groupID: string): Promise<void>
+  dismissChannel(groupID: string): Promise<void>
+  updateNickname(nickname: string): Promise<void>
+  updateAvatar(path: string): Promise<void>
+  markAllRead(): Promise<void>
 }
 
 // ---- store 外的重对象 -----------------------------------------------------------
@@ -222,7 +232,60 @@ export const useSession = create<SessionState>()((set, get) => ({
   },
 
   dismissNotice: () => set({ notice: null }),
+
+  // ---- 频道管理：都是 SDK 一句话，加上把列表和成员刷新 ----
+  async createChannel(name, memberIDs) {
+    const group = await im.createGroup(name, memberIDs)
+    const id: ConversationId = `sg_${group.groupID}`
+    await refreshConversations(set, get)
+    await get().open(id)
+    return id
+  },
+  async renameChannel(groupID, name) {
+    await im.renameGroup(groupID, name)
+    await refreshConversations(set, get)
+  },
+  async inviteToChannel(groupID, userIDs) {
+    await im.invite(groupID, userIDs)
+    await get().loadMembers(groupID)
+  },
+  async leaveChannel(groupID) {
+    await im.quitGroup(groupID)
+    dropConversation(set, get, `sg_${groupID}`)
+  },
+  async dismissChannel(groupID) {
+    await im.dismissGroup(groupID)
+    dropConversation(set, get, `sg_${groupID}`)
+  },
+
+  // ---- 我自己 ----
+  async updateNickname(nickname) {
+    // 名册（yptd-server）是客户端读名字的地方，先改它；OpenIM 那边跟着改，慢一点无妨
+    await api.rename(nickname)
+    im.setSelf({ nickname }).catch(() => { /* 名册已改，这边迟到不算失败 */ })
+    set((s) => ({ myName: nickname, roster: s.roster.map((p) => (p.userID === s.me ? { ...p, nickname } : p)) }))
+    translator.setNames(Object.fromEntries(get().roster.map((p) => [p.userID, p.nickname])))
+    bump(set)
+  },
+  async updateAvatar(path) {
+    const name = path.split('/').pop() ?? 'avatar.png'
+    const { url } = await im.upload(path, name)
+    await im.setSelf({ faceURL: url })
+    set((s) => ({ myAvatar: url, avatars: { ...s.avatars, [s.me]: url } }))
+  },
+  async markAllRead() {
+    await im.markAllRead()
+    await refreshConversations(set, get)
+  },
 }))
+
+/** 一个会话没了（退群/解散）：列表里去掉，正看着它就退到空 */
+function dropConversation(set: Set, get: Get, id: ConversationId): void {
+  timelines.delete(id)
+  set({ conversations: get().conversations.filter((c) => c.id !== id) })
+  useUI.getState().forgetConversation(id)
+  void refreshConversations(set, get)
+}
 
 // ---- 连接 ------------------------------------------------------------------------
 
@@ -383,12 +446,28 @@ function absorb(set: Set, get: Get, msgs: Message[], into?: ConversationId): voi
   let seenHere = false
   for (const m of msgs) {
     const id = into ?? m.conversation
-    if (timeline(id).upsert(m)) changed = true
+    const fresh = timeline(id).upsert(m)
+    if (fresh) changed = true
     if (id === current) seenHere = true
+    if (fresh && !into) maybeNotify(get, m)
   }
   if (changed) bump(set)
   // 正看着的会话来了新消息，顺手标已读——但窗口不在前台时不标，那是没看到
   if (seenHere && current && typeof document !== 'undefined' && document.hasFocus()) scheduleRead(set, get, current)
+}
+
+/** 窗口不在前台、有人 @ 我或私聊我：弹一条系统通知。只对现在到的消息，历史和离线补发不算。 */
+const bootAt = Date.now()
+function maybeNotify(get: Get, m: Message): void {
+  if (typeof document === 'undefined' || typeof Notification === 'undefined') return
+  if (!useUI.getState().notifications || document.hasFocus()) return
+  if (m.sender === get().me || m.transient || m.sentAt < bootAt - 5_000) return
+  const c = get().conversations.find((x) => x.id === m.conversation)
+  const direct = m.conversation.startsWith('si_')
+  if (!m.mentionsMe && !direct) return
+  const title = direct ? m.senderName : `${m.senderName} 在 #${c?.title ?? '频道'}`
+  const n = new Notification(title, { body: plainText(m.body).slice(0, 140), silent: false })
+  n.onclick = () => { window.focus(); void get().open(m.conversation) }
 }
 
 let readTimer: ReturnType<typeof setTimeout> | null = null

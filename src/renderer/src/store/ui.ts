@@ -9,6 +9,14 @@ import type { Theme } from '../../../shared/ipc'
  * 主区内容读 conversationId。
  */
 export type Section = 'inbox' | 'chat' | 'agent' | 'vm' | 'lib' | 'market' | 'set'
+export type SettingsPage = 'profile' | 'members' | 'notify' | 'appearance' | 'keys'
+export type InboxFilter = 'all' | 'mention' | 'agent'
+/** 正开着的模态卡 */
+export type DialogState =
+  | { kind: 'newChannel' }
+  | { kind: 'invite'; groupID: string }
+  | { kind: 'rename'; groupID: string; current: string }
+  | { kind: 'leave'; groupID: string; owner: boolean; title: string }
 
 interface UIState {
   theme: Theme
@@ -24,6 +32,14 @@ interface UIState {
   inspectorTab: string | null
   /** 输入框正在引用的消息，按会话键存——切走再切回来引用还在 */
   quoteBy: Record<string, string | null>
+  dialog: DialogState | null
+  paletteOpen: boolean
+  settingsPage: SettingsPage
+  inboxFilter: InboxFilter
+  /** 桌面通知开关，持久化 */
+  notifications: boolean
+  /** 搜索结果要跳到的那条消息；消息流看到它在时间线里就滚过去并清掉 */
+  jumpTo: { conversationId: string; messageId: string } | null
 
   setTheme(theme: Theme): void
   toggleTheme(): void
@@ -36,6 +52,15 @@ interface UIState {
   closeInspectorTab(conversationId: string, tab: string): void
   setInspectorTab(tab: string | null): void
   setQuote(conversationId: string, messageId: string | null): void
+  openDialog(dialog: DialogState): void
+  closeDialog(): void
+  setPalette(open: boolean): void
+  setSettingsPage(page: SettingsPage): void
+  setInboxFilter(filter: InboxFilter): void
+  setNotifications(on: boolean): void
+  setJumpTo(target: { conversationId: string; messageId: string } | null): void
+  /** 离开/解散了一个频道：正看着它就退到空 */
+  forgetConversation(conversationId: string): void
 }
 
 export const INSPECTOR_MIN = 300
@@ -56,6 +81,12 @@ export const useUI = create<UIState>()(
       inspectorTabsBy: {},
       inspectorTab: null,
       quoteBy: {},
+      dialog: null,
+      paletteOpen: false,
+      settingsPage: 'profile',
+      inboxFilter: 'all',
+      notifications: true,
+      jumpTo: null,
 
       setTheme: (theme) => {
         applyTheme(theme)
@@ -107,6 +138,18 @@ export const useUI = create<UIState>()(
       setInspectorTab: (inspectorTab) => set({ inspectorTab }),
       setQuote: (conversationId, messageId) =>
         set((s) => ({ quoteBy: { ...s.quoteBy, [conversationId]: messageId } })),
+      openDialog: (dialog) => set({ dialog }),
+      closeDialog: () => set({ dialog: null }),
+      setPalette: (paletteOpen) => set({ paletteOpen }),
+      setSettingsPage: (settingsPage) => set({ settingsPage, section: 'set' }),
+      setInboxFilter: (inboxFilter) => set({ inboxFilter }),
+      setNotifications: (notifications) => set({ notifications }),
+      setJumpTo: (jumpTo) => set({ jumpTo }),
+      forgetConversation: (conversationId) =>
+        set((s) => ({
+          conversationId: s.conversationId === conversationId ? null : s.conversationId,
+          lastChannelId: s.lastChannelId === conversationId ? null : s.lastChannelId,
+        })),
     }),
     {
       name: 'yptd.ui',
@@ -124,6 +167,7 @@ export const useUI = create<UIState>()(
         lastChannelId: s.lastChannelId,
         conversationId: s.conversationId,
         section: s.section,
+        notifications: s.notifications,
       }),
     },
   ),

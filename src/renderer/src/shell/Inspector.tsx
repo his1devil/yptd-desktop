@@ -5,6 +5,7 @@ import { IconCloseSmall, IconPanel } from '../components/Icons'
 import { usePlace, type Place } from '../store/selectors'
 import { useSession } from '../store/session'
 import { INSPECTOR_MAX, INSPECTOR_MIN, useUI } from '../store/ui'
+import { AgentProfile, RunsList } from '../views/InspectorTabs'
 import styles from './Inspector.module.css'
 
 /**
@@ -14,11 +15,12 @@ import styles from './Inspector.module.css'
  * 决定，详情页签由点击推入、按会话键存、带 ✕。没有任何页签时不能白屏——
  * 显示"左宽右窄"的分栏示意和三条提示。
  */
-const BASE_TABS: Record<string, string> = { members: '成员' }
+const BASE_TABS: Record<string, string> = { members: '成员', runs: '运行', profile: '资料' }
 const DETAIL_TABS: Record<string, string> = {}
 
 export function Inspector() {
   const open = useUI((s) => s.inspectorOpen)
+  const section = useUI((s) => s.section)
   const width = useUI((s) => s.inspectorWidth)
   const setWidth = useUI((s) => s.setInspectorWidth)
   const setOpen = useUI((s) => s.setInspectorOpen)
@@ -29,8 +31,9 @@ export function Inspector() {
   const closeTab = useUI((s) => s.closeInspectorTab)
 
   // agent 会话没有基础页签；频道有成员（话题与运行等 M4 接上）
+  // 频道：成员 + 运行；agent 会话：资料 + 运行；人和人的私聊没有基础页签
   const place = usePlace(conversationId)
-  const base = !place || place.kind !== 'channel' ? [] : Object.keys(BASE_TABS)
+  const base = !place ? [] : place.kind === 'channel' ? ['members', 'runs'] : place.isAgent ? ['profile', 'runs'] : []
   const detail = conversationId ? tabsBy[conversationId] ?? [] : []
   const tabs = [...base, ...detail]
   const current = tab && tabs.includes(tab) ? tab : tabs[0] ?? null
@@ -59,7 +62,8 @@ export function Inspector() {
 
   useEffect(() => () => { document.body.style.cursor = '' }, [])
 
-  if (!open) return null
+  // 收件箱和设置没有"当前会话"，右侧栏在那里只会显示上一个频道的成员，误导
+  if (!open || section === 'inbox' || section === 'set') return null
 
   return (
     <aside className={styles.side} style={{ width }}>
@@ -93,6 +97,10 @@ export function Inspector() {
       <div className={styles.body}>
         {current === 'members' && place ? (
           <Members place={place} />
+        ) : current === 'runs' && place ? (
+          <RunsList place={place} />
+        ) : current === 'profile' && place ? (
+          <AgentProfile place={place} />
         ) : current ? (
           <div className={styles.placeholder}>{BASE_TABS[current] ?? DETAIL_TABS[current]}</div>
         ) : (
@@ -136,6 +144,8 @@ function EmptyState() {
 /** 频道成员：agent 一组，人一组；群主和管理员带角色标 */
 function Members({ place }: { place: Place }) {
   const me = useSession((s) => s.me)
+  const openDialog = useUI((s) => s.openDialog)
+  const owner = place.members.some((m) => m.id === me && m.role === 'owner')
   const agents = place.members.filter((m) => m.isAgent)
   const humans = place.members.filter((m) => !m.isAgent)
   const row = (m: Member) => (
@@ -147,6 +157,13 @@ function Members({ place }: { place: Place }) {
   )
   return (
     <div className={styles.members}>
+      {place.groupID && (
+        <div className={styles.mActions}>
+          <button className={styles.mBtn} onClick={() => openDialog({ kind: 'invite', groupID: place.groupID! })}>邀请成员</button>
+          <button className={styles.mBtn} onClick={() => openDialog({ kind: 'rename', groupID: place.groupID!, current: place.title })}>改名</button>
+          <button className={`${styles.mBtn} ${styles.mBtnDanger}`} onClick={() => openDialog({ kind: 'leave', groupID: place.groupID!, owner, title: place.title })}>{owner ? '解散' : '退出'}</button>
+        </div>
+      )}
       {agents.length > 0 && (
         <section className={styles.mGroup}>
           <div className={`${styles.mTitle} mono`}>AGENTS · {agents.length}</div>

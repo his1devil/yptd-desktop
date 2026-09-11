@@ -6,6 +6,9 @@ import { ContextSidebar } from './shell/ContextSidebar'
 import { Inspector } from './shell/Inspector'
 import { MainArea } from './shell/MainArea'
 import { useSession } from './store/session'
+import { useUI } from './store/ui'
+import { ChannelDialogsMount } from './views/mounts'
+import { CommandPalette } from './views/CommandPalette'
 import { Recover, SignIn, Splash } from './views/SignIn'
 import styles from './App.module.css'
 
@@ -28,6 +31,17 @@ export function App() {
     void useSession.getState().boot()
   }, [])
 
+  // 全局快捷键：⌘K 搜索/派活，⌘, 设置
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent): void => {
+      if (!(e.metaKey || e.ctrlKey)) return
+      if (e.key === 'k' || e.key === 'K') { e.preventDefault(); const ui = useUI.getState(); ui.setPalette(!ui.paletteOpen) }
+      else if (e.key === ',') { e.preventDefault(); useUI.getState().setSettingsPage('profile') }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
+
   // 一旦到过表单，后面的「连接中 / 失败」都在表单里显示
   const viaForm = useRef(false)
   if (phase.kind === 'signedOut') viaForm.current = true
@@ -48,6 +62,8 @@ export function App() {
         <Inspector />
       </div>
       <Toast />
+      <CommandPalette />
+      <ChannelDialogsMount />
     </div>
   )
 }

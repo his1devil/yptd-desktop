@@ -1,11 +1,13 @@
-import { useState, type DragEvent } from 'react'
+import { useEffect, useRef, useState, type DragEvent } from 'react'
 import { Avatar, glyphOf, pairOf } from '../components/Avatar'
-import { IconPanel } from '../components/Icons'
+import { IconMore, IconPanel } from '../components/Icons'
 import { directId } from '../im/translate'
 import { usePlace, type Place } from '../store/selectors'
 import { agentsOf, useSession } from '../store/session'
 import { useUI } from '../store/ui'
 import { Composer } from '../views/Composer'
+import { Inbox } from '../views/Inbox'
+import { Settings } from '../views/Settings'
 import { Stream } from '../views/Stream'
 import styles from './MainArea.module.css'
 
@@ -14,9 +16,13 @@ import styles from './MainArea.module.css'
  * 滚动位置、量高缓存、草稿各归各。
  */
 export function MainArea() {
+  const section = useUI((s) => s.section)
   const conversationId = useUI((s) => s.conversationId)
   const place = usePlace(conversationId)
   const [dragging, setDragging] = useState(false)
+
+  if (section === 'inbox') return <main className={styles.main}><Inbox /></main>
+  if (section === 'set') return <main className={styles.main}><Settings /></main>
 
   const onDragOver = (e: DragEvent): void => {
     if (!place || ![...e.dataTransfer.types].includes('Files')) return
@@ -50,6 +56,17 @@ export function MainArea() {
 function Head({ place }: { place: Place }) {
   const inspectorOpen = useUI((s) => s.inspectorOpen)
   const setInspectorOpen = useUI((s) => s.setInspectorOpen)
+  const openDialog = useUI((s) => s.openDialog)
+  const me = useSession((s) => s.me)
+  const [menu, setMenu] = useState(false)
+  const menuRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!menu) return
+    const onDown = (e: MouseEvent): void => { if (!menuRef.current?.contains(e.target as Node)) setMenu(false) }
+    window.addEventListener('mousedown', onDown)
+    return () => window.removeEventListener('mousedown', onDown)
+  }, [menu])
+  const owner = place.members.some((m) => m.id === me && m.role === 'owner')
   const agents = place.members.filter((m) => m.isAgent).length
   const subtitle = place.kind === 'channel'
     ? place.members.length ? `${place.members.length} 位成员${agents ? ` · ${agents} 个 agent` : ''}` : '频道'
@@ -83,6 +100,18 @@ function Head({ place }: { place: Place }) {
             </div>
             <span className={`${styles.count} mono`}>{place.members.length}</span>
           </>
+        )}
+        {place.groupID && (
+          <div className={styles.menuWrap} ref={menuRef}>
+            <button className={styles.panelBtn} title="频道操作" onClick={() => setMenu((m) => !m)}><IconMore /></button>
+            {menu && (
+              <div className={styles.menu}>
+                <button className={styles.menuItem} onClick={() => { setMenu(false); openDialog({ kind: 'invite', groupID: place.groupID! }) }}>邀请成员</button>
+                <button className={styles.menuItem} onClick={() => { setMenu(false); openDialog({ kind: 'rename', groupID: place.groupID!, current: place.title }) }}>改频道名</button>
+                <button className={`${styles.menuItem} ${styles.menuDanger}`} onClick={() => { setMenu(false); openDialog({ kind: 'leave', groupID: place.groupID!, owner, title: place.title }) }}>{owner ? '解散频道' : '退出频道'}</button>
+              </div>
+            )}
+          </div>
         )}
         <button className={styles.panelBtn} title={inspectorOpen ? '收起右侧栏' : '展开右侧栏'} onClick={() => setInspectorOpen(!inspectorOpen)}>
           <IconPanel open={inspectorOpen} />

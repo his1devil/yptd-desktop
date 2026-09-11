@@ -53,6 +53,13 @@ export const im = {
   history: (conversationID: string, before: string, count: number) =>
     unwrap(sdk.getAdvancedHistoryMessageList({ conversationID, startClientMsgID: before, count, viewType: 0 })),
   markRead: (conversationID: string) => unwrap(sdk.markConversationMessageAsRead(conversationID)),
+  markAllRead: () => unwrap(sdk.markAllConversationMessageAsRead()),
+  /** 本地全文搜索（所有会话），给 ⌘K 用 */
+  searchMessages: (keyword: string, count = 30) =>
+    unwrap(sdk.searchLocalMessages({
+      conversationID: '', keywordList: [keyword], keywordListMatchType: 0, senderUserIDList: [],
+      messageTypeList: [], searchTimePosition: 0, searchTimePeriod: 0, pageIndex: 1, count,
+    })),
   members: (groupID: string) => unwrap(sdk.getGroupMemberList({ groupID, filter: 0, offset: 0, count: 200 })),
   atAllTag: () => unwrap(sdk.getAtAllTag()),
   self: () => unwrap(sdk.getSelfUserInfo()),
