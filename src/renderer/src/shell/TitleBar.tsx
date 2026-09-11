@@ -1,5 +1,6 @@
-import { Avatar } from '../components/Avatar'
+import { Avatar, glyphOf, pairOf } from '../components/Avatar'
 import { IconChevronDown, IconSearch } from '../components/Icons'
+import { useSession } from '../store/session'
 import styles from './TitleBar.module.css'
 
 /**
@@ -12,14 +13,18 @@ import styles from './TitleBar.module.css'
  * 镜像，宽度永远和左边一样，不用算。
  */
 export function TitleBar({ fullscreen }: { fullscreen: boolean }) {
+  const me = useSession((s) => s.me)
+  const myName = useSession((s) => s.myName)
+  const myAvatar = useSession((s) => s.avatars[s.me] ?? s.myAvatar)
+  const connected = useSession((s) => s.connected)
   const cluster = (
     <>
       {!fullscreen && <div className={styles.lights} />}
       <button className={styles.profile} title="个人中心" tabIndex={0}>
-        <Avatar glyph="幻" pair={4} size={27} presence="online" ring="var(--rail)" />
+        <Avatar glyph={glyphOf(myName || me)} pair={pairOf(me)} size={27} src={myAvatar} presence={connected ? 'online' : 'offline'} ring="var(--rail)" />
         <span className={styles.who}>
-          <span className={styles.name}>张幻阳</span>
-          <span className={styles.sig}>产品 · 盯 v2.4 发布</span>
+          <span className={styles.name}>{myName || me}</span>
+          <span className={`${styles.sig} mono`}>{connected ? `@${me}` : '连接中…'}</span>
         </span>
         <IconChevronDown className={styles.chev} />
       </button>

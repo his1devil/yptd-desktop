@@ -1,7 +1,7 @@
-import { app, BrowserWindow, ipcMain, safeStorage, session, shell } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, net, safeStorage, session, shell } from 'electron'
 import { mkdirSync, readFileSync, unlinkSync, writeFileSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
-import { IPC } from '../shared/ipc'
+import { IPC, type HttpRequest, type HttpResponse } from '../shared/ipc'
 import { attachOpenIM, disposeOpenIM } from './openim'
 
 // ---- 凭据 --------------------------------------------------------------------
@@ -16,6 +16,9 @@ const secretsDir = (): string => {
 const secretFile = (key: string): string => join(secretsDir(), key.replace(/[^a-zA-Z0-9._-]/g, '_'))
 
 ipcMain.handle(IPC.secretGet, (_e, key: string) => {
+  // 开发用：YPTD_DEV_CREDENTIAL='{"userID":…,"nickname":…,"deviceToken":…}' 直接当已登录，
+  // 联调不用每次消耗邀请码。打包后不认。
+  if (!app.isPackaged && key === 'device-credential' && process.env.YPTD_DEV_CREDENTIAL) return process.env.YPTD_DEV_CREDENTIAL
   const file = secretFile(key)
   if (!existsSync(file)) return null
   if (!safeStorage.isEncryptionAvailable()) return null
@@ -34,6 +37,37 @@ ipcMain.handle(IPC.appDataDir, () => {
   mkdirSync(dir, { recursive: true })
   return dir
 })
+
+// ---- HTTP --------------------------------------------------------------------
+// yptd-server 的三个接口从这里发。渲染进程的 origin 是 localhost（开发）或 file://（打包），
+// 服务端没配 CORS 也不该配——这是桌面 app，不是网页。net.fetch 走 Chromium 网络栈，认系统代理。
+ipcMain.handle(IPC.httpFetch, async (_e, req: HttpRequest): Promise<HttpResponse> => {
+  const res = await net.fetch(req.url, { method: req.method ?? 'GET', headers: req.headers, body: req.body })
+  return { status: res.status, ok: res.ok, text: await res.text() }
+})
+
+// ---- 文件 --------------------------------------------------------------------
+// SDK 建图片/文件消息只认本机路径：选文件走系统对话框，粘贴板里的图片先落成临时文件。
+const IMAGE_EXT = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp']
+ipcMain.handle(IPC.dialogPickFiles, async (e, kind: 'image' | 'any') => {
+  const win = BrowserWindow.fromWebContents(e.sender)
+  const options: Electron.OpenDialogOptions = {
+    properties: ['openFile', 'multiSelections'],
+    filters: kind === 'image' ? [{ name: '图片', extensions: IMAGE_EXT }] : [{ name: '所有文件', extensions: ['*'] }],
+  }
+  const r = win ? await dialog.showOpenDialog(win, options) : await dialog.showOpenDialog(options)
+  return r.canceled ? [] : r.filePaths
+})
+ipcMain.handle(IPC.fileStash, (_e, name: string, bytes: ArrayBuffer | Uint8Array) => {
+  const dir = join(app.getPath('temp'), 'yptd-stash')
+  mkdirSync(dir, { recursive: true })
+  const file = join(dir, `${Date.now()}-${name.replace(/[^\w.-]/g, '_') || 'image.png'}`)
+  writeFileSync(file, Buffer.from(bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes)))
+  return file
+})
+
+// 开发用：YPTD_DEV_CDP=9222 开远程调试口，联调脚本能在页面里跑 JS、截图。打包后不认。
+if (!app.isPackaged && process.env.YPTD_DEV_CDP) app.commandLine.appendSwitch('remote-debugging-port', process.env.YPTD_DEV_CDP)
 
 // 设计窗口尺寸 1440×900，最小 1100×700（README §Screens）。
 const DESIGN = { width: 1440, height: 900, minWidth: 1100, minHeight: 700 }

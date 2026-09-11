@@ -1,3 +1,4 @@
+import type { HttpResponse } from '../../../shared/ipc'
 import type { Person } from '../../../shared/model'
 
 /**
@@ -44,9 +45,9 @@ export async function login(cfg: ServerConfig, deviceToken: string): Promise<Aut
 }
 
 export async function roster(cfg: ServerConfig, deviceToken: string): Promise<Person[]> {
-  const res = await fetch(`${cfg.server}/v1/users`, { headers: { Authorization: `Bearer ${deviceToken}` } })
-  await check(res)
-  const data = (await res.json()) as { users?: RawPerson[] }
+  const res = await window.desktop.http({ url: `${cfg.server}/v1/users`, headers: { Authorization: `Bearer ${deviceToken}` } })
+  check(res)
+  const data = JSON.parse(res.text) as { users?: RawPerson[] }
   return (data.users ?? []).map((u) => ({
     userID: u.user_id, nickname: u.nickname, isAgent: !!u.is_agent, tag: u.tag ?? null, color: u.color ?? null,
   }))
@@ -56,18 +57,18 @@ interface RawPerson { user_id: string; nickname: string; is_agent?: boolean; tag
 interface RawSession { user_id: string; nickname: string; device_token?: string; im_token: string }
 
 async function post(url: string, body: Record<string, unknown>): Promise<AuthSession> {
-  const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
-  await check(res)
-  const r = (await res.json()) as RawSession
+  const res = await window.desktop.http({ url, method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+  check(res)
+  const r = JSON.parse(res.text) as RawSession
   if (!r.im_token) throw new AuthError('服务端没有返回 IM token')
   return { userID: r.user_id, nickname: r.nickname, deviceToken: r.device_token ?? '', imToken: r.im_token }
 }
 
 /** 读服务端自己的错误文案，让人看到「邀请码已被使用」而不是「HTTP 400」。 */
-async function check(res: Response): Promise<void> {
+function check(res: HttpResponse): void {
   if (res.ok) return
   let detail: { error?: string; message?: string } = {}
-  try { detail = await res.json() } catch { /* 不是 JSON 就用状态码 */ }
+  try { detail = JSON.parse(res.text) } catch { /* 不是 JSON 就用状态码 */ }
   throw new AuthError(detail.message ?? detail.error ?? `HTTP ${res.status}`, detail.error)
 }
 

@@ -3,10 +3,15 @@ import { createRoot } from 'react-dom/client'
 import '../styles/tokens.css'
 import '../styles/base.css'
 import { App } from './App'
+import { im } from './im/client'
+import { timeline, useSession } from './store/session'
 import { applyTheme, useUI } from './store/ui'
 
 // 主题在第一帧之前就要落到 <html> 上，否则浅色会闪一下。
 applyTheme(useUI.getState().theme)
+
+// 开发用：控制台 / 联调脚本从 window.yptd 够到两个 store
+if (import.meta.env.DEV) Object.assign(window, { yptd: { session: useSession, ui: useUI, timeline, im } })
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

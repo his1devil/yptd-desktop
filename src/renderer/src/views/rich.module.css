@@ -1,0 +1,38 @@
+/* 行内代码：等宽、淡底，不抢正文 */
+.code {
+  font-family: var(--mono);
+  font-size: 12px;
+  background: var(--surface2);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 0 5px;
+}
+
+/* @提及色块：人是蓝的，agent 是橙的（设计稿 segs() 的 chip） */
+.mentionUser,
+.mentionAgent {
+  display: inline-block;
+  border-radius: 4px;
+  padding: 0 5px;
+  font-weight: 600;
+  font-size: 13px;
+}
+.mentionUser  { background: var(--utint); color: var(--user); }
+.mentionAgent { background: var(--atint); color: var(--agent); }
+
+/* 围栏代码块 */
+.pre {
+  display: block;
+  margin: 6px 0;
+  padding: 9px 11px;
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1.6;
+  background: var(--surface2);
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  overflow-x: auto;
+  white-space: pre;
+  max-width: 100%;
+}
+.pre code { font: inherit; }

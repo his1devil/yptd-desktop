@@ -22,16 +22,20 @@ interface UIState {
   /** 右侧栏页签，按会话键存。全局存会让 A 频道的「回测」出现在 B 会话里 */
   inspectorTabsBy: Record<string, string[]>
   inspectorTab: string | null
+  /** 输入框正在引用的消息，按会话键存——切走再切回来引用还在 */
+  quoteBy: Record<string, string | null>
 
   setTheme(theme: Theme): void
   toggleTheme(): void
   go(section: Section): void
-  open(conversationId: string, opts?: { section?: Section }): void
+  /** `agent` 说明这是和单个 agent 的会话：它不会成为「最后一个非 agent 会话」。会话 id 本身看不出这一点，由调用方从会话种类判断。 */
+  open(conversationId: string, opts?: { section?: Section; agent?: boolean }): void
   setInspectorOpen(open: boolean): void
   setInspectorWidth(width: number): void
   pushInspectorTab(conversationId: string, tab: string): void
   closeInspectorTab(conversationId: string, tab: string): void
   setInspectorTab(tab: string | null): void
+  setQuote(conversationId: string, messageId: string | null): void
 }
 
 export const INSPECTOR_MIN = 300
@@ -51,6 +55,7 @@ export const useUI = create<UIState>()(
       inspectorWidth: INSPECTOR_DEFAULT,
       inspectorTabsBy: {},
       inspectorTab: null,
+      quoteBy: {},
 
       setTheme: (theme) => {
         applyTheme(theme)
@@ -68,7 +73,7 @@ export const useUI = create<UIState>()(
       },
 
       open: (conversationId, opts) => {
-        const isAgent = conversationId.startsWith('ag:')
+        const isAgent = opts?.agent ?? false
         set((s) => ({
           conversationId,
           section: opts?.section ?? s.section,
@@ -100,6 +105,8 @@ export const useUI = create<UIState>()(
           }
         }),
       setInspectorTab: (inspectorTab) => set({ inspectorTab }),
+      setQuote: (conversationId, messageId) =>
+        set((s) => ({ quoteBy: { ...s.quoteBy, [conversationId]: messageId } })),
     }),
     {
       name: 'yptd.ui',
@@ -115,6 +122,8 @@ export const useUI = create<UIState>()(
         inspectorOpen: s.inspectorOpen,
         inspectorWidth: s.inspectorWidth,
         lastChannelId: s.lastChannelId,
+        conversationId: s.conversationId,
+        section: s.section,
       }),
     },
   ),

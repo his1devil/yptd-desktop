@@ -1,0 +1,14 @@
+.layer {
+  position: fixed; inset: 0; z-index: 60;
+  background: rgba(6, 6, 7, .78);
+  display: flex; align-items: center; justify-content: center;
+  animation: rl-up .12s ease-out;
+}
+.img { max-width: 92vw; max-height: 86vh; border-radius: 8px; box-shadow: var(--shwin); background: #000; }
+.bar {
+  position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+  display: flex; align-items: center; gap: 14px;
+  padding: 7px 12px; border-radius: 99px;
+  background: rgba(20, 20, 22, .85); color: #F2F3F5; font-size: 11.5px;
+}
+.bar a { color: #C3C9FF; }

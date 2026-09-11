@@ -73,3 +73,7 @@
   color: var(--ink);
   font-size: 10px; font-weight: 600; line-height: 17px; text-align: center;
 }
+
+.emptyLine { font-size: 11.5px; color: var(--ink3); padding: 4px 8px; }
+.unread .name { color: var(--ink); font-weight: 600; }
+.countAt { background: var(--accent); color: var(--onacc); }

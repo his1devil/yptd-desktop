@@ -9,7 +9,9 @@ export default defineConfig({
     resolve: { alias: { '@main': resolve('src/main') } },
   },
   preload: {
-    plugins: [externalizeDepsPlugin()],
+    // sandbox 下的 preload 只能 require 白名单里的几个模块，第三方包必须打进 bundle。
+    // OpenIM 的渲染桥就是第三方 preload 代码，不能外置。
+    plugins: [externalizeDepsPlugin({ exclude: ['@openim/electron-client-sdk'] })],
   },
   renderer: {
     resolve: { alias: { '@': resolve('src/renderer/src') } },

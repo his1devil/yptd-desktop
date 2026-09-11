@@ -1,83 +1,138 @@
-import { Avatar } from '../components/Avatar'
+import type { ReactNode } from 'react'
+import type { Conversation, Person } from '../../../shared/model'
+import { Avatar, glyphOf, pairOf } from '../components/Avatar'
 import { IconPlus } from '../components/Icons'
+import { directId } from '../im/translate'
+import { agentsOf, useSession } from '../store/session'
 import { useUI, type Section } from '../store/ui'
 import styles from './ContextSidebar.module.css'
 
 /**
- * 上下文侧栏 252px。内容读 section：会话区是频道/私聊/话题，Agent 区是
- * 会话/运行中/已启用/已暂停，收件箱是筛选，设置是分组。
- *
- * M0 阶段这里是按设计稿的分组和条目做的静态骨架，M1 接导航状态，M2 接真数据。
+ * 上下文侧栏 252px。内容读 section：会话区是频道 / 私聊 / 常驻 agent，
+ * Agent 区是会话 / 已启用，收件箱和设置是分组（M5 接内容）。
  */
-interface Item { id: string; name: string; glyph?: string; pair?: number; kind?: 'human' | 'agent'; hash?: boolean; sub?: string; badge?: number; live?: boolean }
-interface Group { title: string; items: Item[] }
+export function ContextSidebar() {
+  const section = useUI((s) => s.section)
+  return (
+    <aside className={styles.side}>
+      {section === 'chat' ? <ChatList /> : section === 'agent' ? <AgentList /> : <Static section={section} />}
+    </aside>
+  )
+}
 
-const GROUPS: Record<Section, { heading: string; groups: Group[] }> = {
-  chat: {
-    heading: '会话',
-    groups: [
-      { title: 'CHANNELS', items: [
-        { id: 'ch:eng', name: 'engineering', hash: true, badge: 3 },
-        { id: 'ch:mkt', name: 'markets', hash: true },
-      ] },
-      { title: 'DIRECT', items: [
-        { id: 'dm:zy', name: '陈知远', glyph: '知', pair: 0 },
-        { id: 'dm:ln', name: '林越', glyph: '越', pair: 2 },
-        { id: 'ag:triage', name: 'Triage 分诊', glyph: '△', pair: 1, kind: 'agent', sub: '504 分诊跟进' },
-      ] },
-      { title: 'THREADS', items: [
-        { id: 'th:1', name: '504 的根因', sub: '#engineering · 4 回复' },
-      ] },
-    ],
-  },
-  agent: {
-    heading: 'Agent',
-    groups: [
-      { title: '会话 SESSIONS', items: [
-        { id: 'ag:triage', name: 'Triage 分诊', glyph: '△', pair: 1, kind: 'agent', sub: '504 分诊跟进', live: true },
-        { id: 'ag:quant', name: 'Quant 量化', glyph: 'Q', pair: 4, kind: 'agent', sub: 'NVDA 阈值分析' },
-        { id: 'ag:filing', name: 'Filing 归档', glyph: 'F', pair: 3, kind: 'agent', sub: 'TSMC 月报' },
-        { id: 'ag:scribe', name: 'Scribe 纪要', glyph: 'S', pair: 0, kind: 'agent', sub: '周会纪要' },
-      ] },
-      { title: '运行中 RUNNING', items: [
-        { id: 'a:triage', name: 'Triage 分诊', glyph: '△', pair: 1, kind: 'agent', live: true },
-      ] },
-      { title: '已启用 ENABLED', items: [
-        { id: 'a:quant', name: 'Quant 量化', glyph: 'Q', pair: 4, kind: 'agent' },
-        { id: 'a:filing', name: 'Filing 归档', glyph: 'F', pair: 3, kind: 'agent' },
-        { id: 'a:scribe', name: 'Scribe 纪要', glyph: 'S', pair: 0, kind: 'agent' },
-      ] },
-      { title: '已暂停 PAUSED', items: [
-        { id: 'a:digest', name: 'Digest 日报', glyph: 'D', pair: 2, kind: 'agent' },
-      ] },
-    ],
-  },
-  inbox: {
-    heading: '收件箱',
-    groups: [
-      { title: '筛选 FILTER', items: [
-        { id: 'in:all', name: '全部', badge: 7 },
-        { id: 'in:mention', name: '@提及我的', badge: 3 },
-        { id: 'in:agent', name: 'Agent 结果', badge: 2 },
-        { id: 'in:approve', name: '待我审批', badge: 2 },
-        { id: 'in:archived', name: '已归档' },
-      ] },
-    ],
-  },
+function Header({ title, action }: { title: string; action?: ReactNode }) {
+  return (
+    <div className={styles.head}>
+      <span className={styles.heading}>{title}</span>
+      {action}
+    </div>
+  )
+}
+
+function Group({ title, children, empty }: { title: string; children: ReactNode[]; empty?: string }) {
+  return (
+    <section className={styles.group}>
+      <div className={`${styles.groupTitle} mono`}>{title}</div>
+      {children.length ? children : empty ? <div className={styles.emptyLine}>{empty}</div> : null}
+    </section>
+  )
+}
+
+function ConversationItem({ c, active }: { c: Conversation; active: boolean }) {
+  const isChannel = c.kind === 'channel'
+  const isAgent = c.kind === 'agent_session'
+  return (
+    <button className={`${styles.item} ${active ? styles.active : ''} ${c.unread ? styles.unread : ''}`} onClick={() => void useSession.getState().open(c.id)}>
+      {isChannel ? (
+        <span className={`${styles.hash} mono`}>#</span>
+      ) : (
+        <Avatar glyph={glyphOf(c.title)} pair={pairOf(c.peerID ?? c.id)} size={20} kind={isAgent ? 'agent' : 'human'} src={c.avatar} />
+      )}
+      <span className={styles.text}>
+        <span className={styles.name}>{c.title}</span>
+        {isAgent && c.preview && <span className={styles.sub}>{c.preview}</span>}
+      </span>
+      {c.unread > 0 && <span className={`${styles.count} ${c.mentioned ? styles.countAt : ''} mono`}>{c.mentioned ? '@' : ''}{c.unread > 99 ? '99+' : c.unread}</span>}
+    </button>
+  )
+}
+
+/** 名册里的 agent，不管有没有聊过都常驻在这里 */
+function AgentItem({ a, active, unread, sub }: { a: Person; active: boolean; unread: number; sub?: string }) {
+  const me = useSession((s) => s.me)
+  return (
+    <button className={`${styles.item} ${active ? styles.active : ''}`} onClick={() => void useSession.getState().open(directId(me, a.userID))}>
+      <Avatar glyph={glyphOf(a.nickname)} pair={0} size={20} kind="agent" />
+      <span className={styles.text}>
+        <span className={styles.name}>{a.nickname}</span>
+        {sub && <span className={styles.sub}>{sub}</span>}
+      </span>
+      {unread > 0 && <span className={`${styles.count} mono`}>{unread}</span>}
+    </button>
+  )
+}
+
+function ChatList() {
+  const conversationId = useUI((s) => s.conversationId)
+  const conversations = useSession((s) => s.conversations)
+  const roster = useSession((s) => s.roster)
+  const me = useSession((s) => s.me)
+  const channels = conversations.filter((c) => c.kind === 'channel')
+  const dms = conversations.filter((c) => c.kind === 'dm')
+  const unreadOf = (a: Person): number => conversations.find((c) => c.id === directId(me, a.userID))?.unread ?? 0
+
+  return (
+    <>
+      <Header title="会话" action={<button className={styles.headBtn} title="新建频道（即将支持）"><IconPlus /></button>} />
+      <div className={styles.scroll}>
+        <Group title="频道 CHANNELS" empty="还没有频道">
+          {channels.map((c) => <ConversationItem key={c.id} c={c} active={c.id === conversationId} />)}
+        </Group>
+        <Group title="私聊 DIRECT" empty="还没有私聊">
+          {dms.map((c) => <ConversationItem key={c.id} c={c} active={c.id === conversationId} />)}
+        </Group>
+        <Group title="AGENTS">
+          {agentsOf(roster).map((a) => (
+            <AgentItem key={a.userID} a={a} active={directId(me, a.userID) === conversationId} unread={unreadOf(a)} sub={a.tag ?? undefined} />
+          ))}
+        </Group>
+      </div>
+    </>
+  )
+}
+
+function AgentList() {
+  const conversationId = useUI((s) => s.conversationId)
+  const conversations = useSession((s) => s.conversations)
+  const roster = useSession((s) => s.roster)
+  const me = useSession((s) => s.me)
+  const sessions = conversations.filter((c) => c.kind === 'agent_session')
+  return (
+    <>
+      <Header title="Agent" />
+      <div className={styles.scroll}>
+        <Group title="会话 SESSIONS" empty="还没和 agent 聊过">
+          {sessions.map((c) => <ConversationItem key={c.id} c={c} active={c.id === conversationId} />)}
+        </Group>
+        <Group title="已启用 ENABLED" empty="名册里还没有 agent">
+          {agentsOf(roster).map((a) => (
+            <AgentItem key={a.userID} a={a} active={directId(me, a.userID) === conversationId} unread={0} sub={a.tag ?? undefined} />
+          ))}
+        </Group>
+      </div>
+    </>
+  )
+}
+
+// ---- 还没接真数据的区段，保留设计稿的分组骨架 ----------------------------------------
+
+const STATIC: Record<Exclude<Section, 'chat' | 'agent'>, { heading: string; groups: { title: string; items: string[] }[] }> = {
+  inbox: { heading: '收件箱', groups: [{ title: '筛选 FILTER', items: ['全部', '@提及我的', 'Agent 结果', '已归档'] }] },
   set: {
     heading: '设置',
     groups: [
-      { title: '工作区 WORKSPACE', items: [
-        { id: 'set:members', name: '成员与邀请' },
-        { id: 'set:perm', name: '权限矩阵' },
-        { id: 'set:audit', name: '审计日志' },
-      ] },
-      { title: '个人 PERSONAL', items: [
-        { id: 'set:profile', name: '资料' },
-        { id: 'set:notify', name: '通知' },
-        { id: 'set:appearance', name: '外观' },
-        { id: 'set:keys', name: '快捷键' },
-      ] },
+      { title: '工作区 WORKSPACE', items: ['成员与邀请'] },
+      { title: '个人 PERSONAL', items: ['资料', '通知', '外观'] },
     ],
   },
   vm: { heading: '运行机器', groups: [] },
@@ -85,51 +140,24 @@ const GROUPS: Record<Section, { heading: string; groups: Group[] }> = {
   market: { heading: 'Agent 市场', groups: [] },
 }
 
-export function ContextSidebar() {
-  const section = useUI((s) => s.section)
-  const conversationId = useUI((s) => s.conversationId)
-  const open = useUI((s) => s.open)
-  const { heading, groups } = GROUPS[section]
-
+function Static({ section }: { section: Exclude<Section, 'chat' | 'agent'> }) {
+  const { heading, groups } = STATIC[section]
   return (
-    <aside className={styles.side}>
-      <div className={styles.head}>
-        <span className={styles.heading}>{heading}</span>
-        {section === 'chat' && (
-          <button className={styles.headBtn} title="新建"><IconPlus /></button>
-        )}
-      </div>
+    <>
+      <Header title={heading} />
       <div className={styles.scroll}>
         {groups.map((g) => (
-          <section key={g.title} className={styles.group}>
-            <div className={`${styles.groupTitle} mono`}>{g.title}</div>
-            {g.items.map((it) => {
-              const active = it.id === conversationId
-              return (
-                <button
-                  key={it.id}
-                  className={`${styles.item} ${active ? styles.active : ''}`}
-                  onClick={() => open(it.id, { section })}
-                >
-                  {it.hash ? (
-                    <span className={`${styles.hash} mono`}>#</span>
-                  ) : it.glyph ? (
-                    <Avatar glyph={it.glyph} pair={it.pair ?? 0} size={20} kind={it.kind} />
-                  ) : (
-                    <span className={styles.dot} />
-                  )}
-                  <span className={styles.text}>
-                    <span className={styles.name}>{it.name}</span>
-                    {it.sub && <span className={styles.sub}>{it.sub}</span>}
-                  </span>
-                  {it.live && <span className={styles.live} title="运行中" />}
-                  {it.badge ? <span className={`${styles.count} mono`}>{it.badge}</span> : null}
-                </button>
-              )
-            })}
-          </section>
+          <Group key={g.title} title={g.title}>
+            {g.items.map((name) => (
+              <button key={name} className={styles.item}>
+                <span className={styles.dot} />
+                <span className={styles.text}><span className={styles.name}>{name}</span></span>
+              </button>
+            ))}
+          </Group>
         ))}
+        {groups.length === 0 && <div className={styles.emptyLine}>即将推出</div>}
       </div>
-    </aside>
+    </>
   )
 }

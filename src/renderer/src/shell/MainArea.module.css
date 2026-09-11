@@ -42,3 +42,32 @@
 .panelBtn:hover { background: var(--surface2); color: var(--ink); }
 
 .stream { flex: 1; min-height: 0; }
+
+.main { position: relative; }
+.tag { font-size: 9.5px; font-weight: 700; letter-spacing: .07em; color: var(--agent); background: var(--atint); border-radius: 4px; padding: 1px 5px; line-height: 14px; align-self: center; }
+.titleRow { align-items: center; }
+.stack :first-child { margin-left: 0 !important; }
+
+/* 拖文件进来 */
+.drop {
+  position: absolute; inset: 8px; z-index: 30;
+  border: 2px dashed var(--accent); border-radius: 12px;
+  background: color-mix(in srgb, var(--tint) 85%, transparent);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; font-weight: 600; color: var(--ontint);
+  pointer-events: none;
+}
+
+/* 没选会话 */
+.landing { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 0 48px; text-align: center; }
+.landingTitle { font-size: 16px; font-weight: 600; letter-spacing: -.015em; }
+.landingDesc { font-size: 12.5px; line-height: 1.7; color: var(--ink3); max-width: 420px; }
+.landingAgents { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 14px; }
+.landingAgent {
+  display: flex; align-items: center; gap: 10px; padding: 8px 14px 8px 9px;
+  border: 1px solid var(--line); border-radius: 10px; background: var(--surface);
+}
+.landingAgent:hover { border-color: var(--agent); box-shadow: var(--sh); }
+.landingAgentText { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; }
+.landingAgentName { font-size: 13px; font-weight: 600; }
+.landingAgentTag { font-size: 9.5px; font-weight: 700; letter-spacing: .07em; color: var(--agent); }

@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useRef } from 'react'
+import type { Member } from '../../../shared/model'
+import { Avatar, glyphOf, pairOf } from '../components/Avatar'
 import { IconCloseSmall, IconPanel } from '../components/Icons'
+import { usePlace, type Place } from '../store/selectors'
+import { useSession } from '../store/session'
 import { INSPECTOR_MAX, INSPECTOR_MIN, useUI } from '../store/ui'
 import styles from './Inspector.module.css'
 
@@ -10,8 +14,8 @@ import styles from './Inspector.module.css'
  * 决定，详情页签由点击推入、按会话键存、带 ✕。没有任何页签时不能白屏——
  * 显示"左宽右窄"的分栏示意和三条提示。
  */
-const BASE_TABS: Record<string, string> = { thread: '话题', runs: '运行' }
-const DETAIL_TABS: Record<string, string> = { bt: '回测', qa: '分析' }
+const BASE_TABS: Record<string, string> = { members: '成员' }
+const DETAIL_TABS: Record<string, string> = {}
 
 export function Inspector() {
   const open = useUI((s) => s.inspectorOpen)
@@ -24,9 +28,9 @@ export function Inspector() {
   const setTab = useUI((s) => s.setInspectorTab)
   const closeTab = useUI((s) => s.closeInspectorTab)
 
-  // agent 会话没有基础页签；频道有话题与运行
-  const isAgent = conversationId?.startsWith('ag:') ?? false
-  const base = isAgent || !conversationId ? [] : Object.keys(BASE_TABS)
+  // agent 会话没有基础页签；频道有成员（话题与运行等 M4 接上）
+  const place = usePlace(conversationId)
+  const base = !place || place.kind !== 'channel' ? [] : Object.keys(BASE_TABS)
   const detail = conversationId ? tabsBy[conversationId] ?? [] : []
   const tabs = [...base, ...detail]
   const current = tab && tabs.includes(tab) ? tab : tabs[0] ?? null
@@ -87,8 +91,10 @@ export function Inspector() {
       </div>
 
       <div className={styles.body}>
-        {current ? (
-          <div className={styles.placeholder}>{BASE_TABS[current] ?? DETAIL_TABS[current]} · M3 接内容</div>
+        {current === 'members' && place ? (
+          <Members place={place} />
+        ) : current ? (
+          <div className={styles.placeholder}>{BASE_TABS[current] ?? DETAIL_TABS[current]}</div>
         ) : (
           <EmptyState />
         )}
@@ -123,7 +129,34 @@ function EmptyState() {
           </li>
         ))}
       </ol>
-      <button className={styles.primary}>去 #engineering 看个例子</button>
+    </div>
+  )
+}
+
+/** 频道成员：agent 一组，人一组；群主和管理员带角色标 */
+function Members({ place }: { place: Place }) {
+  const me = useSession((s) => s.me)
+  const agents = place.members.filter((m) => m.isAgent)
+  const humans = place.members.filter((m) => !m.isAgent)
+  const row = (m: Member) => (
+    <div key={m.id} className={styles.mRow}>
+      <Avatar glyph={glyphOf(m.name)} pair={pairOf(m.id)} size={26} kind={m.isAgent ? 'agent' : 'human'} src={m.avatar} />
+      <span className={styles.mName}>{m.name}{m.id === me ? <span className={styles.mMe}>（你）</span> : null}</span>
+      {m.role !== 'member' && <span className={`${styles.mRole} mono`}>{m.role === 'owner' ? '群主' : '管理员'}</span>}
+    </div>
+  )
+  return (
+    <div className={styles.members}>
+      {agents.length > 0 && (
+        <section className={styles.mGroup}>
+          <div className={`${styles.mTitle} mono`}>AGENTS · {agents.length}</div>
+          {agents.map(row)}
+        </section>
+      )}
+      <section className={styles.mGroup}>
+        <div className={`${styles.mTitle} mono`}>成员 MEMBERS · {humans.length}</div>
+        {humans.length ? humans.map(row) : <div className={styles.mEmpty}>正在拉成员…</div>}
+      </section>
     </div>
   )
 }

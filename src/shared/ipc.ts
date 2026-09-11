@@ -18,7 +18,15 @@ export const IPC = {
   secretDelete: 'secret:delete',
   /** 数据目录，给 OpenIM 的 initSDK 用 */
   appDataDir: 'app:dataDir',
+  /** 文件：系统选文件对话框；粘贴板里的图片落成临时文件（SDK 只认路径） */
+  dialogPickFiles: 'dialog:pickFiles',
+  fileStash: 'file:stash',
+  /** yptd-server 的 HTTP 走主进程：渲染进程的 origin（localhost / file://）过不了 CORS */
+  httpFetch: 'http:fetch',
 } as const
+
+export interface HttpRequest { url: string; method?: string; headers?: Record<string, string>; body?: string }
+export interface HttpResponse { status: number; ok: boolean; text: string }
 
 export type Theme = 'light' | 'dark'
 
@@ -38,5 +46,14 @@ export interface DesktopBridge {
     get(key: string): Promise<string | null>
     set(key: string, value: string): Promise<void>
     delete(key: string): Promise<void>
+  }
+  http(req: HttpRequest): Promise<HttpResponse>
+  files: {
+    /** 系统对话框选文件，返回绝对路径；取消返回空数组 */
+    pick(kind: 'image' | 'any'): Promise<string[]>
+    /** 粘贴板里的图片没有路径；落到临时目录再交给 SDK */
+    stash(name: string, bytes: ArrayBuffer): Promise<string>
+    /** 拖进来的 File 的真实路径（沙箱渲染进程里没有 File.path） */
+    pathFor(file: File): string
   }
 }

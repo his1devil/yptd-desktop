@@ -18,20 +18,20 @@ beforeEach(() => {
 
 describe('区段与会话解耦', () => {
   it('从私聊列表打开 agent 会话，侧栏仍是频道列表', () => {
-    useUI.getState().open('ag:triage', { section: 'chat' })
+    useUI.getState().open('ag:triage', { section: 'chat', agent: true })
     const s = useUI.getState()
     expect(s.conversationId).toBe('ag:triage')
     expect(s.section).toBe('chat')
   })
 
   it('从 Agent 区 SESSIONS 打开同一个会话，侧栏是 agent 列表', () => {
-    useUI.getState().open('ag:triage', { section: 'agent' })
+    useUI.getState().open('ag:triage', { section: 'agent', agent: true })
     expect(useUI.getState().section).toBe('agent')
   })
 
   it('点「会话」回到之前的频道，不是硬编码回默认频道', () => {
     useUI.getState().open('ch:mkt')
-    useUI.getState().open('ag:triage', { section: 'agent' })
+    useUI.getState().open('ag:triage', { section: 'agent', agent: true })
     useUI.getState().go('chat')
     const s = useUI.getState()
     expect(s.section).toBe('chat')
@@ -39,7 +39,7 @@ describe('区段与会话解耦', () => {
   })
 
   it('agent 会话不会成为"最后一个非 agent 会话"', () => {
-    useUI.getState().open('ag:quant')
+    useUI.getState().open('ag:quant', { agent: true })
     expect(useUI.getState().lastChannelId).toBe('ch:eng')
   })
 })

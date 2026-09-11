@@ -1,0 +1,137 @@
+.wrap { position: relative; flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.scroll { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; padding: 14px 0 8px; }
+.inner { position: relative; width: 100%; }
+.vrow { position: absolute; top: 0; left: 0; width: 100%; }
+
+.empty { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 0 40px; text-align: center; }
+.emptyTitle { font-size: 14px; font-weight: 600; letter-spacing: -.01em; }
+.emptyDesc { font-size: 12.5px; color: var(--ink3); }
+
+/* 日期分隔：线 + 等宽药丸 + 线 */
+.day { display: flex; align-items: center; gap: 12px; padding: 6px 24px 14px; }
+.dayLine { flex: 1; height: 1px; background: var(--line); }
+.dayPill { font-size: 10.5px; font-weight: 600; color: var(--ink3); border: 1px solid var(--line); border-radius: 99px; padding: 2px 10px; background: var(--bg); }
+
+/* 消息行 */
+.row { display: flex; gap: 11px; padding: 7px 24px; position: relative; }
+.row:hover, .pinned { background: var(--surface2); }
+.mentioned { background: var(--tint); box-shadow: inset 2px 0 0 var(--accent); }
+.mentioned:hover { background: var(--tint); }
+.flash { animation: rl-flash 1.4s ease-out; }
+@keyframes rl-flash { 0%, 45% { background: var(--tint); } 100% { background: transparent; } }
+
+/* 悬浮条：挂在行的右上角，压在上一行底部 */
+.bar {
+  position: absolute; top: -14px; right: 24px; z-index: 4;
+  display: none; align-items: center; gap: 1px;
+  background: var(--surface); border: 1px solid var(--line2); border-radius: 8px;
+  box-shadow: var(--sh); padding: 2px;
+}
+.row:hover .bar, .pinned .bar { display: flex; }
+.barEmoji { width: 31px; height: 27px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 17px; line-height: 1; }
+.barEmoji:hover { background: var(--surface2); }
+.barSep { width: 1px; height: 17px; background: var(--line); margin: 0 3px; }
+.barBtn { width: 29px; height: 27px; border-radius: 6px; display: flex; align-items: center; justify-content: center; color: var(--ink2); }
+.barBtn:hover { background: var(--surface2); color: var(--ink); }
+.barAgent { color: var(--agent); }
+.barAgent:hover { background: var(--atint); color: var(--agent); }
+
+.content { flex: 1; min-width: 0; }
+.meta { display: flex; align-items: baseline; gap: 7px; margin-bottom: 2px; }
+.who { font-size: 13px; font-weight: 600; letter-spacing: -.01em; }
+.tag { font-size: 9.5px; font-weight: 700; letter-spacing: .07em; color: var(--agent); background: var(--atint); border-radius: 4px; padding: 1px 5px; line-height: 14px; }
+.time { font-size: 10.5px; color: var(--ink3); }
+.state { font-size: 10.5px; color: var(--ink3); }
+.stateBad { font-size: 10.5px; color: var(--danger); }
+
+/* 引用块 */
+.quote {
+  display: flex; align-items: center; gap: 7px; max-width: 620px; width: 100%;
+  margin: 2px 0 6px; padding: 5px 10px 5px 9px;
+  border-left: 2px solid var(--line2); border-radius: 0 6px 6px 0; background: var(--surface2);
+}
+.quote:not(:disabled):hover { border-left-color: var(--accent); background: var(--surface); }
+.quote:disabled { cursor: default; }
+.quoteWho { font-size: 11.5px; font-weight: 600; color: var(--ink2); flex: none; }
+.quoteText { font-size: 11.5px; color: var(--ink3); flex: 1; min-width: 0; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* 正文 */
+.text { font-size: 13.5px; line-height: 1.68; color: var(--ink); max-width: 760px; text-wrap: pretty; white-space: pre-wrap; overflow-wrap: anywhere; user-select: text; }
+.textLg { font-size: 14px; line-height: 1.8; }
+
+.pic { display: block; margin-top: 3px; border-radius: 8px; overflow: hidden; border: 1px solid var(--line); background: var(--surface2); max-width: 360px; }
+.pic img { display: block; max-width: 360px; max-height: 280px; }
+.picFixed img { width: 100%; height: 100%; object-fit: cover; }
+.pic:hover { border-color: var(--line2); }
+
+.file { display: inline-flex; align-items: center; gap: 10px; margin-top: 3px; padding: 9px 12px; border: 1px solid var(--line); border-radius: 9px; background: var(--surface); color: var(--ink); max-width: 420px; }
+.file:hover { border-color: var(--line2); text-decoration: none; }
+.fileIcon { width: 34px; height: 34px; border-radius: 8px; background: var(--tint); color: var(--ontint); display: flex; align-items: center; justify-content: center; flex: none; }
+.fileText { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.fileName { font-size: 12.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fileMeta { font-size: 10.5px; color: var(--ink3); }
+.unsupported { font-size: 13px; color: var(--ink3); font-style: italic; }
+
+/* 表情回应 */
+.rx { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 7px; }
+.chip { display: flex; align-items: center; gap: 5px; border: 1px solid var(--line2); border-radius: 99px; padding: 2px 10px; background: var(--surface); font-size: 11.5px; color: var(--ink2); }
+.chip:hover { border-color: var(--accent); }
+.chip .mono { font-weight: 600; }
+.chipMine { border-color: var(--accent); background: var(--tint); color: var(--ontint); }
+.chipEmoji { font-size: 14px; line-height: 1.25; }
+.chipAdd { display: flex; align-items: center; justify-content: center; width: 32px; height: 24px; border: 1px solid var(--line); border-radius: 99px; color: var(--ink3); }
+.chipAdd:hover { border-color: var(--line2); color: var(--ink2); background: var(--surface); }
+
+/* agent 占位 */
+.pending { display: flex; gap: 11px; padding: 7px 24px; align-items: center; }
+.pendingTurn { display: flex; gap: 8px; padding: 11px 28px; align-items: center; }
+.shimmer {
+  height: 18px; width: 190px; border-radius: 5px;
+  background: linear-gradient(90deg, var(--surface2) 12%, var(--line) 38%, var(--surface2) 62%);
+  background-size: 220% 100%;
+  animation: rl-shim 1.5s linear infinite;
+}
+
+/* harness 形态 */
+.turnUser { display: flex; justify-content: flex-end; padding: 9px 28px; }
+.bubble {
+  max-width: 72%;
+  background: var(--surface2); border: 1px solid var(--line);
+  border-radius: 13px 13px 4px 13px; padding: 10px 14px;
+  font-size: 14px; line-height: 1.7; color: var(--ink); text-wrap: pretty;
+}
+.bubble .text { font-size: 14px; line-height: 1.7; }
+.bubbleQuote { font-size: 11.5px; color: var(--ink3); border-left: 2px solid var(--line2); padding-left: 8px; margin-bottom: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.turn { padding: 11px 28px 14px; }
+.turnHead { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.turnBody { max-width: 760px; }
+.turnActions { display: flex; align-items: center; gap: 2px; margin-top: 10px; opacity: 0; }
+.turn:hover .turnActions { opacity: 1; }
+.turnBtn { width: 28px; height: 26px; border-radius: 6px; display: flex; align-items: center; justify-content: center; color: var(--ink3); }
+.turnBtn:hover { background: var(--surface2); color: var(--ink); }
+
+.loadingPill {
+  position: absolute; top: 10px; left: 50%; transform: translateX(-50%); z-index: 3;
+  font-size: 11px; color: var(--ink3);
+  background: var(--surface); border: 1px solid var(--line); border-radius: 99px; padding: 3px 10px; box-shadow: var(--sh);
+}
+
+/* 弹层 */
+.backdrop { position: fixed; inset: 0; z-index: 42; }
+.popover {
+  position: fixed; width: 284px; border-radius: 11px;
+  background: var(--surface); border: 1px solid var(--line2); box-shadow: var(--shwin);
+  padding: 9px; animation: rl-up .12s ease-out;
+}
+.menuPop { width: 196px; padding: 5px; }
+.popHead { display: flex; align-items: center; gap: 8px; padding: 0 2px 8px; font-size: 9.5px; color: var(--ink3); }
+.popLabel { font-weight: 600; letter-spacing: .08em; }
+.popLine { flex: 1; height: 1px; background: var(--line); }
+.emojiGrid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 2px; }
+.emojiBtn { height: 31px; border-radius: 7px; display: flex; align-items: center; justify-content: center; font-size: 18px; line-height: 1; }
+.emojiBtn:hover { background: var(--surface2); }
+.menu { display: flex; flex-direction: column; }
+.menuItem { width: 100%; display: flex; align-items: center; gap: 9px; height: 30px; padding: 0 9px; border-radius: 7px; font-size: 12.5px; color: var(--ink); }
+.menuItem:hover { background: var(--surface2); }
+.menuDanger { color: var(--danger); }
+.menuDanger:hover { background: var(--dtint); }

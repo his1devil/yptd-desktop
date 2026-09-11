@@ -139,11 +139,15 @@ export class Translator {
   private quote(raw: MessageItem): QuotePreview | null {
     // 既回复又 @ 人的消息以 106 到达，引用塞在 atTextElem 里，不是 114
     const q = raw.quoteElem?.quoteMessage ?? raw.atTextElem?.quoteMessage
-    if (!q) return null
+    // createAt / createQuote 在没有引用时也会塞一个空的 quoteMessage（{} 或全空字段），
+    // 得看它到底指没指向一条真消息，否则每条 @消息都会挂一个「? [图片]」的幽灵引用
+    const real = !!(q && (q.clientMsgID || q.textElem?.content || q.atTextElem?.text || q.pictureElem || q.fileElem))
+    if (!q || !real) return null
     const excerpt = q.textElem?.content ?? q.atTextElem?.text ?? (q.pictureElem ? '[图片]' : '')
     const qSender = q.sendID ?? ''
     return {
       messageId: q.clientMsgID || null,
+      senderID: qSender,
       senderName: this.names.get(qSender) ?? (q.senderNickname || qSender),
       excerpt: excerpt.replace(/\s*\n\s*/g, ' ').trim(),
     }

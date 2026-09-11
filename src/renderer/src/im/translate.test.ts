@@ -179,3 +179,22 @@ describe('日期', () => {
     expect(dayLabel(today - 9, today)).toMatch(/月\d+日$/)
   })
 })
+
+
+describe('引用', () => {
+  const t = new Translator('me')
+  const base = { sendID: 'a', recvID: 'me', clientMsgID: 'c1', sendTime: 1000, seq: 1, status: 2 }
+
+  it('atText 带空 quoteMessage 时不当成引用（createAt 无引用会塞空壳）', () => {
+    const m = t.message({ ...base, contentType: 106, atTextElem: { text: '你好 @b', atUserList: [], quoteMessage: {} } } as never)
+    expect(m?.quote).toBeNull()
+  })
+
+  it('quoteElem 指向真消息时给出发送者与摘要', () => {
+    const m = t.message({
+      ...base, contentType: 114,
+      quoteElem: { text: '收到', quoteMessage: { clientMsgID: 'q1', sendID: 'a', senderNickname: '阿花', textElem: { content: '原话在此' } } },
+    } as never)
+    expect(m?.quote).toEqual({ messageId: 'q1', senderID: 'a', senderName: '阿花', excerpt: '原话在此' })
+  })
+})

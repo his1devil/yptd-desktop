@@ -41,6 +41,7 @@ export interface Reaction {
 
 export interface QuotePreview {
   messageId: MessageId | null
+  senderID: string
   senderName: string
   excerpt: string
 }
