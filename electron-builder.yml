@@ -9,23 +9,29 @@ artifactName: ${productName}-${version}-${arch}.${ext}
 files:
   - out/**
   - package.json
-  # 只装这台机器用得上的原生二进制：koffi 和 OpenIM 核心各带了五六个平台的构建，
-  # 全带上 app 大 150MB，签名还要一个个打时间戳。
-  - "!node_modules/koffi/build/koffi/{darwin_x64,freebsd_arm64,freebsd_ia32,freebsd_x64,linux_arm32hf,linux_arm64,linux_ia32,linux_riscv64hf64,linux_x64,openbsd_ia32,openbsd_x64,win32_arm64,win32_ia32,win32_x64}/**"
+  # 只装 Mac 用得上的原生二进制：koffi 和 OpenIM 核心各带了五六个平台的构建。
+  # 两个 Mac 架构都留着，打包完由 build/afterPack.cjs 按目标架构删掉另一个。
+  - "!node_modules/koffi/build/koffi/{freebsd_arm64,freebsd_ia32,freebsd_x64,linux_arm32hf,linux_arm64,linux_ia32,linux_riscv64hf64,linux_x64,openbsd_ia32,openbsd_x64,win32_arm64,win32_ia32,win32_x64}/**"
   - "!node_modules/koffi/{src,doc,examples,test,vendor}/**"
-  - "!node_modules/@openim/electron-client-sdk/assets/{linux_arm64,linux_x64,mac_x64,win_x64}/**"
+  - "!node_modules/@openim/electron-client-sdk/assets/{linux_arm64,linux_x64,win_x64}/**"
 # OpenIM 的 Go 核心是一个 dylib，koffi 是加载它的 .node；两者不能在 asar 里，要解出来一起签名、公证。
 asarUnpack:
   - node_modules/@openim/electron-client-sdk/assets/mac_arm64/**
+  - node_modules/@openim/electron-client-sdk/assets/mac_x64/**
   - node_modules/koffi/build/koffi/darwin_arm64/**
+  - node_modules/koffi/build/koffi/darwin_x64/**
+# 打完包、签名前：删掉另一个架构的原生库
+afterPack: build/afterPack.cjs
 mac:
   category: public.app-category.social-networking
   icon: build/icon.icns
+  # Apple 芯片和 Intel 各出一份 dmg + zip；latest-mac.yml 同时列出两边，
+  # electron-updater 按机器架构挑。
   target:
     - target: dmg
-      arch: [arm64]
+      arch: [arm64, x64]
     - target: zip
-      arch: [arm64]
+      arch: [arm64, x64]
   hardenedRuntime: true
   gatekeeperAssess: false
   entitlements: build/entitlements.mac.plist
