@@ -50,7 +50,7 @@ export function Inbox() {
         {showMentions && attention.map((c) => <AttentionCard key={c.id} c={c} />)}
         {showMentions && attention.length === 0 && filter === 'mention' && <Empty text="没有人 @ 你，也没有新的私聊。" />}
         {showRuns && agentRuns.map((r) => (
-          <RunRow key={r.id} r={r} agent={nameOf(r.agentID)} where={whereOf(r.conversationID)} />
+          <RunRow key={r.id} r={r} agent={nameOf(r.agentID)} agentID={r.agentID} where={whereOf(r.conversationID)} />
         ))}
         {showRuns && runs && agentRuns.length === 0 && filter === 'agent' && <Empty text="还没有 agent 跑过东西。在频道里 @ 一个试试。" />}
         {filter === 'all' && attention.length === 0 && runs && agentRuns.length === 0 && <Empty text="都看完了。" />}
@@ -87,14 +87,14 @@ function AttentionCard({ c }: { c: Conversation }) {
 
 const STATUS: Record<RunSummary['status'], string> = { running: '运行中', done: '已完成', error: '出错', cancelled: '已停止' }
 
-function RunRow({ r, agent, where }: { r: RunSummary; agent: string; where: string }) {
+function RunRow({ r, agent, agentID, where }: { r: RunSummary; agent: string; agentID: string; where: string }) {
   const go = (): void => {
     void useSession.getState().open(r.conversationID)
     if (r.finalMsgID) useUI.getState().setJumpTo({ conversationId: r.conversationID, messageId: r.finalMsgID })
   }
   return (
     <button className={`${styles.card} ${styles.cardRun}`} onClick={go}>
-      <Avatar glyph={glyphOf(agent)} pair={0} size={30} kind="agent" />
+      <Avatar glyph={glyphOf(agent)} pair={0} size={30} kind="agent" id={agentID} />
       <span className={styles.body}>
         <span className={styles.row}>
           <span className={styles.who}>{agent}</span>

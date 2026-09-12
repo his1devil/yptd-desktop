@@ -96,7 +96,7 @@ function ConversationItem({ c, active }: { c: Conversation; active: boolean }) {
       {isChannel ? (
         <span className={`${styles.hash} mono`}>#</span>
       ) : (
-        <Avatar glyph={glyphOf(c.title)} pair={pairOf(c.peerID ?? c.id)} size={20} kind={isAgent ? 'agent' : 'human'} src={c.avatar} />
+        <Avatar glyph={glyphOf(c.title)} pair={pairOf(c.peerID ?? c.id)} size={20} kind={isAgent ? 'agent' : 'human'} id={c.peerID} src={c.avatar} />
       )}
       <span className={styles.text}>
         <span className={styles.name}>{c.title}</span>
@@ -113,7 +113,7 @@ function AgentItem({ a, active, unread, sub }: { a: Person; active: boolean; unr
   const me = useSession((s) => s.me)
   return (
     <button className={`${styles.item} ${active ? styles.active : ''}`} onClick={() => void useSession.getState().open(directId(me, a.userID))}>
-      <Avatar glyph={glyphOf(a.nickname)} pair={0} size={20} kind="agent" />
+      <Avatar glyph={glyphOf(a.nickname)} pair={0} size={20} kind="agent" id={a.userID} />
       <span className={styles.text}>
         <span className={styles.name}>{a.nickname}</span>
         {sub && <span className={styles.sub}>{sub}</span>}

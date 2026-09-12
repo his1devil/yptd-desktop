@@ -22,7 +22,7 @@ export function AgentProfile({ place }: { place: Place }) {
   return (
     <div className={styles.profile}>
       <div className={styles.identity}>
-        <Avatar glyph={glyphOf(name)} pair={0} size={44} kind="agent" src={avatar} />
+        <Avatar glyph={glyphOf(name)} pair={0} size={44} kind="agent" id={place.peer?.userID} src={avatar} />
         <div className={styles.idText}>
           <div className={styles.name}>{name}</div>
           <div className={styles.tagRow}>

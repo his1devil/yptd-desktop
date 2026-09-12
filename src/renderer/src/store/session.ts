@@ -3,6 +3,7 @@ import type { Attachment, Conversation, ConversationId, ConversationKind, Member
 import { summarize } from '../../../shared/model'
 import { DEFAULT_SERVER, clearCredential, loadCredential, login, loginWithPassword, register, roster, saveCredential, setServerAuth, AuthError, type ServerConfig } from '../im/auth'
 import { api } from '../im/api'
+import { setAgentColors } from '../components/identity'
 import { im, SdkEvent, type ConversationItem, type GroupMemberItem, type MessageItem } from '../im/client'
 import { Translator, directId, placeholderFor, reactionData, richEx } from '../im/translate'
 import { Timeline } from '../im/timeline'
@@ -397,6 +398,7 @@ async function connect(set: Set, get: Get, authenticate: () => Promise<{ userID:
     const people = await roster(cfg, token).catch(() => [] as Person[])
     translator.setAgents(agentsOf(people).map((p) => ({ userID: p.userID, nickname: p.nickname, tag: p.tag ?? 'AGENT', color: p.color })))
     translator.setNames(Object.fromEntries(people.map((p) => [p.userID, p.nickname])))
+    setAgentColors(people.map((p) => [p.userID, p.color] as [string, string | null]))
     set({ me: auth.userID, myName: auth.nickname, roster: people })
 
     set({ phase: { kind: 'connecting', what: '正在连接…' } })

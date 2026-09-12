@@ -153,7 +153,7 @@ function Members({ place }: { place: Place }) {
   const humans = place.members.filter((m) => !m.isAgent)
   const row = (m: Member) => (
     <div key={m.id} className={styles.mRow}>
-      <Avatar glyph={glyphOf(m.name)} pair={pairOf(m.id)} size={26} kind={m.isAgent ? 'agent' : 'human'} src={m.avatar} />
+      <Avatar glyph={glyphOf(m.name)} pair={pairOf(m.id)} size={26} kind={m.isAgent ? 'agent' : 'human'} id={m.id} src={m.avatar} />
       <span className={styles.mName}>{m.name}{m.id === me ? <span className={styles.mMe}>（你）</span> : null}</span>
       {m.role !== 'member' && <span className={`${styles.mRole} mono`}>{m.role === 'owner' ? '群主' : '管理员'}</span>}
     </div>

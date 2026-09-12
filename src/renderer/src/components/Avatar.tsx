@@ -1,9 +1,14 @@
 import type { CSSProperties } from 'react'
+import { agentColor } from './identity'
+import { Mark } from './Mark'
+import styles from './Avatar.module.css'
 
 /**
  * 头像 = 一个字 + 一对色块（--a1bg/--a1fg … --a5bg/--a5fg），有真头像图就贴图。
- * 人是圆的，agent 是方角的（size 的 23%）——这个形状差异是主要的人机区分手段；
- * agent 一律用 --atint/--agent 这对色，和正文里的 @agent、AGENT 标签同色。
+ * 人是圆的，agent 是方角的（size 的 23%）——这个形状差异是主要的人机区分手段。
+ *
+ * agent 不画字，画 yptd 的标记，颜色用它自己的身份色（名册里的 color，服务端按位次分配）；
+ * 没给色就退回统一的 --agent。四个 agent 长得一样、只靠颜色分，这是刻意的。
  */
 export interface AvatarProps {
   glyph: string
@@ -11,6 +16,8 @@ export interface AvatarProps {
   pair: number
   size: number
   kind?: 'human' | 'agent'
+  /** 这个人的账号。agent 用它查身份色；不给或查不到就用统一的 --agent */
+  id?: string | null
   src?: string | null
   presence?: 'online' | 'busy' | 'offline'
   /** 在线点描边用的底色（跟随所在容器的背景） */
@@ -18,14 +25,16 @@ export interface AvatarProps {
   style?: CSSProperties
 }
 
-export function Avatar({ glyph, pair, size, kind = 'human', src, presence, ring = 'var(--rail)', style }: AvatarProps) {
+export function Avatar({ glyph, pair, size, kind = 'human', id, src, presence, ring = 'var(--rail)', style }: AvatarProps) {
   const n = (Math.abs(pair) % 5) + 1
   const agent = kind === 'agent'
+  const color = agent ? agentColor(id) : null
   const radius = agent ? Math.max(4, Math.round(size * 0.23)) : 99
-  const font = Math.round(size * (agent ? 0.4 : 0.42))
+  const font = Math.round(size * 0.42)
   const dot = Math.round(size / 3)
   return (
     <span
+      className={agent ? styles.agent : undefined}
       style={{
         position: 'relative',
         display: 'inline-flex',
@@ -35,10 +44,10 @@ export function Avatar({ glyph, pair, size, kind = 'human', src, presence, ring 
         height: size,
         flex: 'none',
         borderRadius: radius,
-        background: agent ? 'var(--atint)' : `var(--a${n}bg)`,
-        color: agent ? 'var(--agent)' : `var(--a${n}fg)`,
+        // agent 的底色和前景由 Avatar.module.css 按主题从 --c 派生
+        ...(agent ? { ['--c' as string]: color || 'var(--agent)' } : { background: `var(--a${n}bg)`, color: `var(--a${n}fg)` }),
         fontSize: font,
-        fontWeight: agent ? 700 : 600,
+        fontWeight: 600,
         lineHeight: 1,
         overflow: 'hidden',
         ...style,
@@ -46,6 +55,8 @@ export function Avatar({ glyph, pair, size, kind = 'human', src, presence, ring 
     >
       {src ? (
         <img src={src} alt="" draggable={false} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+      ) : agent ? (
+        <Mark size={Math.round(size * 0.82)} />
       ) : (
         glyph
       )}

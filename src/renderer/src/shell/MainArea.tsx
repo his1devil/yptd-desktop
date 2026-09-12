@@ -79,7 +79,7 @@ function Head({ place }: { place: Place }) {
         <div className={styles.titleRow}>
           {/* 切会话时这两个是「共享元素」：从旧位置滑到新位置，眼睛盯着的东西一直在 */}
           {place.kind !== 'channel' && (
-            <Avatar glyph={place.glyph} pair={place.pair} size={22} kind={place.isAgent ? 'agent' : 'human'} src={place.avatar} style={{ viewTransitionName: 'conv-avatar' }} />
+            <Avatar glyph={place.glyph} pair={place.pair} size={22} kind={place.isAgent ? 'agent' : 'human'} id={place.peer?.userID} src={place.avatar} style={{ viewTransitionName: 'conv-avatar' }} />
           )}
           <span className={styles.title} style={{ viewTransitionName: 'conv-title' }}>{place.kind === 'channel' ? `#${place.title}` : place.title}</span>
           {place.isAgent ? (
@@ -95,7 +95,7 @@ function Head({ place }: { place: Place }) {
           <>
             <div className={styles.stack}>
               {place.members.slice(0, 3).map((m) => (
-                <Avatar key={m.id} glyph={glyphOf(m.name)} pair={pairOf(m.id)} size={22} kind={m.isAgent ? 'agent' : 'human'} src={m.avatar} style={{ border: '2px solid var(--bg)', boxSizing: 'content-box', marginLeft: -6 }} />
+                <Avatar key={m.id} glyph={glyphOf(m.name)} pair={pairOf(m.id)} size={22} kind={m.isAgent ? 'agent' : 'human'} id={m.id} src={m.avatar} style={{ border: '2px solid var(--bg)', boxSizing: 'content-box', marginLeft: -6 }} />
               ))}
             </div>
             <span className={`${styles.count} mono`}>{place.members.length}</span>
@@ -135,7 +135,7 @@ function Landing() {
         <div className={styles.landingAgents}>
           {agents.map((a) => (
             <button key={a.userID} className={styles.landingAgent} onClick={() => void useSession.getState().open(directId(me, a.userID))}>
-              <Avatar glyph={glyphOf(a.nickname)} pair={0} size={28} kind="agent" />
+              <Avatar glyph={glyphOf(a.nickname)} pair={0} size={28} kind="agent" id={a.userID} />
               <span className={styles.landingAgentText}>
                 <span className={styles.landingAgentName}>{a.nickname}</span>
                 <span className={`${styles.landingAgentTag} mono`}>{a.tag || 'AGENT'}</span>

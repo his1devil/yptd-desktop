@@ -1,0 +1,4 @@
+/* agent 头像：标记用它自己的身份色，底是同一个色的淡淡一层。
+   服务端给的那组色是按深色模式调的，浅色模式下直接用会发飘，压暗一档再用。 */
+.agent { background: color-mix(in srgb, var(--c) 15%, var(--bg)); color: color-mix(in srgb, var(--c) 70%, #10121a); }
+:root[data-theme="dark"] .agent { background: color-mix(in srgb, var(--c) 22%, var(--sub)); color: var(--c); }

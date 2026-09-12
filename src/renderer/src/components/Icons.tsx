@@ -28,13 +28,12 @@ export const IconChat = ({ size = 22, ...p }: P) => (
 
 /** 机器人：天线 + 圆角方头 + 两只圆眼 + 嘴 + 两侧耳朵 */
 export const IconAgents = ({ size = 22, ...p }: P) => (
-  <svg {...base(size, 22, p)}>
-    <rect x="3.6" y="7.2" width="14.8" height="11" rx="3.2" stroke="currentColor" strokeWidth="1.6" />
-    <path d="M11 4.4v2.8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-    <circle cx="11" cy="3" r="1.5" stroke="currentColor" strokeWidth="1.5" />
-    <circle cx="8.2" cy="11.6" r="1.3" fill="currentColor" />
-    <circle cx="13.8" cy="11.6" r="1.3" fill="currentColor" />
-    <path d="M8.8 15h4.4M1.7 10.6v3.2M20.3 10.6v3.2" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+  <svg {...base(size, 24, p)}>
+    <ellipse cx="11.7" cy="15.5" rx="6.4" ry="5" stroke="currentColor" strokeWidth="1.9" />
+    <rect x="8.9" y="13.8" width="1.7" height="3.3" rx="0.85" fill="currentColor" />
+    <rect x="13.4" y="13.8" width="1.7" height="3.3" rx="0.85" fill="currentColor" />
+    <path d="M6.9 9.5a5.4 5.1 0 0 1 10.8 0z" fill="currentColor" />
+    <ellipse cx="12" cy="9.8" rx="11" ry="2.1" fill="currentColor" transform="rotate(-6 12 9.8)" />
   </svg>
 )
 

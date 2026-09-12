@@ -40,7 +40,7 @@ function Picker({ people, picked, onToggle, exclude }: { people: Person[]; picke
           const on = picked.has(p.userID)
           return (
             <button key={p.userID} className={`${styles.person} ${on ? styles.personOn : ''}`} onClick={() => onToggle(p.userID)}>
-              <Avatar glyph={glyphOf(p.nickname)} pair={pairOf(p.userID)} size={22} kind={p.isAgent ? 'agent' : 'human'} />
+              <Avatar glyph={glyphOf(p.nickname)} pair={pairOf(p.userID)} size={22} kind={p.isAgent ? 'agent' : 'human'} id={p.userID} />
               <span className={styles.personName}>{p.nickname}</span>
               <span className={`${styles.personId} mono`}>@{p.userID}</span>
               {p.isAgent && <span className={`${styles.tag} mono`}>{p.tag || 'AGENT'}</span>}

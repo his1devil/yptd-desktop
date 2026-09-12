@@ -205,7 +205,7 @@ export function Composer({ place }: { place: Place }) {
         {quoted && (
           <div className={styles.quoteBar}>
             <span className={styles.quoteRule} />
-            <Avatar glyph={glyphOf(quoted.senderName)} pair={pairOf(quoted.sender)} size={20} kind={quoted.isAgent ? 'agent' : 'human'} src={quoted.senderAvatar} />
+            <Avatar glyph={glyphOf(quoted.senderName)} pair={pairOf(quoted.sender)} size={20} id={quoted.sender} kind={quoted.isAgent ? 'agent' : 'human'} src={quoted.senderAvatar} />
             <div className={styles.quoteText}>
               <div className={styles.quoteWho}>引用 {quoted.senderName}</div>
               <div className={styles.quoteExcerpt}>{summarize(quoted).replace(/\s*\n\s*/g, ' ')}</div>
@@ -250,7 +250,7 @@ export function Composer({ place }: { place: Place }) {
                   onMouseEnter={() => setMenu({ ...menu, index: i })}
                   onMouseDown={(e) => { e.preventDefault(); pick(c) }}
                 >
-                  <Avatar glyph={glyphOf(c.name)} pair={pairOf(c.id)} size={22} kind={c.isAgent ? 'agent' : 'human'} src={c.avatar} />
+                  <Avatar glyph={glyphOf(c.name)} pair={pairOf(c.id)} size={22} kind={c.isAgent ? 'agent' : 'human'} id={c.id} src={c.avatar} />
                   <span className={styles.menuName}>{c.name}</span>
                   {c.isAgent && <span className={`${styles.menuTag} mono`}>{c.tag || 'AGENT'}</span>}
                 </button>

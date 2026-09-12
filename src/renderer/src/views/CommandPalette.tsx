@@ -17,7 +17,7 @@ interface Item {
   group: '会话' | 'AGENT' | '成员' | '消息'
   title: string
   sub: string
-  avatar?: { glyph: string; pair: number; agent?: boolean; src?: string | null; hash?: boolean }
+  avatar?: { glyph: string; pair: number; agent?: boolean; id?: string | null; src?: string | null; hash?: boolean }
   run(): void
 }
 
@@ -81,11 +81,11 @@ function Palette({ onClose }: { onClose(): void }) {
       .map((c) => ({
         key: `c:${c.id}`, group: '会话', title: c.kind === 'channel' ? `#${c.title}` : c.title,
         sub: c.kind === 'channel' ? '频道' : c.kind === 'dm' ? '私聊' : 'agent 会话',
-        avatar: c.kind === 'channel' ? { glyph: '#', pair: 0, hash: true } : { glyph: glyphOf(c.title), pair: pairOf(c.peerID ?? c.id), agent: c.kind === 'agent_session', src: c.avatar },
+        avatar: c.kind === 'channel' ? { glyph: '#', pair: 0, hash: true } : { glyph: glyphOf(c.title), pair: pairOf(c.peerID ?? c.id), agent: c.kind === 'agent_session', id: c.peerID, src: c.avatar },
         run: open(c.id),
       }))
     const agents: Item[] = agentsOf(roster).filter((a) => match(a.nickname, a.tag ?? '')).flatMap((a) => {
-      const av = { glyph: glyphOf(a.nickname), pair: 0, agent: true }
+      const av = { glyph: glyphOf(a.nickname), pair: 0, agent: true, id: a.userID }
       const out: Item[] = []
       if (inChannel && current) {
         out.push({
@@ -140,7 +140,7 @@ function Palette({ onClose }: { onClose(): void }) {
                   {it.avatar?.hash ? (
                     <span className={`${styles.hash} mono`}>#</span>
                   ) : it.avatar ? (
-                    <Avatar glyph={it.avatar.glyph} pair={it.avatar.pair} size={22} kind={it.avatar.agent ? 'agent' : 'human'} src={it.avatar.src} />
+                    <Avatar glyph={it.avatar.glyph} pair={it.avatar.pair} size={22} kind={it.avatar.agent ? 'agent' : 'human'} id={it.avatar.id} src={it.avatar.src} />
                   ) : (
                     <span className={styles.msgDot} />
                   )}

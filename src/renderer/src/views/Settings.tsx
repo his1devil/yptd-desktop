@@ -240,7 +240,7 @@ function Members() {
         <div className={styles.people}>
           {[...humans, ...agents].map((p) => (
             <div key={p.userID} className={styles.personRow}>
-              <Avatar glyph={glyphOf(p.nickname)} pair={pairOf(p.userID)} size={26} kind={p.isAgent ? 'agent' : 'human'} src={useSession.getState().avatars[p.userID]} />
+              <Avatar glyph={glyphOf(p.nickname)} pair={pairOf(p.userID)} size={26} kind={p.isAgent ? 'agent' : 'human'} id={p.userID} src={useSession.getState().avatars[p.userID]} />
               <span className={styles.personName}>{p.nickname}</span>
               <span className={`${styles.personId} mono`}>@{p.userID}</span>
               {p.isAgent && <span className={`${styles.tag} mono`}>{p.tag || 'AGENT'}</span>}

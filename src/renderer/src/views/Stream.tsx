@@ -430,7 +430,7 @@ function Skeleton({ harness }: { harness: boolean }) {
 /** 发送者头像：优先用他现在的头像，没有再用消息里烤进去的那张 */
 function SenderAvatar({ id, name, fallback, size, agent, style }: { id: string; name: string; fallback: string | null; size: number; agent: boolean; style?: React.CSSProperties }) {
   const current = useSession((s) => s.avatars[id])
-  return <Avatar glyph={glyphOf(name)} pair={pairOf(id)} size={size} kind={agent ? 'agent' : 'human'} src={current ?? fallback} style={style} />
+  return <Avatar glyph={glyphOf(name)} pair={pairOf(id)} size={size} kind={agent ? 'agent' : 'human'} id={id} src={current ?? fallback} style={style} />
 }
 
 function DaySep({ label }: { label: string }) {

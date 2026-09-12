@@ -54,7 +54,7 @@ export function Welcome() {
                 const p = profiles?.find((x) => x.userID === a.userID)
                 return (
                   <div key={a.userID} className={styles.agent}>
-                    <Avatar glyph={glyphOf(a.nickname)} pair={0} size={36} kind="agent" src={avatars[a.userID]} />
+                    <Avatar glyph={glyphOf(a.nickname)} pair={0} size={36} kind="agent" id={a.userID} src={avatars[a.userID]} />
                     <div className={styles.agentText}>
                       <div className={styles.agentHead}>
                         <span className={styles.agentName}>{a.nickname}</span>
