@@ -59,12 +59,9 @@ curl -fsS https://im.zhanghuanyang.com/dl/desktop/latest-mac.yml | grep -E "^ver
 # GitHub 的 release 附件只有 ~90 KB/s 且会卡住，自家服务器稳定 160–250 KB/s。
 if command -v gh >/dev/null 2>&1 && gh auth status >/dev/null 2>&1; then
   echo "== GitHub release v${VER}"
+  # 只传 dmg：更新器走自家服务器，zip 和 blockmap 是给它用的，没必要每次往 GitHub 推 450MB
   ASSETS=""
-  for a in $ARCHES; do
-    ASSETS="$ASSETS release/yptd-${VER}-${a}.dmg release/yptd-${VER}-${a}.zip"
-    [ -f "release/yptd-${VER}-${a}.zip.blockmap" ] && ASSETS="$ASSETS release/yptd-${VER}-${a}.zip.blockmap"
-  done
-  ASSETS="$ASSETS release/latest-mac.yml"
+  for a in $ARCHES; do ASSETS="$ASSETS release/yptd-${VER}-${a}.dmg"; done
   NOTES=$(mktemp)
   {
     echo "macOS 14+，Developer ID 签名并通过苹果公证。"
@@ -75,6 +72,10 @@ if command -v gh >/dev/null 2>&1 && gh auth status >/dev/null 2>&1; then
     echo "| Intel | [yptd-${VER}-x64.dmg](https://im.zhanghuanyang.com/dl/desktop/yptd-${VER}-x64.dmg) |"
     echo
     echo "已装的机器会自动更新，不用手动下载。国内直连 GitHub 下附件较慢，建议用上面的链接。"
+    echo
+    echo '```'
+    (cd release && shasum -a 256 yptd-${VER}-*.dmg)
+    echo '```'
   } > "$NOTES"
   # shellcheck disable=SC2086
   if gh release view "v${VER}" >/dev/null 2>&1; then
