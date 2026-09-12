@@ -1,4 +1,8 @@
-# 当前计划（2026-09-12 定）
+# 当前计划（2026-09-12 定，2026-09-13 四条全部做完）
+
+> 进度：四条工作流都已实现并在开发版上实测。登录密码见服务端 `PUT /v1/me/password`；
+> Logo 见 `components/Mark.tsx`；图片查看器见 `views/Lightbox.tsx`（react-photo-view 受控模式）；
+> 输入框见 `views/editor/`（Lexical 纯文本模式 + token 模式的 @ 色块）。
 
 四条工作流，按 登录 → Logo → 图片查看器 → 输入框 的顺序做。前三条互不相干，最后一条最大也最容易返工，所以放在最后。
 

@@ -41,3 +41,24 @@ a:hover { text-decoration: underline; }
 ::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-thumb { background: var(--line2); border-radius: 99px; border: 2px solid transparent; background-clip: padding-box; }
 ::-webkit-scrollbar-track { background: transparent; }
+
+/* ── 消息输入框（Lexical）────────────────────────────────────────────────
+   Lexical 给节点设的是普通类名，不走 CSS Modules，所以这几条放在全局。 */
+.yptd-input {
+  display: block; width: 100%; min-height: 22px; max-height: 198px; overflow-y: auto;
+  padding: 12px 14px; font-size: 13.5px; line-height: 22px;
+  color: var(--ink); outline: none; white-space: pre-wrap; overflow-wrap: anywhere;
+  user-select: text; -webkit-user-select: text;
+}
+.yptd-placeholder {
+  position: absolute; top: 12px; left: 14px; pointer-events: none;
+  font-size: 13.5px; line-height: 22px; color: var(--ink3); user-select: none;
+}
+.yptd-line { margin: 0; }
+
+/* @ 色块：和消息里渲染出来的 @ 同色。token 模式让它整块删除、光标进不去 */
+.yptd-mention {
+  border-radius: 4px; padding: 1px 3px; font-weight: 500;
+  background: var(--utint); color: var(--user);
+}
+.yptd-mention-agent { background: var(--atint); color: var(--agent); }

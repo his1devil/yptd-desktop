@@ -27,14 +27,6 @@
 .quoteClose:hover { background: var(--surface); color: var(--ink); }
 
 .field { position: relative; }
-.input {
-  display: block; width: 100%; resize: none;
-  padding: 12px 14px; font-size: 13.5px; line-height: 22px;
-  background: transparent; color: var(--ink);
-  transition: height var(--dur) var(--ease-out);
-  user-select: text; max-height: 200px; overflow-y: auto;
-}
-.input::placeholder { color: var(--ink3); }
 
 /* @候选 */
 .menu {
