@@ -54,6 +54,37 @@ ssh "${HOST}" "chmod 644 ${DIR}/*"
 ssh "${HOST}" "cd ${DIR} && for a in ${ARCHES}; do ln -sfn yptd-${VER}-\$a.dmg yptd-latest-\$a.dmg; done"
 echo "== 线上 latest-mac.yml"
 curl -fsS https://im.zhanghuanyang.com/dl/desktop/latest-mac.yml | grep -E "^version|url:"
+
+# GitHub release：归档 + 有代理时的手动下载。自动更新仍走自家服务器——实测国内不走代理时
+# GitHub 的 release 附件只有 ~90 KB/s 且会卡住，自家服务器稳定 160–250 KB/s。
+if command -v gh >/dev/null 2>&1 && gh auth status >/dev/null 2>&1; then
+  echo "== GitHub release v${VER}"
+  ASSETS=""
+  for a in $ARCHES; do
+    ASSETS="$ASSETS release/yptd-${VER}-${a}.dmg release/yptd-${VER}-${a}.zip"
+    [ -f "release/yptd-${VER}-${a}.zip.blockmap" ] && ASSETS="$ASSETS release/yptd-${VER}-${a}.zip.blockmap"
+  done
+  ASSETS="$ASSETS release/latest-mac.yml"
+  NOTES=$(mktemp)
+  {
+    echo "macOS 14+，Developer ID 签名并通过苹果公证。"
+    echo
+    echo "| 机器 | 安装包 |"
+    echo "| --- | --- |"
+    echo "| Apple 芯片 | [yptd-${VER}-arm64.dmg](https://im.zhanghuanyang.com/dl/desktop/yptd-${VER}-arm64.dmg) |"
+    echo "| Intel | [yptd-${VER}-x64.dmg](https://im.zhanghuanyang.com/dl/desktop/yptd-${VER}-x64.dmg) |"
+    echo
+    echo "已装的机器会自动更新，不用手动下载。国内直连 GitHub 下附件较慢，建议用上面的链接。"
+  } > "$NOTES"
+  # shellcheck disable=SC2086
+  if gh release view "v${VER}" >/dev/null 2>&1; then
+    gh release upload "v${VER}" $ASSETS --clobber
+  else
+    gh release create "v${VER}" $ASSETS --title "v${VER}" --notes-file "$NOTES"
+  fi
+  rm -f "$NOTES"
+  echo "  https://github.com/his1devil/yptd-desktop/releases/tag/v${VER}"
+fi
 echo "已发布 v${VER}。"
 echo "  Apple 芯片：https://im.zhanghuanyang.com/dl/desktop/yptd-${VER}-arm64.dmg"
 echo "  Intel：     https://im.zhanghuanyang.com/dl/desktop/yptd-${VER}-x64.dmg"
