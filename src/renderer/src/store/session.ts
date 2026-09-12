@@ -6,7 +6,7 @@ import { api } from '../im/api'
 import { im, SdkEvent, type ConversationItem, type GroupMemberItem, type MessageItem } from '../im/client'
 import { Translator, directId, placeholderFor, reactionData, richEx } from '../im/translate'
 import { Timeline } from '../im/timeline'
-import { mimeOf, objectName, rememberPreview } from '../im/files'
+import { mapLimit, objectName, rememberPreview } from '../im/files'
 import { composerBus } from '../views/composerBus'
 import { transition } from '../motion/transition'
 import { useUI } from './ui'
@@ -198,13 +198,13 @@ export const useSession = create<SessionState>()((set, get) => ({
     const local = pendingMessage(get, id, created, opts.attachments, hasText)
     if (local) { timeline(id).upsert(local); bump(set) }
     try {
-      // 逐个传：地址回来了才能写进消息；对象名带唯一前缀，同名文件不会互相覆盖
-      const uploaded: Attachment[] = []
-      for (const a of opts.attachments) {
+      // 地址回来了才能写进消息。三个一起传：串行发三张图要等三倍时间，全开又互相抢上行带宽。
+      // 对象名带唯一前缀，同名文件不会互相覆盖；mapLimit 保证回来的顺序还是栏里的顺序。
+      const uploaded: Attachment[] = await mapLimit(opts.attachments, 3, async (a) => {
         const { url } = await im.upload(a.path, objectName(a.name), a.mime, 'attachment')
         rememberPreview(url, a.preview)
-        uploaded.push({ kind: a.kind, url, name: a.name, bytes: a.bytes, natural: a.natural })
-      }
+        return { kind: a.kind, url, name: a.name, bytes: a.bytes, natural: a.natural }
+      })
       created.ex = richEx(uploaded, hasText)
       const echo = await im.send(created, recipientOf(get, id))
       absorb(set, get, translator.messages([echo]), id)

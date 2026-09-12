@@ -4,7 +4,7 @@ import type { Attachment, Message, MessageId, PixelSize, QuotePreview } from '..
 import { summarize } from '../../../shared/model'
 import { Avatar, glyphOf, pairOf } from '../components/Avatar'
 import { IconCopy, IconEmoji, IconFile, IconHandoff, IconMore, IconQuote, IconUndo } from '../components/Icons'
-import { previewFor } from '../im/files'
+import { previewFor, sized } from '../im/files'
 import { visible } from '../im/timeline'
 import { flyEmoji } from '../motion/fly'
 import { reduceMotion, transition } from '../motion/transition'
@@ -15,6 +15,7 @@ import { useUI } from '../store/ui'
 import { composerBus } from './composerBus'
 import { Lightbox } from './Lightbox'
 import { Rich } from './rich'
+import { GALLERY_MAX_W, galleryLayout, type Box } from './gallery'
 import { buildRows, rowHas, type Row } from './rows'
 import { RunBody, RunCard } from './Run'
 import styles from './Stream.module.css'
@@ -33,14 +34,18 @@ const TOP_PAD = 14
 /** 和 agent 还没聊过时给的几句开场，点一下进输入框 */
 const STARTERS = ['你能帮我做什么？', '用三句话介绍你自己', '帮我看看这个：']
 
-// 估高只用于第一次布局，量过之后按真实高度
-function estimate(row: Row): number {
+/** 一条图片消息在排布里占的位：只有原始尺寸决定宽度 */
+const pictureBox = (m: Message): { natural: PixelSize | null } => ({ natural: m.body.kind === 'picture' ? m.body.natural : null })
+
+// 估高只用于第一次布局，量过之后按真实高度。图片部分和渲染共用 galleryLayout，
+// 两边算出来的行数一致，量高之后就不会再把列表推一下。
+function estimate(row: Row, available: number): number {
   if (row.kind === 'day') return 44
   if (row.kind === 'pending') return row.message.runID ? 170 : 46
-  if (row.kind === 'gallery') return 52 + 180 * Math.ceil(row.messages.length / 4) - (row.continued ? 26 : 0)
+  if (row.kind === 'gallery') return 52 + galleryLayout(row.messages.map(pictureBox), available).height - (row.continued ? 36 : 0)
   const m = row.message
   let h = 52
-  h += attachmentsHeight(m.attachments)
+  h += attachmentsHeight(m.attachments, available)
   if (m.runID) h += 96
   if (m.body.kind === 'text') h += Math.ceil(m.body.text.length / 70) * 22
   else if (m.body.kind === 'picture') h += (fit(m.body.natural)?.height ?? 220) + 6
@@ -52,12 +57,12 @@ function estimate(row: Row): number {
   return Math.max(h, 24)
 }
 
-/** 附件块的估高：图按画廊那套（≤2 张 200 高，更多 150 高，一行最多 4 张），文件卡 58 一张 */
-function attachmentsHeight(a: Attachment[]): number {
-  const imgs = a.filter((x) => x.kind === 'image').length
-  const files = a.length - imgs
+/** 附件块的估高：图按画廊的真实排布算，文件卡 58 一张 */
+function attachmentsHeight(a: readonly Attachment[], available: number): number {
+  const imgs = a.filter((x) => x.kind === 'image')
   let h = 0
-  if (imgs) h += (imgs <= 2 ? 200 : 150) * Math.ceil(imgs / 4) + 6
+  if (imgs.length) h += galleryLayout(imgs, available).height + 6
+  const files = a.length - imgs.length
   if (files) h += files * 58
   return h
 }
@@ -102,6 +107,19 @@ export function Stream({ place }: { place: Place }) {
   const atBottom = useRef(true)
   const requesting = useRef(false)
   const lastNewest = useRef<string | null>(null)
+
+  // 画廊实际能用多宽：CSS 上限 760，但右栏开着、窗口变窄时更窄。估高按它算，才跟渲染出来的行数对得上。
+  const available = useRef(GALLERY_MAX_W)
+  useLayoutEffect(() => {
+    const el = scrollRef.current
+    if (!el) return
+    // 减掉行的左右留白和头像那一列
+    const measure = (): void => { available.current = Math.max(200, Math.min(GALLERY_MAX_W, el.clientWidth - 100)) }
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
 
   const scrollToBottom = useCallback((smooth: boolean) => {
     const el = scrollRef.current
@@ -176,7 +194,7 @@ export function Stream({ place }: { place: Place }) {
   const virtualizer = useVirtualizer({
     count: rows.length,
     getScrollElement: () => scrollRef.current,
-    estimateSize: (i) => estimate(rows[i]!),
+    estimateSize: (i) => estimate(rows[i]!, available.current),
     getItemKey: (i) => rows[i]!.key,
     overscan: 8,
     scrollMargin: TOP_PAD,
@@ -523,12 +541,8 @@ function Body({ message: m, onImage, large }: { message: Message; onImage: OpenI
         </div>
       )
     case 'picture': {
-      const box = fit(b.natural)
-      return (
-        <button className={`${styles.pic} ${box ? styles.picFixed : ''}`} style={box ?? undefined} onClick={(e) => onImage({ url: b.url, name: b.name }, e.currentTarget)} title={b.name}>
-          <img src={b.url} alt={b.name} draggable={false} loading="lazy" />
-        </button>
-      )
+      const box = fit(b.natural) ?? { width: 320, height: 240 }
+      return <Shot url={b.url} name={b.name} box={{ w: box.width, h: box.height }} busy={m.sendState === 'sending'} onImage={onImage} />
     }
     case 'file':
       return (
@@ -546,35 +560,23 @@ function Body({ message: m, onImage, large }: { message: Message; onImage: OpenI
 }
 
 /**
- * 一条消息里的附件：图并排成画廊（按原始尺寸排版，不等图加载），文件是卡。
- * 发送中的那条：图是本机缩略图；回显换成服务端地址时，缩略图铺在底下，真图加载完淡入，不闪。
+ * 一条消息里的附件：图并排成画廊，文件是卡。
+ *
+ * 三个阶段分开表达：上传中图上有一道扫光；消息确认后扫光撤掉；清晰图解码完才淡入。
+ * 发的人上传期间看到的是本机缩略图，回显换成服务端地址时缩略图铺在底下，不闪。
  */
 function Attachments({ message: m, onImage }: { message: Message; onImage: OpenImage }) {
   const imgs = m.attachments.filter((a) => a.kind === 'image')
   const files = m.attachments.filter((a) => a.kind === 'file')
   const sending = m.sendState === 'sending'
-  const h = imgs.length <= 2 ? 200 : 150
+  const { boxes } = galleryLayout(imgs)
   return (
-    <div className={`${styles.att} ${sending ? styles.attSending : ''}`}>
+    <div className={styles.att}>
       {imgs.length > 0 && (
         <div className={styles.gallery}>
-          {imgs.map((a, i) => {
-            const w = a.natural && a.natural.height > 0 ? Math.min(h * 2, Math.max(Math.round(h * 0.55), Math.round(h * a.natural.width / a.natural.height))) : h
-            const under = previewFor(a.url)
-            return (
-              <button
-                key={i} className={styles.galleryItem} title={a.name}
-                style={{ width: w, height: h, backgroundImage: under ? `url(${under})` : undefined }}
-                onClick={(e) => { if (!sending) onImage({ url: a.url, name: a.name }, e.currentTarget) }}
-              >
-                <img
-                  src={a.url} alt={a.name} draggable={false} loading="lazy"
-                  className={under ? styles.attFade : undefined}
-                  onLoad={(e) => { if (under) e.currentTarget.classList.add(styles.attLoaded ?? '') }}
-                />
-              </button>
-            )
-          })}
+          {imgs.map((a, i) => (
+            <Shot key={a.url} url={a.url} name={a.name} box={boxes[i]!} busy={sending} onImage={onImage} />
+          ))}
         </div>
       )}
       {files.map((a, i) => {
@@ -595,23 +597,54 @@ function Attachments({ message: m, onImage }: { message: Message; onImage: OpenI
   )
 }
 
-/** 几张图并排：统一 180 高，按各自比例给宽，装不下就换行。点开全屏。 */
+/** 同一个人连着发的几张图并排成一行。宽高在图到之前就定好，点开看原图。 */
 function Gallery({ messages, onImage }: { messages: Message[]; onImage: OpenImage }) {
-  // 越多越小：两张 200 高，三张以上 150 高，一般一批能排在一行里
-  const h = messages.length <= 2 ? 200 : 150
+  const pics = messages.flatMap((m) => (m.body.kind === 'picture' ? [{ id: m.id, url: m.body.url, name: m.body.name, natural: m.body.natural }] : []))
+  const { boxes } = galleryLayout(pics)
   return (
     <div className={styles.gallery}>
-      {messages.map((m) => {
-        if (m.body.kind !== 'picture') return null
-        const b = m.body
-        const w = b.natural && b.natural.height > 0 ? Math.min(h * 2, Math.max(Math.round(h * 0.55), Math.round(h * b.natural.width / b.natural.height))) : h
-        return (
-          <button key={m.id} className={styles.galleryItem} style={{ width: w, height: h }} onClick={(e) => onImage({ url: b.url, name: b.name }, e.currentTarget)} title={b.name}>
-            <img src={b.url} alt={b.name} draggable={false} loading="lazy" />
-          </button>
-        )
-      })}
+      {pics.map((p, i) => (
+        <Shot key={p.url} url={p.url} name={p.name} box={boxes[i]!} busy={false} onImage={onImage} />
+      ))}
     </div>
+  )
+}
+
+/** 屏幕的像素密度。列表里按槽位乘它取图，2 倍屏不糊，也不会去下一张 4000 宽的原图。 */
+const DPR = typeof window === 'undefined' ? 1 : Math.min(2, window.devicePixelRatio || 1)
+/** 重试时换一个地址，不然浏览器会直接复用上一次失败的结果 */
+const retryOf = (url: string, n: number): string => (n === 0 ? url : `${url}${url.includes('?') ? '&' : '?'}_r=${n}`)
+
+/**
+ * 消息里的一张图。
+ *
+ * 框的尺寸在图到之前就定下来——发送时量过原始尺寸，收到的消息里也带着——所以图加载完不会把列表推开。
+ * 列表里请求的是按槽位裁过的尺寸，点开才取原图；裁过的地址取不到就退回原图，再取不到就地给重试。
+ */
+function Shot({ url, name, box, busy, onImage }: { url: string; name: string; box: Box; busy: boolean; onImage: OpenImage }) {
+  const [state, setState] = useState<'loading' | 'ok' | 'failed'>('loading')
+  const [src, setSrc] = useState(() => sized(url, Math.max(box.w, box.h) * DPR))
+  const [nonce, setNonce] = useState(0)
+  const under = previewFor(url)
+  return (
+    <button
+      className={`${styles.shot} ${busy ? styles.shotBusy : ''}`}
+      style={{ width: box.w, height: box.h, backgroundImage: under ? `url("${under}")` : undefined }}
+      title={name}
+      onClick={(e) => {
+        if (busy) return
+        if (state === 'failed') { setState('loading'); setNonce((n) => n + 1); return }
+        onImage({ url, name }, e.currentTarget)
+      }}
+    >
+      <img
+        src={retryOf(src, nonce)} alt={name} draggable={false} loading="lazy"
+        className={state === 'ok' ? styles.shotIn : styles.shotOut}
+        onLoad={() => setState('ok')}
+        onError={() => { if (src !== url) { setSrc(url); setState('loading') } else setState('failed') }}
+      />
+      {state === 'failed' && <span className={styles.shotFail}>图片没加载出来<br />点一下重试</span>}
+    </button>
   )
 }
 

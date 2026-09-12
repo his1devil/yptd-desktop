@@ -121,6 +121,7 @@
 @keyframes rl-pop   { from { opacity: 0; transform: scale(.82) } 60% { transform: scale(1.04) } to { opacity: 1; transform: none } }
 @keyframes rl-spring-in { from { opacity: 0; transform: scale(.6) } to { opacity: 1; transform: none } }
 @keyframes rl-fade-out  { to { opacity: 0 } }
+@keyframes rl-sweep     { from { transform: translateX(-100%) } to { transform: translateX(100%) } }
 @keyframes rl-reveal    { from { clip-path: circle(0 at var(--tx, 50%) var(--ty, 50%)) } to { clip-path: circle(150% at var(--tx, 50%) var(--ty, 50%)) } }
 
 /* View Transitions（motion/transition.ts）。root 不做全屏交叉淡入：没命名的部分即时切换，

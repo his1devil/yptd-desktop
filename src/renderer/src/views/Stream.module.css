@@ -72,10 +72,27 @@
 .text { font-size: 13.5px; line-height: 1.68; color: var(--ink); max-width: 760px; text-wrap: pretty; white-space: pre-wrap; overflow-wrap: anywhere; user-select: text; }
 .textLg { font-size: 14px; line-height: 1.8; }
 
-.pic { display: block; margin-top: 3px; border-radius: 8px; overflow: hidden; border: 1px solid var(--line); background: var(--surface2); max-width: 360px; }
-.pic img { display: block; max-width: 360px; max-height: 280px; }
-.picFixed img { width: 100%; height: 100%; object-fit: cover; }
-.pic:hover { border-color: var(--line2); }
+/* 一张图的槽位：尺寸在图到之前就定好，图到了淡入，列表不会被推一下。
+   底下铺的是本机缩略图（自己刚发的那条），远端图解码完盖上去。 */
+.shot {
+  position: relative; display: block; flex: none; margin-top: 3px;
+  border-radius: 8px; overflow: hidden; border: 1px solid var(--line);
+  background: var(--surface2) center / cover no-repeat;
+}
+.shot:hover { border-color: var(--line2); }
+.shot img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.shotOut { opacity: 0; }
+.shotIn { opacity: 1; transition: opacity var(--dur-slow) var(--ease-out); }
+/* 上传中：一道扫光。SDK 不给字节进度，就不假装有百分比 */
+.shotBusy::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(100deg, transparent 20%, rgba(255, 255, 255, .3) 50%, transparent 80%);
+  animation: global(rl-sweep) 1.2s ease-in-out infinite;
+}
+.shotFail {
+  position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  background: var(--surface2); color: var(--ink3); font-size: 11px; line-height: 1.6; text-align: center;
+}
 
 .file { display: inline-flex; align-items: center; gap: 10px; margin-top: 3px; padding: 9px 12px; border: 1px solid var(--line); border-radius: 9px; background: var(--surface); color: var(--ink); max-width: 420px; }
 .file:hover { border-color: var(--line2); text-decoration: none; }
@@ -180,16 +197,11 @@
   background-size: 220% 100%; animation: global(rl-shim) 1.5s linear infinite;
 }
 
-/* 画廊：同一个人连发的图并排 */
+/* 画廊：同一个人连发的图并排。宽高由 views/gallery.ts 算，估高和这里共用同一份排布 */
 .gallery { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 3px; max-width: 760px; }
-.galleryItem { border-radius: 8px; overflow: hidden; border: 1px solid var(--line); background: var(--surface2) center / cover no-repeat; flex: none; }
+.gallery .shot { margin-top: 0; }
 /* 一条消息里的附件块：图的画廊 + 文件卡，竖着排 */
 .att { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; margin-top: 4px; }
-.attSending { opacity: .78; }
-.attFade { opacity: 0; transition: opacity var(--dur-slow) var(--ease-out); }
-.attLoaded { opacity: 1; }
 .bubble .att { margin-top: 6px; }
 .bubble .state { margin-top: 4px; }
-.galleryItem img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.galleryItem:hover { border-color: var(--line2); }
 .bubbleGallery { padding: 6px; background: transparent; border-color: transparent; }
