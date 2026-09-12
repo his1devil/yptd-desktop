@@ -44,7 +44,7 @@
 .swatch { width: 34px; height: 24px; border-radius: 6px; background: linear-gradient(135deg, #FFFFFF 55%, #E3E5E8 55%); border: 1px solid var(--line2); }
 .swatchDark { background: linear-gradient(135deg, #313338 55%, #1E1F22 55%); }
 
-.wrap { animation: global(rl-fade) var(--dur-fast) var(--ease-out) both; }
+.wrap { animation: global(rl-fade) var(--dur-fast) var(--ease-out) backwards; }
 
 .facts { margin: 0; display: grid; grid-template-columns: 84px 1fr; gap: 10px 14px; font-size: 13px; align-items: baseline; }
 .facts dt { color: var(--ink3); }

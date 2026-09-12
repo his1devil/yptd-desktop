@@ -4,7 +4,7 @@ import { summarize } from '../../../shared/model'
 import { DEFAULT_SERVER, clearCredential, loadCredential, login, register, roster, saveCredential, setServerAuth, AuthError, type ServerConfig } from '../im/auth'
 import { api } from '../im/api'
 import { im, SdkEvent, type ConversationItem, type GroupMemberItem, type MessageItem } from '../im/client'
-import { Translator, dayIndex, directId, placeholderFor, reactionData, richEx } from '../im/translate'
+import { Translator, directId, placeholderFor, reactionData, richEx } from '../im/translate'
 import { Timeline } from '../im/timeline'
 import { mimeOf, objectName, rememberPreview } from '../im/files'
 import { composerBus } from '../views/composerBus'
@@ -158,27 +158,45 @@ export const useSession = create<SessionState>()((set, get) => ({
     try { await loadPage(set, get, id, t.oldest.id) } finally { set({ loadingOlder: false }) }
   },
 
-  // 发送即上屏：按下 Enter 那一刻先摆一条「发送中」，回显到了换成真的；没发出去就收回并把话还给输入框
+  // 发送即上屏。先让 SDK 把消息建出来——纯本地操作，clientMsgID 当场就定了——按这个 id 摆一条
+  // 「发送中」。回显回来还是同一个 id，时间线原位换内容，行不卸载不重挂，入场动画只播一次。
   async send(id, text, opts) {
-    const local = localMessage(get, id, text, [], opts?.quote)
-    timeline(id).upsert(local)
-    bump(set)
+    const fallback = { text, attachments: [], quote: opts?.quote ?? null }
+    let created: MessageItem
     try {
-      const echo = await im.send(await composeText(get, id, text, opts), recipientOf(get, id))
-      timeline(id).remove(local.id)
+      created = await composeText(get, id, text, opts)
+    } catch (e) {
+      set({ notice: `发送失败：${describe(e)}` })
+      composerBus.restore(id, fallback)
+      return
+    }
+    const local = pendingMessage(get, id, created, [], true)
+    if (local) { timeline(id).upsert(local); bump(set) }
+    try {
+      const echo = await im.send(created, recipientOf(get, id))
       absorb(set, get, translator.messages([echo]), id)
     } catch (e) {
-      timeline(id).remove(local.id)
-      bump(set)
+      if (local) { timeline(id).remove(local.id); bump(set) }
       set({ notice: `发送失败：${describe(e)}` })
-      composerBus.restore(id, { text, attachments: [], quote: opts?.quote ?? null })
+      composerBus.restore(id, fallback)
     }
   },
 
   async sendRich(id, text, opts) {
-    const local = localMessage(get, id, text, opts.attachments, opts.quote)
-    timeline(id).upsert(local)
-    bump(set)
+    const hasText = !!text.trim()
+    const fallback = { text, attachments: opts.attachments, quote: opts.quote ?? null }
+    // 正文还是文本消息：服务端和别的端照旧读到文字和 @；附件在 ex 里。没打字就放个占位——
+    // 占位只看附件的种类和名字，上传之前就能算出来，所以消息能在传之前先上屏且 id 不变。
+    let created: MessageItem
+    try {
+      created = await composeText(get, id, hasText ? text : placeholderFor(opts.attachments), opts)
+    } catch (e) {
+      set({ notice: `发送失败：${describe(e)}` })
+      composerBus.restore(id, fallback)
+      return
+    }
+    const local = pendingMessage(get, id, created, opts.attachments, hasText)
+    if (local) { timeline(id).upsert(local); bump(set) }
     try {
       // 逐个传：地址回来了才能写进消息；对象名带唯一前缀，同名文件不会互相覆盖
       const uploaded: Attachment[] = []
@@ -187,18 +205,14 @@ export const useSession = create<SessionState>()((set, get) => ({
         rememberPreview(url, a.preview)
         uploaded.push({ kind: a.kind, url, name: a.name, bytes: a.bytes, natural: a.natural })
       }
-      // 正文还是文本消息：服务端和别的端照旧读到文字和 @；附件在 ex 里。没打字就放个占位
-      const created = await composeText(get, id, text.trim() ? text : placeholderFor(uploaded), opts)
-      created.ex = richEx(uploaded, !!text.trim())
+      created.ex = richEx(uploaded, hasText)
       const echo = await im.send(created, recipientOf(get, id))
-      timeline(id).remove(local.id)
       absorb(set, get, translator.messages([echo]), id)
     } catch (e) {
-      timeline(id).remove(local.id)
-      bump(set)
+      if (local) { timeline(id).remove(local.id); bump(set) }
       set({ notice: `发送失败：${describe(e)}` })
       // 文字和文件原样回到输入框，人改一改再发，不用重新找文件
-      composerBus.restore(id, { text, attachments: opts.attachments, quote: opts.quote ?? null })
+      composerBus.restore(id, fallback)
     }
   },
 
@@ -315,20 +329,26 @@ async function composeText(get: Get, id: ConversationId, text: string, opts?: { 
   return im.createText(text)
 }
 
-let localSeq = 0
-/** 发送中的那条：先摆在时间线末尾，图用本机缩略图。回显到了就把它换掉 */
-function localMessage(get: Get, id: ConversationId, text: string, attachments: OutgoingAttachment[], quote?: MessageId): Message {
+/**
+ * 还没发出去的那条。id 用 SDK 创建时分配的 clientMsgID：回显回来是同一个 id，时间线原位替换，
+ * React 和虚拟列表都认同一个 key，行不会被卸载重挂——量高缓存留着，入场动画也不会再播一遍。
+ *
+ * 正文、@、引用都让翻译层从建好的消息里读，跟真发出去的那条走同一条路径；只有会话 id 要覆盖，
+ * 创建出来的消息还没有收件人。
+ */
+function pendingMessage(get: Get, conversation: ConversationId, created: MessageItem, attachments: OutgoingAttachment[], showText: boolean): Message | null {
+  const base = translator.message(created)
+  if (!base) return null
   const s = get()
-  const now = Date.now()
-  const q = quote ? timeline(id).get(quote) : undefined
   return {
-    id: `local_${now}_${++localSeq}`, conversation: id, sender: s.me, senderName: s.myName || s.me,
-    senderAvatar: s.avatars[s.me] ?? s.myAvatar, sentAt: now, seq: Number.MAX_SAFE_INTEGER,
-    body: { kind: 'text', text },
+    ...base,
+    conversation,
+    senderName: s.myName || base.senderName,
+    senderAvatar: s.avatars[s.me] ?? s.myAvatar ?? base.senderAvatar,
+    // 只有附件没打字：正文是给不认识 ex 的端看的占位，这端不显示
+    body: showText ? base.body : { kind: 'text', text: '' },
+    // 还没传完，先用本机缩略图顶着
     attachments: attachments.map((a) => ({ kind: a.kind, url: a.preview ?? '', name: a.name, bytes: a.bytes, natural: a.natural })),
-    quote: q ? { messageId: q.id, senderID: q.sender, senderName: q.senderName, excerpt: summarize(q).replace(/\s*\n\s*/g, ' ') } : null,
-    reactions: [], sendState: 'sending', mentionsMe: false, isAgent: false, agentTag: null, transient: false, runID: null,
-    mentions: [], agentMentions: [], dayIndex: dayIndex(now),
   }
 }
 
@@ -522,8 +542,9 @@ function absorb(set: Set, get: Get, msgs: Message[], into?: ConversationId): voi
   let seenHere = false
   for (const m of msgs) {
     const id = into ?? m.conversation
+    // fresh=false 是「原位换掉了同一个 id」——发出去的那条回显就是这样，同样要重画（发送中 → 已发）
     const fresh = timeline(id).upsert(m)
-    if (fresh) changed = true
+    changed = true
     if (id === current) seenHere = true
     if (fresh && !into) maybeNotify(get, m)
   }

@@ -28,5 +28,5 @@
 .pill_error { color: var(--danger); }
 .pill_cancelled { color: var(--ink3); }
 
-.wrap { animation: global(rl-fade) var(--dur-fast) var(--ease-out) both; }
+.wrap { animation: global(rl-fade) var(--dur-fast) var(--ease-out) backwards; }
 .card { transition: box-shadow var(--dur-fast), border-color var(--dur-fast); }

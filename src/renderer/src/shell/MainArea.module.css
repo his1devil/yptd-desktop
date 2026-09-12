@@ -81,4 +81,4 @@
 .menuDanger:hover { background: var(--dtint); }
 
 .main { transition: background-color var(--dur-slow); }
-.landing { animation: global(rl-fade) var(--dur) var(--ease-out) both; }
+.landing { animation: global(rl-fade) var(--dur) var(--ease-out) backwards; }

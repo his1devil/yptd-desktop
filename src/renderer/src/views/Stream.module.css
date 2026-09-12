@@ -129,7 +129,7 @@
   display: flex; align-items: center; gap: 8px; max-width: 70%;
   height: 30px; padding: 0 12px 0 11px; border-radius: 99px;
   background: var(--accent); color: var(--onacc); font-size: 12px; font-weight: 600; box-shadow: var(--sh);
-  animation: global(rl-up) var(--dur) var(--ease-out) both;
+  animation: global(rl-up) var(--dur) var(--ease-out) backwards;
 }
 .newPill:hover { background: var(--accent2); }
 .newPillWho { font-weight: 400; opacity: .85; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -161,14 +161,15 @@
 .menuDanger:hover { background: var(--dtint); }
 
 /* ---- 动效 ---- */
-.wrap { animation: global(rl-fade) var(--dur) var(--ease-out) both; }
-.enter { animation: global(rl-rise) var(--dur-slow) var(--ease-out) both; }
-.fresh { animation: global(rl-rise) var(--dur) var(--ease-out) both; }
-.chip, .chipAdd { animation: global(rl-spring-in) var(--dur-slow) var(--spring) both; }
+.wrap { animation: global(rl-fade) var(--dur) var(--ease-out) backwards; }
+.enter { animation: global(rl-rise) var(--dur-slow) var(--ease-out) backwards; }
+.fresh { animation: global(rl-rise) var(--dur) var(--ease-out) backwards; }
+/* 回应芯片不做入场动画：虚拟列表把行回收再挂载时它会跟着重播，滚一屏能触发几十次。
+   点的人已经看到表情从按钮飞进来，别人那边芯片直接出现就够。 */
 
 /* 骨架 */
 .skel { padding: 8px 24px; display: flex; flex-direction: column; gap: 18px; }
-.skelRow, .skelRowRight { display: flex; gap: 11px; align-items: flex-start; animation: global(rl-fade) var(--dur) var(--ease-out) both; }
+.skelRow, .skelRowRight { display: flex; gap: 11px; align-items: flex-start; animation: global(rl-fade) var(--dur) var(--ease-out) backwards; }
 .skelRowRight { justify-content: flex-end; }
 .skelAvatar { width: 30px; height: 30px; border-radius: 99px; background: var(--surface2); flex: none; }
 .skelLines { flex: 1; display: flex; flex-direction: column; gap: 8px; max-width: 560px; }

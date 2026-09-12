@@ -265,8 +265,8 @@ export function parseRich(ex: string | undefined): { attachments: Attachment[]; 
   return { attachments, textless: p.t === 0 }
 }
 
-/** 没打字时的正文：给不认识 ex 的端、会话列表和通知看 */
-export function placeholderFor(attachments: Attachment[]): string {
+/** 没打字时的正文：给不认识 ex 的端、会话列表和通知看。只看种类和名字，所以上传之前就能算出来 */
+export function placeholderFor(attachments: readonly Pick<Attachment, 'kind' | 'name'>[]): string {
   const images = attachments.filter((a) => a.kind === 'image').length
   const parts: string[] = []
   if (images) parts.push(images > 1 ? `[图片]×${images}` : '[图片]')

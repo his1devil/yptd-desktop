@@ -94,4 +94,4 @@
 .result { padding: 11px 13px 12px; display: flex; flex-direction: column; gap: 10px; }
 .result .text { font-size: 13.5px; line-height: 1.66; }
 
-.steps, .thinkBody, .detail { animation: global(rl-fade) var(--dur-fast) var(--ease-out) both; }
+.steps, .thinkBody, .detail { animation: global(rl-fade) var(--dur-fast) var(--ease-out) backwards; }

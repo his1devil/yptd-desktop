@@ -117,4 +117,4 @@
 .whoRow .field { margin-bottom: 0; }
 .grow { flex: 1; }
 .actionBtns { display: flex; gap: 8px; flex: none; }
-.content { animation: global(rl-fade) var(--dur) var(--ease-out) both; }
+.content { animation: global(rl-fade) var(--dur) var(--ease-out) backwards; }

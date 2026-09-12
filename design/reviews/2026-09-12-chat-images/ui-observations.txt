@@ -1,0 +1,6 @@
+2026-09-12, installed yptd 0.3.4
+01: Existing group conversation, existing image thumbnail visible.
+02: Clicked thumbnail. Backdrop limited to middle main column. Large image extends over left sidebar and is covered by right sidebar and composer.
+03: Pressed Tab twice from the thumbnail while the lightbox remained open. CUA reported focus on background button H HALX (@HALX).
+04: Pressed Escape. Image closed; focus reported on the composer textarea.
+No messages or attachments were sent.

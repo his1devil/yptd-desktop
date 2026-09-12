@@ -72,14 +72,14 @@
   background: var(--line2);
   color: var(--ink);
   font-size: 10px; font-weight: 600; line-height: 17px; text-align: center;
-  animation: global(rl-spring-in) var(--dur-slow) var(--spring) both;
+  animation: global(rl-spring-in) var(--dur-slow) var(--spring) backwards;
 }
 
 .emptyLine { font-size: 11.5px; color: var(--ink3); padding: 4px 8px; }
 .unread .name { color: var(--ink); font-weight: 600; }
 .countAt { background: var(--accent); color: var(--onacc); }
 
-.scroll { animation: global(rl-fade) var(--dur-fast) var(--ease-out) both; }
+.scroll { animation: global(rl-fade) var(--dur-fast) var(--ease-out) backwards; }
 .item { transition: background-color var(--dur-fast), color var(--dur-fast); }
 .side { transition: background-color var(--dur-slow), border-color var(--dur-slow); }
 .emptyAction { color: var(--ontint); font-size: inherit; font-weight: 500; }

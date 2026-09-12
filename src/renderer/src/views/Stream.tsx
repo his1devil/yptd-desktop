@@ -146,6 +146,9 @@ export function Stream({ place }: { place: Place }) {
   const firstRowsAt = useRef<number | null>(null)
   const initial = useRef<{ keys: Set<string>; newestAt: number } | null>(null)
   const enterDelay = useRef(new Map<string, number>())
+  // 播完就记下来。虚拟列表会把滚出视口的行卸载、滚回来再挂载，不记的话滚一趟屏要重播几十次入场动画。
+  // 记在实例上：换会话时 Stream 整个重新挂载，进场的瀑布照旧。
+  const played = useRef(new Set<string>())
   if (rows.length > 0 && initial.current === null) {
     firstRowsAt.current = performance.now()
     let newestAt = 0
@@ -157,6 +160,7 @@ export function Stream({ place }: { place: Place }) {
   }
   const entering = firstRowsAt.current !== null && performance.now() - firstRowsAt.current < 600
   const motionOf = (row: Row, order: number): { cls: string; style: CSSProperties } => {
+    if (played.current.has(row.key)) return { cls: '', style: {} }
     const init = initial.current
     if (init?.keys.has(row.key)) {
       let delay = enterDelay.current.get(row.key)
@@ -303,8 +307,13 @@ export function Stream({ place }: { place: Place }) {
                   className={styles.vrow}
                   style={{ transform: `translateY(${v.start - TOP_PAD}px)` }}
                 >
-                  {/* 动效放在内层：外层的 transform 是虚拟列表的定位，动画一碰它整列就叠到一起 */}
-                  <div className={motion.cls} style={motion.style}>
+                  {/* 动效放在内层：外层的 transform 是虚拟列表的定位，动画一碰它整列就叠到一起。
+                      播完才记账——中途重渲染不会把 class 撤掉，动画不会被打断。 */}
+                  <div
+                    className={motion.cls}
+                    style={motion.style}
+                    onAnimationEnd={(e) => { if (e.target === e.currentTarget) played.current.add(row.key) }}
+                  >
                   {row.kind === 'day' ? (
                     <DaySep label={row.label} />
                   ) : row.kind === 'pending' && !row.message.runID ? (
