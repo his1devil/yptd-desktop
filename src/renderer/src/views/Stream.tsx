@@ -1,5 +1,5 @@
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
-import { useVirtualizer, type VirtualItem, type Virtualizer } from '@tanstack/react-virtual'
+import { useVirtualizer, type VirtualItem } from '@tanstack/react-virtual'
 import type { Attachment, Message, MessageId, PixelSize, QuotePreview } from '../../../shared/model'
 import { summarize } from '../../../shared/model'
 import { Avatar, glyphOf, pairOf } from '../components/Avatar'
@@ -13,7 +13,7 @@ import type { Place } from '../store/selectors'
 import { timeline, useSession } from '../store/session'
 import { useUI } from '../store/ui'
 import { composerBus } from './composerBus'
-import { Lightbox } from './Lightbox'
+import { Lightbox, type Pic } from './Lightbox'
 import { Rich } from './rich'
 import { GALLERY_MAX_W, galleryLayout, type Box } from './gallery'
 import { buildRows, rowHas, type Row } from './rows'
@@ -82,9 +82,10 @@ const bytes = (n: number): string => (n < 1024 ? `${n} B` : n < 1024 * 1024 ? `$
 
 interface Popover { id: MessageId; kind: 'picker' | 'menu'; anchor: DOMRect }
 type Anchor = (id: MessageId, kind: Popover['kind'], anchor: DOMRect) => void
-type Shot = { url: string; name: string } | null
+/** 正在看的一组图和当前位置：同一条消息里的图算一组，左右键在组里切 */
+interface Viewing { items: Pic[]; index: number }
 /** 点开一张图：`from` 是被点的那个缩略图，灯箱是从它长大出来的 */
-type OpenImage = (shot: Shot, from?: HTMLElement) => void
+type OpenImage = (viewing: Viewing, from?: HTMLElement) => void
 
 export function Stream({ place }: { place: Place }) {
   const id = place.id
@@ -99,7 +100,7 @@ export function Stream({ place }: { place: Place }) {
   const rows = useMemo(() => buildRows(visible(timeline(id).messages)), [id, tick])
   const [popover, setPopover] = useState<Popover | null>(null)
   const [flash, setFlash] = useState<MessageId | null>(null)
-  const [shot, setShot] = useState<Shot>(null)
+  const [shot, setShot] = useState<Viewing | null>(null)
   /** 不在底部时到的新消息：几条、第一条是谁说了什么 */
   const [fresh, setFresh] = useState<{ n: number; who: string; text: string } | null>(null)
 
@@ -114,7 +115,12 @@ export function Stream({ place }: { place: Place }) {
     const el = scrollRef.current
     if (!el) return
     // 减掉行的左右留白和头像那一列
-    const measure = (): void => { available.current = Math.max(200, Math.min(GALLERY_MAX_W, el.clientWidth - 100)) }
+    const measure = (): void => {
+      available.current = Math.max(200, Math.min(GALLERY_MAX_W, el.clientWidth - 100))
+      // 输入框打多行会把消息区压矮，内容高度没变但视口变了：贴着底就得重新贴一次，
+      // 否则最后一条会被输入框推到看不见的地方
+      if (atBottom.current) el.scrollTop = el.scrollHeight
+    }
     measure()
     const ro = new ResizeObserver(measure)
     ro.observe(el)
@@ -138,21 +144,20 @@ export function Stream({ place }: { place: Place }) {
     if (!atBottom.current) setFresh((f) => ({ n: (f?.n ?? 0) + 1, who: f?.who ?? m.senderName, text: f?.text ?? summarize(m) }))
   }, [tick, id, me, scrollToBottom])
 
-  // 灯箱：从被点的缩略图长大出来，关了缩回去（View Transition 的共享元素）
-  const shotFrom = useRef<HTMLElement | null>(null)
-  const openShot = useCallback<OpenImage>((s, from) => {
-    if (!s) return
-    const el = from ?? null
-    shotFrom.current = el
-    if (el) el.style.viewTransitionName = 'shot'
-    void transition(() => { if (el) el.style.viewTransitionName = ''; setShot(s) })
+  // 灯箱：从被点的缩略图长大出来，关了缩回去（View Transition 的共享元素）。
+  // 缩回去时按当前这张图现找缩略图，不记开图时那个元素——中间可能翻过好几张，
+  // 原来那张也可能已经被虚拟列表回收；找不到就只淡出。
+  const openShot = useCallback<OpenImage>((v, from) => {
+    if (v.items.length === 0) return
+    if (from) from.style.viewTransitionName = 'shot'
+    void transition(() => { if (from) from.style.viewTransitionName = ''; setShot(v) })
   }, [])
   const closeShot = useCallback(() => {
-    const el = shotFrom.current
-    shotFrom.current = null
-    const back = el && el.isConnected ? el : null
-    void transition(() => { setShot(null); if (back) back.style.viewTransitionName = 'shot' }).then(() => { if (back) back.style.viewTransitionName = '' })
-  }, [])
+    const url = shot && shot.items[shot.index]?.url
+    const back = url ? document.querySelector<HTMLElement>(`[data-shot="${CSS.escape(url)}"]`) : null
+    void transition(() => { setShot(null); if (back) back.style.viewTransitionName = 'shot' })
+      .then(() => { if (back) back.style.viewTransitionName = '' })
+  }, [shot])
 
   // 第一页：点会话打开的路径已经在拉了，这里兜住另一条——重启后从上次的会话直接挂上来，
   // 没人点过它。ensure 是幂等的，拉过就不会再拉。
@@ -199,10 +204,10 @@ export function Stream({ place }: { place: Place }) {
     overscan: 8,
     scrollMargin: TOP_PAD,
   })
-  // 视口上方的行量出真实高度后，滚动位置跟着补——往上翻历史时才不会跳。
-  // 这是实例上的属性，不是选项。
-  virtualizer.shouldAdjustScrollPositionOnItemSizeChange = (item: VirtualItem, _delta: number, inst: Virtualizer<HTMLDivElement, Element>) =>
-    item.start < (inst.scrollOffset ?? 0)
+  // 量高之后要不要补滚动位置，交给库自己判断，别覆盖。
+  // 它区分两种情况：第一次量高按「行首在视口之上」补（估高换成真高，整块都在上面）；
+  // 重新量高只补「整行都在视口之上」的，并且向上滚时不补。我们原来的覆盖只看行首，
+  // 结果一条横跨视口顶部的长消息（agent 边写边长）在底部增长时也会被补，把正在读的内容往上推。
   const total = virtualizer.getTotalSize()
 
   // 贴底：在底部时新消息、量高、图片加载都保持贴底
@@ -383,7 +388,14 @@ export function Stream({ place }: { place: Place }) {
           onClose={closePopover} onReact={react} onQuote={quote} onCopy={copy} onRevoke={revoke}
         />
       )}
-      {shot && <Lightbox url={shot.url} name={shot.name} onClose={closeShot} />}
+      {shot && (
+        <Lightbox
+          items={shot.items}
+          index={shot.index}
+          onIndex={(i) => setShot((v) => (v ? { ...v, index: i } : v))}
+          onClose={closeShot}
+        />
+      )}
     </div>
   )
 }
@@ -542,7 +554,8 @@ function Body({ message: m, onImage, large }: { message: Message; onImage: OpenI
       )
     case 'picture': {
       const box = fit(b.natural) ?? { width: 320, height: 240 }
-      return <Shot url={b.url} name={b.name} box={{ w: box.width, h: box.height }} busy={m.sendState === 'sending'} onImage={onImage} />
+      const one = [{ url: b.url, name: b.name }]
+      return <Shot url={b.url} name={b.name} box={{ w: box.width, h: box.height }} busy={m.sendState === 'sending'} group={one} onImage={onImage} />
     }
     case 'file':
       return (
@@ -575,7 +588,7 @@ function Attachments({ message: m, onImage }: { message: Message; onImage: OpenI
       {imgs.length > 0 && (
         <div className={styles.gallery}>
           {imgs.map((a, i) => (
-            <Shot key={a.url} url={a.url} name={a.name} box={boxes[i]!} busy={sending} onImage={onImage} />
+            <Shot key={a.url} url={a.url} name={a.name} box={boxes[i]!} busy={sending} group={imgs} onImage={onImage} />
           ))}
         </div>
       )}
@@ -604,7 +617,7 @@ function Gallery({ messages, onImage }: { messages: Message[]; onImage: OpenImag
   return (
     <div className={styles.gallery}>
       {pics.map((p, i) => (
-        <Shot key={p.url} url={p.url} name={p.name} box={boxes[i]!} busy={false} onImage={onImage} />
+        <Shot key={p.url} url={p.url} name={p.name} box={boxes[i]!} busy={false} group={pics} onImage={onImage} />
       ))}
     </div>
   )
@@ -621,7 +634,7 @@ const retryOf = (url: string, n: number): string => (n === 0 ? url : `${url}${ur
  * 框的尺寸在图到之前就定下来——发送时量过原始尺寸，收到的消息里也带着——所以图加载完不会把列表推开。
  * 列表里请求的是按槽位裁过的尺寸，点开才取原图；裁过的地址取不到就退回原图，再取不到就地给重试。
  */
-function Shot({ url, name, box, busy, onImage }: { url: string; name: string; box: Box; busy: boolean; onImage: OpenImage }) {
+function Shot({ url, name, box, busy, group, onImage }: { url: string; name: string; box: Box; busy: boolean; group: readonly Pic[]; onImage: OpenImage }) {
   const [state, setState] = useState<'loading' | 'ok' | 'failed'>('loading')
   const [src, setSrc] = useState(() => sized(url, Math.max(box.w, box.h) * DPR))
   const [nonce, setNonce] = useState(0)
@@ -631,10 +644,12 @@ function Shot({ url, name, box, busy, onImage }: { url: string; name: string; bo
       className={`${styles.shot} ${busy ? styles.shotBusy : ''}`}
       style={{ width: box.w, height: box.h, backgroundImage: under ? `url("${under}")` : undefined }}
       title={name}
+      data-shot={url}
       onClick={(e) => {
         if (busy) return
         if (state === 'failed') { setState('loading'); setNonce((n) => n + 1); return }
-        onImage({ url, name }, e.currentTarget)
+        const i = group.findIndex((g) => g.url === url)
+        onImage({ items: [...group], index: i < 0 ? 0 : i }, e.currentTarget)
       }}
     >
       <img

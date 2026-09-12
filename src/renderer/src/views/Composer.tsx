@@ -3,7 +3,6 @@ import { summarize, type OutgoingAttachment } from '../../../shared/model'
 import { Avatar, glyphOf, pairOf } from '../components/Avatar'
 import { IconClose, IconFile, IconImage, IconPaperclip } from '../components/Icons'
 import { IMAGE_EXT, mimeOf } from '../im/files'
-import { reduceMotion } from '../motion/transition'
 import { mentionables, type Mentionable, type Place } from '../store/selectors'
 import { agentsOf, timeline, useSession } from '../store/session'
 import { useUI } from '../store/ui'
@@ -90,13 +89,15 @@ export function Composer({ place }: { place: Place }) {
     const el = ref.current
     if (!el) return
     const prev = el.style.height
+    // 量之前必须把过渡关掉。带着过渡把高度设成 0 不会立刻生效，量到的是动画中途那个还很高的
+    // 盒子，算出来的目标只会比现在大——多行消息发出去之后输入框就再也收不回来了。
+    el.style.transition = 'none'
     el.style.height = '0px'
     const target = `${Math.min(el.scrollHeight, LINE * MAX_LINES + 24)}px`
-    if (prev && prev !== target && !reduceMotion()) {
-      // 先回到旧高度并让浏览器记住它，下一步设新高度才有过渡可走
-      el.style.height = prev
-      void el.offsetHeight
-    }
+    // 回到旧高度并让浏览器记住它，恢复过渡后设新高度才有起点可走
+    el.style.height = prev || target
+    void el.offsetHeight
+    el.style.transition = ''
     el.style.height = target
   }, [draft])
 

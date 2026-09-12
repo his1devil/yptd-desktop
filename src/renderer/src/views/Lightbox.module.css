@@ -5,11 +5,38 @@
   display: flex; align-items: center; justify-content: center;
   view-transition-name: lb-bg;
 }
+.layer:focus { outline: none; }
 .img { max-width: 92vw; max-height: 86vh; border-radius: 8px; box-shadow: var(--shwin); background: #000; view-transition-name: shot; }
+
+.close {
+  position: absolute; top: 18px; right: 20px;
+  width: 32px; height: 32px; border-radius: 99px;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(20, 20, 22, .85); color: #F2F3F5;
+}
+.close:hover { background: rgba(40, 40, 44, .95); }
+
+/* 左右切图：贴着两边，鼠标过去才明显 */
+.nav {
+  position: absolute; top: 50%; translate: 0 -50%;
+  width: 40px; height: 60px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(20, 20, 22, .6); color: #F2F3F5;
+  font-size: 26px; line-height: 1; opacity: .55;
+  transition: opacity var(--dur-fast), background-color var(--dur-fast);
+}
+.nav:hover { opacity: 1; background: rgba(40, 40, 44, .9); }
+.prev { left: 18px; }
+.next { right: 18px; }
+
 .bar {
   position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
   display: flex; align-items: center; gap: 14px;
   padding: 7px 12px; border-radius: 99px;
   background: rgba(20, 20, 22, .85); color: #F2F3F5; font-size: 11.5px;
+  max-width: 80vw;
 }
 .bar a { color: #C3C9FF; }
+.count { opacity: .7; }
+
+.close:focus-visible, .nav:focus-visible, .bar a:focus-visible { outline: 2px solid #C3C9FF; outline-offset: 2px; }

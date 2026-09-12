@@ -38,6 +38,8 @@ export function App() {
   // ⌘. 右栏，⌘⇧E 标已读，Esc 回到输入框
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
+      // 全屏模态（看图）开着时应用级快捷键让位，它自己处理 Esc 和左右键
+      if (document.querySelector('[data-modal="true"]')) return
       const ui = useUI.getState()
       const cmd = e.metaKey || e.ctrlKey
       const inField = (e.target as HTMLElement | null)?.tagName === 'INPUT' || (e.target as HTMLElement | null)?.tagName === 'TEXTAREA'
