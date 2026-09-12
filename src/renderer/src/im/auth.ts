@@ -35,10 +35,27 @@ export class AuthError extends Error {
   constructor(message: string, readonly code?: string) { super(message); this.name = 'AuthError' }
 }
 
-export async function register(cfg: ServerConfig, invite: string, nickname: string, userID?: string): Promise<AuthSession> {
+export async function register(cfg: ServerConfig, invite: string, nickname: string, password?: string): Promise<AuthSession> {
   return post(`${cfg.server}/v1/register`, {
-    invite_code: invite, nickname, ...(userID ? { user_id: userID } : {}), platform_id: PLATFORM_ID,
+    invite_code: invite, nickname, ...(password ? { password } : {}), platform_id: PLATFORM_ID,
   })
+}
+
+/**
+ * 用账号和密码登录：这台机器上没有设备凭据时的入口。
+ *
+ * 服务端会发一份新的设备凭据，之后这台机器就自动登录了，和用邀请码进来的机器没有区别。
+ */
+export async function loginWithPassword(cfg: ServerConfig, userID: string, password: string): Promise<AuthSession> {
+  return post(`${cfg.server}/v1/login/password`, {
+    user_id: userID, password, device_name: deviceName(), platform_id: PLATFORM_ID,
+  })
+}
+
+/** 这台机器叫什么，服务端记在凭据上，设置里能看到是哪台机器 */
+function deviceName(): string {
+  if (typeof navigator === 'undefined') return 'yptd desktop'
+  return /Mac/.test(navigator.platform || navigator.userAgent) ? 'Mac' : 'yptd desktop'
 }
 
 export interface InviteCheck {

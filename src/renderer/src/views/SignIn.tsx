@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Avatar, glyphOf, pairOf } from '../components/Avatar'
 import { DEFAULT_SERVER, checkInvite, type InviteCheck } from '../im/auth'
 import { describe, useSession } from '../store/session'
+import { useUI } from '../store/ui'
 import styles from './SignIn.module.css'
 
 /**
@@ -33,6 +34,58 @@ export function formatInvite(raw: string): string {
 }
 
 export function SignIn() {
+  const lastUserID = useUI((s) => s.lastUserID)
+  // 有上次登录过的账号就默认走密码；从没登录过的机器只可能靠邀请码
+  const [mode, setMode] = useState<'password' | 'invite'>(lastUserID ? 'password' : 'invite')
+  return mode === 'password'
+    ? <PasswordSignIn onInvite={() => setMode('invite')} />
+    : <InviteSignIn onPassword={() => setMode('password')} canGoBack={!!lastUserID} />
+}
+
+/** 已有账号：账号 + 密码。退出之后回到的就是这里，账号名已经填好，只用输密码。 */
+function PasswordSignIn({ onInvite }: { onInvite(): void }) {
+  const phase = useSession((s) => s.phase)
+  const signIn = useSession((s) => s.signInWithPassword)
+  const lastUserID = useUI((s) => s.lastUserID)
+  const [userID, setUserID] = useState(lastUserID ?? '')
+  const [password, setPassword] = useState('')
+  const busy = phase.kind === 'connecting'
+  const why = phase.kind === 'failed' ? phase.why : null
+  const ready = userID.trim().length > 0 && password.length > 0
+  const submit = (): void => { if (ready && !busy) void signIn(userID.trim(), password) }
+  return (
+    <div className={styles.desk}>
+      <div className={styles.card}>
+        <aside className={styles.steps}>
+          <div className={styles.brand}>yptd</div>
+          <p className={styles.sideLead}>用账号和密码登录。登录后这台机器会记住你，下次自动进来。</p>
+          <div className={styles.stepsFoot}>内部使用 · 凭邀请码入场</div>
+        </aside>
+        <section className={styles.content}>
+          <div className={`${styles.kicker} mono`}>登录</div>
+          <h1 className={styles.title}>欢迎回来</h1>
+          <p className={styles.lead}>这台机器上没有登录凭据了，用密码进来就好。没设过密码的话，找人要一个新邀请码。</p>
+          <label className={styles.field}>
+            <span className={styles.label}>账号</span>
+            <input className={`${styles.input} mono`} value={userID} onChange={(e) => setUserID(e.target.value)} placeholder="你的账号名" spellCheck={false} autoFocus={!lastUserID} disabled={busy} />
+          </label>
+          <label className={styles.field}>
+            <span className={styles.label}>密码</span>
+            <input className={styles.input} type="password" value={password} onChange={(e) => setPassword(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && submit()} placeholder="至少 8 位" autoFocus={!!lastUserID} disabled={busy} />
+          </label>
+          {why && <div className={styles.error}>{why}</div>}
+          <div className={styles.actions}>
+            <button className={styles.linkBtn} onClick={onInvite} disabled={busy}>没有账号？用邀请码加入</button>
+            <button className={styles.primary} disabled={!ready || busy} onClick={submit}>{busy ? '正在登录…' : '登录'}</button>
+          </div>
+        </section>
+      </div>
+    </div>
+  )
+}
+
+/** 新人：邀请码 → 昵称（可顺便设密码）→ 进来 */
+function InviteSignIn({ onPassword, canGoBack }: { onPassword(): void; canGoBack: boolean }) {
   const phase = useSession((s) => s.phase)
   const doRegister = useSession((s) => s.register)
   const [step, setStep] = useState(0)
@@ -42,6 +95,7 @@ export function SignIn() {
   const [codeErr, setCodeErr] = useState<string | null>(null)
   const [invite, setInvite] = useState<InviteCheck | null>(null)
   const [nickname, setNickname] = useState('')
+  const [password, setPassword] = useState('')
   const busy = phase.kind === 'connecting'
   const failed = phase.kind === 'failed' ? phase : null
 
@@ -68,8 +122,9 @@ export function SignIn() {
       setCodeErr(`连不上服务器：${describe(e)}`)
     } finally { setChecking(false) }
   }
-  const nameReady = nickname.trim().length > 0 && nickname.trim().length <= 32
-  const submit = (): void => { if (nameReady && !busy) void doRegister(formatInvite(code), nickname.trim()) }
+  const pwOk = password.length === 0 || password.length >= 8
+  const nameReady = nickname.trim().length > 0 && nickname.trim().length <= 32 && pwOk
+  const submit = (): void => { if (nameReady && !busy) void doRegister(formatInvite(code), nickname.trim(), password || undefined) }
 
   const active = busy ? 2 : step
   const hours = invite?.expiresAt ? Math.max(1, Math.round((invite.expiresAt - Date.now()) / 3_600_000)) : null
@@ -114,7 +169,10 @@ export function SignIn() {
             {codeErr && <div className={styles.error}>{codeErr}</div>}
             <div className={styles.actions}>
               <span className={styles.hint}>{pasted ? '已从剪贴板填入，看一眼对不对。' : '邀请是聊天里复制来的？直接粘贴就行。'}</span>
-              <button className={styles.primary} disabled={!codeReady || checking} onClick={() => void next()}>{checking ? '核对中…' : '下一步'}</button>
+              <span className={styles.actionBtns}>
+                {canGoBack && <button className={styles.linkBtn} onClick={onPassword} disabled={checking}>已有账号？用密码登录</button>}
+                <button className={styles.primary} disabled={!codeReady || checking} onClick={() => void next()}>{checking ? '核对中…' : '下一步'}</button>
+              </span>
             </div>
           </section>
         ) : (
@@ -138,6 +196,19 @@ export function SignIn() {
                 />
               </label>
             </div>
+            <label className={styles.field}>
+              <span className={styles.label}>密码 <span className={styles.optional}>可不填</span></span>
+              <input
+                className={styles.input}
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && submit()}
+                placeholder="设一个就能在别的机器上登录，至少 8 位"
+                disabled={busy}
+              />
+            </label>
+            {password.length > 0 && password.length < 8 && <div className={styles.error}>密码至少 8 位</div>}
             {failed && !INVITE_ERRORS.has(failed.code ?? '') && <div className={styles.error}>{failed.why}</div>}
             <div className={styles.actions}>
               <span className={styles.hint}>

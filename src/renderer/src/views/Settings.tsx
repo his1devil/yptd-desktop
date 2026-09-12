@@ -94,10 +94,71 @@ function Profile() {
         </div>
         {err && <div className={errorClass}>{err}</div>}
       </Section>
-      <Section title="这台机器" desc="退出后这台机器的登录凭据会被清掉，再进来要一个新邀请码。">
+      <Password />
+      <Section title="这台机器" desc="退出后这台机器的登录凭据会被清掉。设过密码就能用账号密码再进来，否则要一个新邀请码。">
         <button className={ghostClass} disabled={busy === 'out'} onClick={() => { setBusy('out'); void useSession.getState().signOut() }}>退出登录</button>
       </Section>
     </>
+  )
+}
+
+/** 设置或修改密码。有了密码，换一台机器或退出之后就不用再要邀请码。 */
+function Password() {
+  const has = useSession((s) => s.hasPassword)
+  const me = useSession((s) => s.me)
+  const [open, setOpen] = useState(false)
+  const [oldPw, setOldPw] = useState('')
+  const [pw, setPw] = useState('')
+  const [again, setAgain] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState<string | null>(null)
+  const [done, setDone] = useState(false)
+
+  const ready = pw.length >= 8 && pw === again && (!has || oldPw.length > 0)
+  const save = async (): Promise<void> => {
+    if (!ready || busy) return
+    setBusy(true); setErr(null)
+    try {
+      await useSession.getState().setPassword(pw, has ? oldPw : undefined)
+      setOldPw(''); setPw(''); setAgain(''); setOpen(false)
+      setDone(true); window.setTimeout(() => setDone(false), 2000)
+    } catch (e) { setErr(describe(e)) } finally { setBusy(false) }
+  }
+
+  return (
+    <Section title="密码" desc={has ? '这个账号已经设过密码，可以用账号加密码在任何一台机器上登录。' : '设一个密码，换机器或退出之后就不用再要邀请码。'}>
+      {!open ? (
+        <div className={styles.inline}>
+          <button className={ghostClass} onClick={() => setOpen(true)}>{has ? '修改密码' : '设置密码'}</button>
+          {done && <span className={styles.muted}>已保存</span>}
+          <span className={`${styles.muted} mono`}>账号 @{me}</span>
+        </div>
+      ) : (
+        <div className={styles.pwForm}>
+          {has && (
+            <label className={styles.field}>
+              <span className={styles.label}>当前密码</span>
+              <input className={inputClass} type="password" value={oldPw} onChange={(e) => setOldPw(e.target.value)} autoFocus />
+            </label>
+          )}
+          <label className={styles.field}>
+            <span className={styles.label}>新密码</span>
+            <input className={inputClass} type="password" value={pw} onChange={(e) => setPw(e.target.value)} placeholder="至少 8 位" autoFocus={!has} />
+          </label>
+          <label className={styles.field}>
+            <span className={styles.label}>再输一次</span>
+            <input className={inputClass} type="password" value={again} onChange={(e) => setAgain(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && void save()} />
+          </label>
+          {pw.length > 0 && pw.length < 8 && <div className={errorClass}>密码至少 8 位</div>}
+          {again.length > 0 && pw !== again && <div className={errorClass}>两次输入不一样</div>}
+          {err && <div className={errorClass}>{err}</div>}
+          <div className={styles.inline}>
+            <button className={primaryClass} disabled={!ready || busy} onClick={() => void save()}>{busy ? '保存中…' : '保存'}</button>
+            <button className={ghostClass} onClick={() => { setOpen(false); setOldPw(''); setPw(''); setAgain(''); setErr(null) }}>取消</button>
+          </div>
+        </div>
+      )}
+    </Section>
   )
 }
 

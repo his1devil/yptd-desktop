@@ -87,6 +87,11 @@ export const api = {
     return r.invites.map(fromInvite)
   },
   rename: (nickname: string) => call<{ user_id: string; nickname: string }>('/v1/me', { method: 'PATCH', body: { nickname } }),
+  /** 我是谁，以及这个账号有没有设过密码 */
+  me: () => call<{ user_id: string; nickname: string; disabled: boolean; has_password: boolean }>('/v1/me'),
+  /** 设置或修改密码。已经有密码时必须给对旧的——不然谁碰到这台没锁的机器都能悄悄接管账号 */
+  setPassword: (password: string, oldPassword?: string) =>
+    call<{ has_password: boolean }>('/v1/me/password', { method: 'PUT', body: { password, ...(oldPassword ? { old_password: oldPassword } : {}) } }),
 }
 
 interface RawAgent { user_id: string; nickname: string; tag?: string; color?: string; model?: string; opencode?: string; description?: string }

@@ -118,3 +118,10 @@
 .grow { flex: 1; }
 .actionBtns { display: flex; gap: 8px; flex: none; }
 .content { animation: global(rl-fade) var(--dur) var(--ease-out) backwards; }
+
+/* 密码登录那条路：左栏没有步骤条，换成一句说明 */
+.sideLead { margin: 0; font-size: 12.5px; line-height: 1.7; color: var(--ink3); }
+.linkBtn { font-size: 12.5px; color: var(--ontint); font-weight: 500; }
+.linkBtn:hover { text-decoration: underline; }
+.linkBtn:disabled { opacity: .5; cursor: default; text-decoration: none; }
+.optional { font-weight: 400; color: var(--ink3); }

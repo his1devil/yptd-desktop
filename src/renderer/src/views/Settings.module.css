@@ -49,3 +49,7 @@
 .facts { margin: 0; display: grid; grid-template-columns: 84px 1fr; gap: 10px 14px; font-size: 13px; align-items: baseline; }
 .facts dt { color: var(--ink3); }
 .facts dd { margin: 0; color: var(--ink); line-height: 1.5; }
+
+/* 密码表单：三个窄输入框竖排 */
+.pwForm { display: flex; flex-direction: column; gap: 12px; max-width: 320px; }
+.pwForm .field { gap: 6px; }

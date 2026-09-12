@@ -43,6 +43,8 @@ interface UIState {
   jumpTo: { conversationId: string; messageId: string } | null
   /** 新账号第一次进来：主区先放欢迎页。打开任何会话或点「先逛逛」就收起；持久化，没收起前重启还在 */
   welcome: boolean
+  /** 上次登录成功的账号名。退出后登录页默认走密码那条路并填好它；不是秘密，明文存 */
+  lastUserID: string | null
 
   /** `origin` 是点击位置：给了就从那里圆形揭示出新主题，没给就直接切 */
   setTheme(theme: Theme, origin?: { x: number; y: number }): void
@@ -66,6 +68,7 @@ interface UIState {
   /** 离开/解散了一个频道：正看着它就退到空 */
   forgetConversation(conversationId: string): void
   setWelcome(on: boolean): void
+  rememberAccount(userID: string): void
   /** 设置里「再看一遍」：回到会话区、主区清空、放欢迎页 */
   showWelcome(): void
   /** 退出登录：上个账号留下的位置、引用、页签都不该带给下一个 */
@@ -97,6 +100,7 @@ export const useUI = create<UIState>()(
       notifications: true,
       jumpTo: null,
       welcome: false,
+      lastUserID: null,
 
       setTheme: (theme, origin) => {
         applyTheme(theme, origin)
@@ -164,7 +168,9 @@ export const useUI = create<UIState>()(
           lastChannelId: s.lastChannelId === conversationId ? null : s.lastChannelId,
         })),
       setWelcome: (welcome) => set({ welcome }),
+      rememberAccount: (lastUserID) => set({ lastUserID }),
       showWelcome: () => set({ welcome: true, section: 'chat', conversationId: null }),
+      // 退出登录时清掉上个账号留下的位置和状态，但保留 lastUserID——那正是下次登录要填的
       resetAll: () => set({
         section: 'chat', conversationId: null, lastChannelId: null, inspectorTabsBy: {}, inspectorTab: null,
         quoteBy: {}, dialog: null, paletteOpen: false, jumpTo: null, welcome: false,
@@ -188,6 +194,7 @@ export const useUI = create<UIState>()(
         section: s.section,
         notifications: s.notifications,
         welcome: s.welcome,
+        lastUserID: s.lastUserID,
       }),
     },
   ),

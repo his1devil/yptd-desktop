@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import type { Attachment, Conversation, ConversationId, ConversationKind, Member, Message, MessageId, OutgoingAttachment, Person, Reaction } from '../../../shared/model'
 import { summarize } from '../../../shared/model'
-import { DEFAULT_SERVER, clearCredential, loadCredential, login, register, roster, saveCredential, setServerAuth, AuthError, type ServerConfig } from '../im/auth'
+import { DEFAULT_SERVER, clearCredential, loadCredential, login, loginWithPassword, register, roster, saveCredential, setServerAuth, AuthError, type ServerConfig } from '../im/auth'
 import { api } from '../im/api'
 import { im, SdkEvent, type ConversationItem, type GroupMemberItem, type MessageItem } from '../im/client'
 import { Translator, directId, placeholderFor, reactionData, richEx } from '../im/translate'
@@ -29,6 +29,8 @@ interface SessionState {
   phase: Phase
   /** 这台机器上存着设备凭据。连接失败时决定给「重试」还是给邀请码表单。 */
   hasCredential: boolean
+  /** 这个账号设过密码没有。设置页据此显示「设置密码」还是「修改密码」 */
+  hasPassword: boolean
   me: string
   myName: string
   myAvatar: string | null
@@ -45,8 +47,12 @@ interface SessionState {
   notice: string | null
 
   boot(): Promise<void>
-  register(invite: string, nickname: string): Promise<void>
+  register(invite: string, nickname: string, password?: string): Promise<void>
+  /** 这台机器没有凭据时用账号密码进来；服务端发一份新凭据，之后照样自动登录 */
+  signInWithPassword(userID: string, password: string): Promise<void>
   signOut(): Promise<void>
+  /** 设置或修改密码。已有密码时必须给对旧的 */
+  setPassword(password: string, oldPassword?: string): Promise<void>
   open(id: ConversationId): Promise<void>
   /** 把一个会话标成已读（快捷键用）；正看着的会话平时由消息流自己标 */
   markRead(id: ConversationId): Promise<void>
@@ -89,7 +95,7 @@ const PAGE = 40
 
 export const useSession = create<SessionState>()((set, get) => ({
   phase: { kind: 'booting' },
-  hasCredential: false,
+  hasCredential: false, hasPassword: false,
   me: '', myName: '', myAvatar: null,
   connected: false, syncing: false,
   roster: [], avatars: {}, conversations: [], members: {},
@@ -108,15 +114,29 @@ export const useSession = create<SessionState>()((set, get) => ({
     return bootPromise
   },
 
-  async register(invite, nickname) {
+  async register(invite, nickname, password) {
     await connect(set, get, async () => {
-      const s = await register(cfg, invite, nickname)
+      const s = await register(cfg, invite, nickname, password)
       await saveCredential({ userID: s.userID, nickname: s.nickname, deviceToken: s.deviceToken })
       set({ hasCredential: true })
       return s
     })
     // 新账号：主区先是欢迎页，打开任何会话就收起
     if (get().phase.kind === 'ready') useUI.getState().setWelcome(true)
+  },
+
+  async signInWithPassword(userID, password) {
+    await connect(set, get, async () => {
+      const s = await loginWithPassword(cfg, userID, password)
+      await saveCredential({ userID: s.userID, nickname: s.nickname, deviceToken: s.deviceToken })
+      set({ hasCredential: true })
+      return s
+    })
+  },
+
+  async setPassword(password, oldPassword) {
+    const r = await api.setPassword(password, oldPassword)
+    set({ hasPassword: r.has_password })
   },
 
   async signOut() {
@@ -389,6 +409,9 @@ async function connect(set: Set, get: Get, authenticate: () => Promise<{ userID:
     translator.atAllTag = await im.atAllTag().catch(() => '')
     subscribe(set, get)
     set({ phase: { kind: 'ready' } })
+    // 记住这个账号：退出后登录页默认停在密码那条路上，账号已经填好
+    useUI.getState().rememberAccount(auth.userID)
+    void api.me().then((m) => set({ hasPassword: m.has_password })).catch(() => { /* 拿不到就当没设过 */ })
     await refreshConversations(set, get)
     void loadAvatars(set, people.map((p) => p.userID))
   } catch (e) {
