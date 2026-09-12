@@ -7,7 +7,7 @@ import { IconCopy, IconEmoji, IconFile, IconHandoff, IconMore, IconQuote, IconUn
 import { previewFor, sized } from '../im/files'
 import { visible } from '../im/timeline'
 import { flyEmoji } from '../motion/fly'
-import { reduceMotion, transition } from '../motion/transition'
+import { reduceMotion } from '../motion/transition'
 import { useAgentProfiles } from '../store/agents'
 import type { Place } from '../store/selectors'
 import { timeline, useSession } from '../store/session'
@@ -144,20 +144,9 @@ export function Stream({ place }: { place: Place }) {
     if (!atBottom.current) setFresh((f) => ({ n: (f?.n ?? 0) + 1, who: f?.who ?? m.senderName, text: f?.text ?? summarize(m) }))
   }, [tick, id, me, scrollToBottom])
 
-  // 灯箱：从被点的缩略图长大出来，关了缩回去（View Transition 的共享元素）。
-  // 缩回去时按当前这张图现找缩略图，不记开图时那个元素——中间可能翻过好几张，
-  // 原来那张也可能已经被虚拟列表回收；找不到就只淡出。
-  const openShot = useCallback<OpenImage>((v, from) => {
-    if (v.items.length === 0) return
-    if (from) from.style.viewTransitionName = 'shot'
-    void transition(() => { if (from) from.style.viewTransitionName = ''; setShot(v) })
-  }, [])
-  const closeShot = useCallback(() => {
-    const url = shot && shot.items[shot.index]?.url
-    const back = url ? document.querySelector<HTMLElement>(`[data-shot="${CSS.escape(url)}"]`) : null
-    void transition(() => { setShot(null); if (back) back.style.viewTransitionName = 'shot' })
-      .then(() => { if (back) back.style.viewTransitionName = '' })
-  }, [shot])
+  // 灯箱：开合的放大动画由 react-photo-view 按缩略图（data-shot）驱动，这里只管开和关
+  const openShot = useCallback<OpenImage>((v) => { if (v.items.length > 0) setShot(v) }, [])
+  const closeShot = useCallback(() => setShot(null), [])
 
   // 第一页：点会话打开的路径已经在拉了，这里兜住另一条——重启后从上次的会话直接挂上来，
   // 没人点过它。ensure 是幂等的，拉过就不会再拉。

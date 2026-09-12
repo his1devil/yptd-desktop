@@ -131,11 +131,7 @@
 ::view-transition-old(conv-stream) { animation: rl-fade-out 140ms var(--ease-out) both; mix-blend-mode: normal; }
 ::view-transition-new(conv-stream) { animation: none; mix-blend-mode: normal; }
 ::view-transition-group(conv-avatar), ::view-transition-group(conv-title) { animation-duration: 260ms; animation-timing-function: var(--ease-out); }
-/* 放大图片：缩略图和大图是同一个元素在长大；两张图直接叠、不淡，边框随组一起走 */
-::view-transition-group(shot) { animation-duration: 300ms; animation-timing-function: var(--ease-out); }
-::view-transition-old(shot), ::view-transition-new(shot) { animation: none; mix-blend-mode: normal; height: 100%; overflow: hidden; }
-::view-transition-old(lb-bg) { animation: rl-fade-out 160ms ease both; }
-::view-transition-new(lb-bg) { animation: rl-fade 160ms ease both; }
+/* 放大图片的开合动画交给 react-photo-view（它按 originRef 从缩略图原位放大），这里不再重复驱动 */
 /* 切主题：从点击处圆形揭示出新主题；揭示期间关掉各处底色过渡，边界才干净 */
 :root:active-view-transition-type(theme)::view-transition-old(root) { animation: none; }
 :root:active-view-transition-type(theme)::view-transition-new(root) { animation: rl-reveal 420ms var(--ease-out) both; }
