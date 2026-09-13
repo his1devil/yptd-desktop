@@ -39,11 +39,18 @@ mac:
   minimumSystemVersion: '14.0'
   notarize: true
 dmg:
+  # 两个图标是眼睛，背景里那条弧线箭头是嘴——整个安装窗口是一张笑脸。
+  # 背景由 scripts/make-dmg-background.py 生成，tiff 里同时装了 1x 和 2x。
+  # 注意：这里只负责把图拷进卷里。electron-builder 写的背景别名现在的 Finder 不认，
+  # 真正让它显示出来的是打包后跑的 scripts/dmg-finish.sh。
+  background: build/dmg-background.tiff
+  iconSize: 120
+  iconTextSize: 13
   contents:
     - x: 150
-      y: 200
+      y: 150
     - x: 450
-      y: 200
+      y: 150
       type: link
       path: /Applications
   window:

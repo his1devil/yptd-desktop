@@ -29,6 +29,10 @@ if [ "${1:-}" != "--upload-only" ]; then
   echo "== 打包 + 签名 + 公证（两个架构，要等苹果几分钟）"
   npx electron-builder --mac --arm64 --x64 --publish never
 
+  # electron-builder 写进 .DS_Store 的背景别名现在的 Finder 不认，得让 Finder 自己写一遍
+  echo "== DMG 背景"
+  for a in $ARCHES; do ./scripts/dmg-finish.sh "release/yptd-${VER}-${a}.dmg"; done
+
   echo "== 产物"
   for a in $ARCHES; do ls -la "release/yptd-${VER}-${a}.dmg" "release/yptd-${VER}-${a}.zip"; done
   grep -E "^version|url:" release/latest-mac.yml
