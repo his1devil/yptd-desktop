@@ -1,5 +1,19 @@
-.wrap { flex: 1; min-height: 0; overflow-y: auto; background: var(--bg); }
-.page { max-width: 720px; padding: 28px 32px 48px; display: flex; flex-direction: column; gap: 30px; }
+/* 设置页自带左列：分页原来在应用侧栏里，侧栏改成常驻会话列表之后搬到这里 */
+.wrap { flex: 1; min-height: 0; display: flex; background: var(--bg); }
+.nav {
+  width: 190px; flex: none; min-height: 0; overflow-y: auto;
+  padding: 24px 10px 32px; border-right: 1px solid var(--line);
+  display: flex; flex-direction: column; gap: 1px;
+}
+.navTitle { font-size: 12px; font-weight: 600; letter-spacing: .04em; color: var(--ink3); padding: 0 10px 6px; }
+.navItem {
+  height: 32px; padding: 0 10px; border-radius: 9px;
+  font-size: 14px; font-weight: 500; color: var(--ink2);
+  transition: background-color var(--dur-fast), color var(--dur-fast);
+}
+.navItem:hover { background: var(--surface2); color: var(--ink); }
+.navOn, .navOn:hover { background: var(--tint); color: var(--ontint); font-weight: 600; }
+.page { flex: 1; min-width: 0; min-height: 0; overflow-y: auto; max-width: 720px; padding: 28px 32px 48px; display: flex; flex-direction: column; gap: 30px; }
 .section { display: flex; flex-direction: column; gap: 12px; }
 .h2 { margin: 0; font-size: 16px; font-weight: 600; letter-spacing: -.006em; }
 .desc { margin: -4px 0 4px; font-size: 12.5px; line-height: 1.7; color: var(--ink3); max-width: 560px; }

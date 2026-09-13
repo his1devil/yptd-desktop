@@ -8,22 +8,55 @@
 }
 
 /* 频道头 54px：名称 14.5/600 + 等宽 slug + 主题行 11.5 + 头像堆 + 人数 + 无边框开合图标 */
+/* 左右两块给同一个高度，再整体居中——只要两边一样高就不会错位，
+   不用去猜「两行文字」和「一排图标」各自的视觉重心在哪。 */
 .head {
-  height: 54px;
   flex: none;
+  position: relative;
+  -webkit-app-region: drag;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 14px 0 24px;
+  padding: 13px 14px 13px 24px;
   border-bottom: 1px solid var(--line);
 }
-.titleBlock { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.titleBlock {
+  height: 34px;
+  display: flex; flex-direction: column; justify-content: center;
+  gap: 2px; min-width: 0;
+}
 .titleRow { display: flex; align-items: baseline; gap: 8px; }
-.title { font-size: 14.5px; font-weight: 600; letter-spacing: -.006em; }
-.slug { font-size: 10.5px; color: var(--ink3); }
-.topic { font-size: 11.5px; color: var(--ink2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.title { font-size: 13px; font-weight: 600; letter-spacing: -.006em; }
+.topic { font-size: 11px; color: var(--ink2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-.right { display: flex; align-items: center; gap: 10px; flex: none; }
+/* 侧栏收起时红绿灯浮在主区上，这一条占住它们的位置，右端放展开按钮。
+   会话头部另外再让出同样的左内边距，标题才不会被压在灯下面。 */
+/* 侧栏收起时才有这一条：左边让出红绿灯的位置，右边补回展开和搜索两个入口 */
+.topbar {
+  height: 48px; flex: none;
+  display: flex; align-items: center; gap: 2px;
+  padding-left: var(--lights-w);
+  -webkit-app-region: drag;
+}
+.iconBtn {
+  width: 28px; height: 28px; border-radius: 8px; flex: none;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--ink3);
+  -webkit-app-region: no-drag;
+  transition: background-color var(--dur-fast), color var(--dur-fast);
+}
+.iconBtn:hover { background: var(--surface2); color: var(--ink2); }
+.openBtn {
+  width: 28px; height: 28px; border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--ink3);
+  -webkit-app-region: no-drag;
+  transition: background-color var(--dur-fast), color var(--dur-fast);
+}
+.openBtn:hover { background: var(--surface2); color: var(--ink2); }
+
+.right { height: 34px; display: flex; align-items: center; gap: 10px; flex: none; }
+
 .stack { display: flex; }
 .stackAv {
   width: 22px; height: 22px; border-radius: 99px;
@@ -33,9 +66,10 @@
   margin-left: -6px;
 }
 .stackAv:first-child { margin-left: 0; }
-.count { font-size: 11px; color: var(--ink3); }
+.count { font-size: 12px; color: var(--ink3); }
 .panelBtn {
-  width: 28px; height: 28px; border-radius: 7px;
+  -webkit-app-region: no-drag;
+  width: 30px; height: 30px; border-radius: 8px;
   display: flex; align-items: center; justify-content: center;
   color: var(--ink3);
 }
@@ -73,7 +107,7 @@
 .landingAgentTag { font-size: 9.5px; font-weight: 700; letter-spacing: .07em; color: var(--agent); }
 
 /* 频道操作菜单 */
-.menuWrap { position: relative; }
+.menuWrap { position: relative; -webkit-app-region: no-drag; }
 .menu { position: absolute; right: 0; top: 32px; z-index: 20; width: 160px; padding: 5px; background: var(--surface); border: 1px solid var(--line2); border-radius: 9px; box-shadow: var(--shwin); display: flex; flex-direction: column; animation: global(rl-up) .1s ease-out; }
 .menuItem { height: 30px; padding: 0 9px; border-radius: 7px; font-size: 12.5px; color: var(--ink); }
 .menuItem:hover { background: var(--surface2); }

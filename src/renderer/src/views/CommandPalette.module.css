@@ -1,10 +1,16 @@
 .backdrop { position: fixed; inset: 0; z-index: 65; background: rgba(6, 6, 7, .32); display: flex; justify-content: center; align-items: flex-start; padding-top: 96px; animation: global(rl-up) .1s ease-out; }
-.panel { width: 580px; max-height: min(560px, calc(100vh - 140px)); display: flex; flex-direction: column; background: var(--bg); border: 1px solid var(--line2); border-radius: 13px; box-shadow: var(--shwin); overflow: hidden; }
-.inputRow { display: flex; align-items: center; gap: 10px; padding: 0 14px; height: 48px; border-bottom: 1px solid var(--line); color: var(--ink3); }
+.panel { width: 580px; max-height: min(560px, calc(100vh - 140px)); display: flex; flex-direction: column; background: var(--bg); border: 1px solid var(--line2); border-radius: 14px; box-shadow: var(--shwin); overflow: hidden; padding: 8px; }
+.inputRow {
+  display: flex; align-items: center; gap: 10px;
+  padding: 0 12px; height: 42px; flex: none;
+  border-radius: 10px; background: var(--surface2); color: var(--ink3);
+  transition: box-shadow var(--dur-fast);
+}
+.inputRow:focus-within { box-shadow: inset 0 0 0 1px var(--accent); }
 .input { flex: 1; height: 100%; font-size: 14px; color: var(--ink); user-select: text; }
 .input::placeholder { color: var(--ink3); }
 .kbd { font-size: 9.5px; color: var(--ink3); border: 1px solid var(--line2); border-radius: 4px; padding: 1px 5px; }
-.list { flex: 1; min-height: 0; overflow-y: auto; padding: 6px; }
+.list { flex: 1; min-height: 0; overflow-y: auto; padding: 6px 0 0; }
 .group { font-size: 9.5px; font-weight: 600; letter-spacing: .08em; color: var(--ink3); padding: 8px 10px 4px; }
 .item { width: 100%; display: flex; align-items: center; gap: 10px; height: 40px; padding: 0 10px; border-radius: 8px; }
 .itemOn { background: var(--surface2); }

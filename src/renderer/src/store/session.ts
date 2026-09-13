@@ -7,6 +7,7 @@ import { setAgentColors } from '../components/identity'
 import { im, SdkEvent, type ConversationItem, type GroupMemberItem, type MessageItem } from '../im/client'
 import { Translator, directId, placeholderFor, reactionData, richEx } from '../im/translate'
 import { Timeline } from '../im/timeline'
+import { step } from '../im/paging'
 import { mapLimit, objectName, rememberPreview } from '../im/files'
 import { composerBus } from '../views/composerBus'
 import { transition } from '../motion/transition'
@@ -35,6 +36,10 @@ interface SessionState {
   me: string
   myName: string
   myAvatar: string | null
+  /** 个性签名。存在 OpenIM 用户的 ex 里，别人也读得到 */
+  myBio: string
+  /** 每个人的签名，从 getUsersInfo 的 ex 里解出来 */
+  bios: Record<string, string>
   connected: boolean
   syncing: boolean
   roster: Person[]
@@ -44,7 +49,6 @@ interface SessionState {
   members: Record<string, Member[]>
   /** 时间线变过就 +1；具体内容从 timelines() 取 */
   tick: number
-  loadingOlder: boolean
   notice: string | null
 
   boot(): Promise<void>
@@ -75,6 +79,7 @@ interface SessionState {
   dismissChannel(groupID: string): Promise<void>
   updateNickname(nickname: string): Promise<void>
   updateAvatar(path: string): Promise<void>
+  updateBio(bio: string): Promise<void>
   markAllRead(): Promise<void>
 }
 
@@ -93,14 +98,34 @@ export const timeline = (id: ConversationId): Timeline => {
 export const agentsOf = (people: Person[]) => people.filter((p) => p.isAgent)
 
 const PAGE = 40
+/** 整页被过滤光时最多再往前翻几页。给个上限，免得一屏历史全是通知时一直转下去 */
+const SKIP_ROUNDS = 5
+/** 成员一次要多少、最多要到多少。大群要接着翻页，但也不能把几万人一次全拉下来 */
+const MEMBER_PAGE = 200
+const MEMBER_CAP = 2000
+/** 正在路上的成员请求，按群记：open()、同步完成和成员变动事件会同时要，只发一次 */
+const memberLoads = new Map<string, Promise<void>>()
+
+/**
+ * SDK 这一页里最老的那条。不假定返回顺序：游标取错一次，翻页就会原地打转。
+ */
+function oldestRaw(raws: readonly MessageItem[]): MessageItem | undefined {
+  let best: MessageItem | undefined
+  for (const r of raws) {
+    if (!best) { best = r; continue }
+    const older = r.sendTime !== best.sendTime ? r.sendTime < best.sendTime : (r.seq ?? 0) < (best.seq ?? 0)
+    if (older) best = r
+  }
+  return best
+}
 
 export const useSession = create<SessionState>()((set, get) => ({
   phase: { kind: 'booting' },
   hasCredential: false, hasPassword: false,
-  me: '', myName: '', myAvatar: null,
+  me: '', myName: '', myAvatar: null, myBio: '', bios: {},
   connected: false, syncing: false,
   roster: [], avatars: {}, conversations: [], members: {},
-  tick: 0, loadingOlder: false, notice: null,
+  tick: 0, notice: null,
 
   boot() {
     // StrictMode 会把挂载效果跑两遍；两次并发的 boot 只连一次
@@ -147,8 +172,9 @@ export const useSession = create<SessionState>()((set, get) => ({
     await clearCredential()
     timelines.clear()
     firstPage.clear()
+    memberLoads.clear()
     useUI.getState().resetAll()
-    set({ phase: { kind: 'signedOut' }, hasCredential: false, conversations: [], members: {}, me: '', myName: '', connected: false })
+    set({ phase: { kind: 'signedOut' }, hasCredential: false, conversations: [], members: {}, me: '', myName: '', myBio: '', bios: {}, connected: false })
   },
 
   async open(id) {
@@ -156,11 +182,13 @@ export const useSession = create<SessionState>()((set, get) => ({
     // 换会话走 View Transition：旧流淡出、头部的头像和标题滑过去（同一个会话就不折腾）
     if (useUI.getState().conversationId !== id) void transition(() => useUI.getState().open(id, { agent }))
     else useUI.getState().open(id, { agent })
-    await get().ensure(id)
     const c = get().conversations.find((x) => x.id === id)
+    // 历史和成员之间没有依赖，一起发。原来是 await 完第一页历史才去拉成员，
+    // 右栏的头像要等历史回来才开始下——在 2Mbps 的出口上这一等就是好几秒。
+    if (c?.groupID && !get().members[c.groupID]?.length) void get().loadMembers(c.groupID)
     // 还没聊过的会话（从名册点开的 agent）在 SDK 里不存在，标已读会报错
     if (c) void im.markRead(id).then(() => refreshConversations(set, get)).catch(() => {})
-    if (c?.groupID && !get().members[c.groupID]) void get().loadMembers(c.groupID)
+    await get().ensure(id)
   },
 
   async ensure(id) {
@@ -174,9 +202,13 @@ export const useSession = create<SessionState>()((set, get) => ({
 
   async loadOlder(id) {
     const t = timeline(id)
-    if (!t.hasMore || get().loadingOlder || !t.oldest) return
-    set({ loadingOlder: true })
-    try { await loadPage(set, get, id, t.oldest.id) } finally { set({ loadingOlder: false }) }
+    // 「正在翻」记在会话自己身上：A 的慢请求不该把 B 的历史一起卡住
+    if (!t.hasMore || t.loadingOlder || !t.olderCursor) return
+    // 上一轮用同一个游标什么也没拿到，别再用它去要一遍
+    if (t.stalledAt && t.stalledAt === t.olderCursor) return
+    t.loadingOlder = true
+    bump(set)
+    try { await loadPage(set, get, id, t.olderCursor) } finally { t.loadingOlder = false; bump(set) }
   },
 
   // 发送即上屏。先让 SDK 把消息建出来——纯本地操作，clientMsgID 当场就定了——按这个 id 摆一条
@@ -262,23 +294,38 @@ export const useSession = create<SessionState>()((set, get) => ({
   },
 
   async loadMembers(groupID) {
-    try {
-      let list = await im.members(groupID)
-      // 刚登录同步没完，SDK 会先给一个空表；等一下再要一次
-      if (list.length === 0) {
-        await new Promise((r) => setTimeout(r, 1500))
-        list = await im.members(groupID)
+    // 同一个群同时只发一次：open()、同步完成事件和成员变动事件会一起要
+    const running = memberLoads.get(groupID)
+    if (running) return running
+    const work = (async () => {
+      try {
+        // 200 人以上要接着翻。原来只取 offset=0/count=200，大群的名单是缺的
+        const list: GroupMemberItem[] = []
+        for (let offset = 0; offset < MEMBER_CAP; offset += MEMBER_PAGE) {
+          const batch = await im.members(groupID, offset, MEMBER_PAGE)
+          list.push(...batch)
+          if (batch.length < MEMBER_PAGE) break
+        }
+        // 刚登录、同步还没完时 SDK 会先给一张空表。不要把这个空表当成「这个群没人」存下来：
+        // 存了之后 open() 的存在性判断就跳过重拉，这个群的成员再也不会出现。
+        // 真正补上它的是 OnSyncServerFinish，那里会重新叫一次，不用在这里硬等。
+        if (list.length === 0 && get().members[groupID]) return
+        const agents = new Set(agentsOf(get().roster).map((a) => a.userID))
+        const members: Member[] = list.map((m: GroupMemberItem) => ({
+          id: m.userID, name: m.nickname || m.userID, avatar: m.faceURL || null,
+          role: m.roleLevel >= 100 ? 'owner' : m.roleLevel >= 60 ? 'admin' : 'member',
+          isAgent: agents.has(m.userID),
+        }))
+        set((s) => ({ members: { ...s.members, [groupID]: members }, avatars: mergeAvatars(s.avatars, members.map((m) => [m.id, m.avatar])) }))
+        // 群成员不一定在名册里，签名和最新头像要单独拉一次；失败不影响成员列表本身
+        void loadAvatars(set, members.map((m) => m.id))
+      } catch (e) {
+        set({ notice: `拉成员失败：${describe(e)}` })
       }
-      const agents = new Set(agentsOf(get().roster).map((a) => a.userID))
-      const members: Member[] = list.map((m: GroupMemberItem) => ({
-        id: m.userID, name: m.nickname || m.userID, avatar: m.faceURL || null,
-        role: m.roleLevel >= 100 ? 'owner' : m.roleLevel >= 60 ? 'admin' : 'member',
-        isAgent: agents.has(m.userID),
-      }))
-      set((s) => ({ members: { ...s.members, [groupID]: members }, avatars: mergeAvatars(s.avatars, members.map((m) => [m.id, m.avatar])) }))
-    } catch (e) {
-      set({ notice: `拉成员失败：${describe(e)}` })
-    }
+    })()
+    memberLoads.set(groupID, work)
+    void work.finally(() => memberLoads.delete(groupID))
+    return work
   },
 
   dismissNotice: () => set({ notice: null }),
@@ -316,6 +363,11 @@ export const useSession = create<SessionState>()((set, get) => ({
     set((s) => ({ myName: nickname, roster: s.roster.map((p) => (p.userID === s.me ? { ...p, nickname } : p)) }))
     translator.setNames(Object.fromEntries(get().roster.map((p) => [p.userID, p.nickname])))
     bump(set)
+  },
+  async updateBio(bio) {
+    const next = bio.trim().slice(0, 80)
+    await im.setSelf({ ex: bioEx(next) })
+    set((s) => ({ myBio: next, bios: { ...s.bios, [s.me]: next } }))
   },
   async updateAvatar(path) {
     const name = path.split('/').pop() ?? 'avatar.png'
@@ -451,7 +503,7 @@ function subscribe(set: Set, get: Get): void {
       // 刚登录时成员表可能还没同步下来，拉到的是空的；同步完了再拉一次正看着的群
       const current = useUI.getState().conversationId
       const c = current ? get().conversations.find((x) => x.id === current) : undefined
-      if (c?.groupID) void get().loadMembers(c.groupID)
+      if (c?.groupID && !get().members[c.groupID]?.length) void get().loadMembers(c.groupID)
       // 同步前拉到的第一页可能是本地库里的空页；同步完了、还是空的就再要一次
       if (current && timeline(current).length === 0 && timeline(current).status === 'ready') {
         timeline(current).status = 'idle'
@@ -475,11 +527,32 @@ async function loadAvatars(set: Set, userIDs: string[]): Promise<void> {
   if (userIDs.length === 0) return
   try {
     const list = await im.users(userIDs)
-    set((s) => ({
-      avatars: mergeAvatars(s.avatars, list.map((u) => [u.userID, u.faceURL || null])),
-      myAvatar: list.find((u) => u.userID === s.me)?.faceURL || s.myAvatar,
-    }))
+    set((s) => {
+      const bios = { ...s.bios }
+      for (const u of list) {
+        const b = bioOf(u.ex)
+        if (b) bios[u.userID] = b; else delete bios[u.userID]
+      }
+      const mine = list.find((u) => u.userID === s.me)
+      return {
+        avatars: mergeAvatars(s.avatars, list.map((u) => [u.userID, u.faceURL || null])),
+        myAvatar: mine?.faceURL || s.myAvatar,
+        myBio: mine ? bioOf(mine.ex) : s.myBio,
+        bios,
+      }
+    })
   } catch { /* 头像拉不到就用消息里烤进去的那张 */ }
+}
+
+/** 签名在 OpenIM 用户的 ex 里。ex 是个公共字段，别的端也可能往里写东西，
+ *  所以只认自己那把钥匙，认不出就当没有，绝不覆盖别人的内容。 */
+const bioEx = (bio: string): string => JSON.stringify({ yptd: 'profile', bio })
+function bioOf(ex: string | undefined): string {
+  if (!ex) return ''
+  try {
+    const p = JSON.parse(ex) as { yptd?: string; bio?: unknown }
+    return p.yptd === 'profile' && typeof p.bio === 'string' ? p.bio : ''
+  } catch { return '' }
 }
 
 function mergeAvatars(cur: Record<string, string>, pairs: [string, string | null][]): Record<string, string> {
@@ -544,10 +617,24 @@ async function loadPage(set: Set, get: Get, id: ConversationId, before: string):
   const work = (async () => {
     if (!before) { t.status = 'loading'; t.error = null; bump(set) }
     try {
-      const page = await im.history(id, before, PAGE)
-      const msgs = translator.messages(page.messageList ?? [])
-      if (before) t.prepend(msgs); else for (const m of msgs) t.upsert(m)
-      t.hasMore = !page.isEnd && msgs.length > 0
+      let cursor = before
+      let added = 0
+      // 整页可能全是回应、通知或认不出的自定义消息，过滤完一条不剩——那不代表没有历史了。
+      // 边界和游标怎么定见 paging.step()，轮数有上限，不能为了凑一条消息一直转下去。
+      for (let round = 0; round < SKIP_ROUNDS; round++) {
+        const page = await im.history(id, cursor, PAGE)
+        const raws = page.messageList ?? []
+        const msgs = translator.messages(raws)
+        if (cursor) t.prepend(msgs); else for (const m of msgs) t.upsert(m)
+        added += msgs.length
+        const next = step({ count: raws.length, shown: msgs.length, isEnd: !!page.isEnd, edge: oldestRaw(raws)?.clientMsgID || null }, cursor)
+        t.hasMore = next.hasMore
+        if (next.cursor) t.olderCursor = next.cursor
+        if (!next.again) break
+        cursor = next.cursor!
+      }
+      // 要来要去一条都没多，把这个游标标住；下次它变了自然解开
+      t.stalledAt = before && added === 0 ? t.olderCursor : null
       if (!before) t.status = 'ready'
       applyReactionChanges(set, get)
       bump(set)

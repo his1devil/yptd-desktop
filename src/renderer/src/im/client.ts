@@ -60,7 +60,9 @@ export const im = {
       conversationID: '', keywordList: [keyword], keywordListMatchType: 0, senderUserIDList: [],
       messageTypeList: [], searchTimePosition: 0, searchTimePeriod: 0, pageIndex: 1, count,
     })),
-  members: (groupID: string) => unwrap(sdk.getGroupMemberList({ groupID, filter: 0, offset: 0, count: 200 })),
+  /** 一页成员。大群要按 offset 接着翻，不能只取头 200 个 */
+  members: (groupID: string, offset = 0, count = 200) =>
+    unwrap(sdk.getGroupMemberList({ groupID, filter: 0, offset, count })),
   atAllTag: () => unwrap(sdk.getAtAllTag()),
   self: () => unwrap(sdk.getSelfUserInfo()),
   /** 一批人的公开资料——头像在这里，名册接口不给 */
@@ -86,7 +88,8 @@ export const im = {
   find: (conversationID: string, clientMsgIDList: string[]) =>
     unwrap(sdk.findMessageList([{ conversationID, clientMsgIDList }])),
 
-  setSelf: (info: { nickname?: string; faceURL?: string }) => unwrap(sdk.setSelfInfo(info)),
+  /** ex 是 OpenIM 给每个用户的自定义字段，个性签名存在里面，不用服务端加接口 */
+  setSelf: (info: { nickname?: string; faceURL?: string; ex?: string }) => unwrap(sdk.setSelfInfo(info)),
   /** 传一个本机文件到对象存储，回它的公开地址。`name` 是对象名——同名会盖掉前一个，附件要带唯一前缀 */
   upload: (filepath: string, name: string, contentType = '', cause = 'avatar') =>
     unwrap(sdk.uploadFile({ filepath, name, contentType, uuid: `${Date.now()}-${name}`, cause })),

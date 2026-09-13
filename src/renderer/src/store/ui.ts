@@ -9,7 +9,7 @@ import { transition } from '../motion/transition'
  * 整个侧栏会被换成 agent 列表。图标栏高亮和侧栏内容读 section，
  * 主区内容读 conversationId。
  */
-export type Section = 'inbox' | 'chat' | 'agent' | 'vm' | 'lib' | 'market' | 'set'
+export type Section = 'inbox' | 'chat' | 'vm' | 'lib' | 'market' | 'set'
 export type SettingsPage = 'profile' | 'members' | 'notify' | 'appearance' | 'keys' | 'about'
 export type InboxFilter = 'all' | 'mention' | 'agent'
 /** 正开着的模态卡 */
@@ -30,6 +30,10 @@ interface UIState {
   inspectorWidth: number
   /** 右侧栏页签，按会话键存。全局存会让 A 频道的「回测」出现在 B 会话里 */
   inspectorTabsBy: Record<string, string[]>
+  /** 侧栏里收起来的分组（收件箱 / 频道 / 私聊 / AGENTS），按 id 记，跨重启保留 */
+  collapsed: Record<string, boolean>
+  /** 整条侧栏展开着没有。收起时红绿灯下面就是主区，主区头部要自己让出那 72px */
+  sidebarOpen: boolean
   inspectorTab: string | null
   /** 输入框正在引用的消息，按会话键存——切走再切回来引用还在 */
   quoteBy: Record<string, string | null>
@@ -50,6 +54,8 @@ interface UIState {
   setTheme(theme: Theme, origin?: { x: number; y: number }): void
   toggleTheme(origin?: { x: number; y: number }): void
   go(section: Section): void
+  toggleGroup(id: string): void
+  setSidebarOpen(open: boolean): void
   /** `agent` 说明这是和单个 agent 的会话：它不会成为「最后一个非 agent 会话」。会话 id 本身看不出这一点，由调用方从会话种类判断。 */
   open(conversationId: string, opts?: { section?: Section; agent?: boolean }): void
   setInspectorOpen(open: boolean): void
@@ -75,9 +81,10 @@ interface UIState {
   resetAll(): void
 }
 
-export const INSPECTOR_MIN = 300
+export const INSPECTOR_MIN = 240
 export const INSPECTOR_MAX = 700
-export const INSPECTOR_DEFAULT = 372
+/** 主聊天区优先：1119 宽的窗口里留给它 591px */
+export const INSPECTOR_DEFAULT = 260
 
 const clampWidth = (w: number): number => Math.min(INSPECTOR_MAX, Math.max(INSPECTOR_MIN, Math.round(w)))
 
@@ -91,6 +98,8 @@ export const useUI = create<UIState>()(
       inspectorOpen: true,
       inspectorWidth: INSPECTOR_DEFAULT,
       inspectorTabsBy: {},
+      collapsed: {},
+      sidebarOpen: true,
       inspectorTab: null,
       quoteBy: {},
       dialog: null,
@@ -108,6 +117,10 @@ export const useUI = create<UIState>()(
       },
       toggleTheme: (origin) => get().setTheme(get().theme === 'dark' ? 'light' : 'dark', origin),
 
+      setSidebarOpen: (sidebarOpen) => set({ sidebarOpen }),
+
+      toggleGroup: (id) => set((s) => ({ collapsed: { ...s.collapsed, [id]: !s.collapsed[id] } })),
+
       go: (section) => {
         const s = get()
         if (section === 'chat' && s.lastChannelId) {
@@ -121,9 +134,9 @@ export const useUI = create<UIState>()(
         const isAgent = opts?.agent ?? false
         set((s) => ({
           conversationId,
-          // 会话区和 Agent 区都能显示会话，留在原地；从收件箱/设置打开就得回到会话区，
-          // 否则主区还是设置页，什么都没发生
-          section: opts?.section ?? (s.section === 'chat' || s.section === 'agent' ? s.section : 'chat'),
+          // 会话列表现在常驻侧栏，从收件箱或设置里点一条就得把主区切回会话，
+          // 否则主区还是设置页，点了像没反应
+          section: opts?.section ?? 'chat',
           lastChannelId: isAgent ? s.lastChannelId : conversationId,
           welcome: false,
         }))
@@ -178,6 +191,18 @@ export const useUI = create<UIState>()(
     }),
     {
       name: 'yptd.ui',
+      // 右栏默认宽度改过两次（372 → 300 → 260）。宽度是持久化的，不迁移老用户永远停在旧值；
+      // 只动那些还停在旧默认值、或者正卡在旧下限上的——停在旧下限说明人想要更窄但拖不动了，
+      // 那不是一个「选择」。真正自己拖到中间某个数的不碰。
+      version: 4,
+      migrate: (state) => {
+        const s = state as Partial<UIState>
+        const stale = [372, 300, 280]
+        if (s.inspectorWidth !== undefined && stale.includes(s.inspectorWidth)) {
+          return { ...s, inspectorWidth: INSPECTOR_DEFAULT }
+        }
+        return s
+      },
       // 测试在 node 里跑，没有 localStorage；给一个什么都不存的后备，
       // 免得每次 set 都刷一行 "storage is currently unavailable"
       storage: createJSONStorage(() =>
@@ -192,6 +217,8 @@ export const useUI = create<UIState>()(
         lastChannelId: s.lastChannelId,
         conversationId: s.conversationId,
         section: s.section,
+        collapsed: s.collapsed,
+        sidebarOpen: s.sidebarOpen,
         notifications: s.notifications,
         welcome: s.welcome,
         lastUserID: s.lastUserID,

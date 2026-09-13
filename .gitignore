@@ -14,3 +14,16 @@ dist/
 *.provisionprofile
 AuthKey_*
 .notary/
+.ds-sync/
+ds-bundle/
+ds-dist/
+.design-sync/.cache/
+.design-sync/learnings/
+.design-sync/node_modules
+
+# design-sync（claude.ai/design 同步）只在本机用：配置、笔记、预览源文件，
+# 以及为它单独搭的那条库构建路径。app 自身不依赖它们。
+.design-sync/
+src/renderer/src/ds/
+vite.ds.config.ts
+tsconfig.ds.json

@@ -47,6 +47,7 @@ const bridge: DesktopBridge = {
     stash: (name, bytes) => ipcRenderer.invoke(IPC.fileStash, name, bytes),
     pathFor: (file) => webUtils.getPathForFile(file),
     thumbnail: (path) => ipcRenderer.invoke(IPC.fileThumbnail, path),
+    download: (url, name) => ipcRenderer.send(IPC.fileDownload, url, name),
   },
   clipboard: {
     readText: () => ipcRenderer.invoke(IPC.clipboardReadText),

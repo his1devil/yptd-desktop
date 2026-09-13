@@ -1,19 +1,13 @@
-@import url('../fonts/fonts.css');
-
 * { box-sizing: border-box; }
-
-html, body, #root { height: 100%; }
 
 body {
   margin: 0;
   font-family: var(--font);
-  font-size: 13px;
+  font-size: 14px;
   color: var(--ink);
   background: var(--bg);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
-  overflow: hidden;
-  user-select: none;
   /* 切主题时几块大底色一起渐变，文字跟着底色走 */
   transition: background-color var(--dur-slow), color var(--dur-slow);
 }
@@ -46,13 +40,13 @@ a:hover { text-decoration: underline; }
    Lexical 给节点设的是普通类名，不走 CSS Modules，所以这几条放在全局。 */
 .yptd-input {
   display: block; width: 100%; min-height: 22px; max-height: 198px; overflow-y: auto;
-  padding: 12px 14px; font-size: 13.5px; line-height: 22px;
+  padding: 12px 15px; font-size: 14px; line-height: 22px;
   color: var(--ink); outline: none; white-space: pre-wrap; overflow-wrap: anywhere;
   user-select: text; -webkit-user-select: text;
 }
 .yptd-placeholder {
-  position: absolute; top: 12px; left: 14px; pointer-events: none;
-  font-size: 13.5px; line-height: 22px; color: var(--ink3); user-select: none;
+  position: absolute; top: 12px; left: 15px; pointer-events: none;
+  font-size: 14px; line-height: 22px; color: var(--ink3); user-select: none;
 }
 .yptd-line { margin: 0; }
 

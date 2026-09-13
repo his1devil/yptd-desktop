@@ -22,6 +22,8 @@ export const IPC = {
   dialogPickFiles: 'dialog:pickFiles',
   fileStash: 'file:stash',
   fileThumbnail: 'file:thumbnail',
+  /** 把一个网络地址交给 Chromium 下载：它自己弹保存对话框、进下载列表 */
+  fileDownload: 'file:download',
   /** 登录页：剪贴板里有邀请码就预填 */
   clipboardReadText: 'clipboard:readText',
   /** yptd-server 的 HTTP 走主进程：渲染进程的 origin（localhost / file://）过不了 CORS */
@@ -102,6 +104,8 @@ export interface DesktopBridge {
     pathFor(file: File): string
     /** 本地文件：图片给缩略图（data URL，最长边 ≤ 320）和原始尺寸，不是图片 dataURL 为空、只给大小；读不出来返回 null */
     thumbnail(path: string): Promise<{ dataURL: string; width: number; height: number; bytes: number } | null>
+    /** 另存为：交给 Chromium 走系统下载，渲染进程里 `<a download>` 对跨域地址没用 */
+    download(url: string, name?: string): void
   }
   clipboard: {
     /** 剪贴板里的文字。只在登录页读一次，用来预填邀请码 */

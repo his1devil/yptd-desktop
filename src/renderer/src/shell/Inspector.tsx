@@ -148,16 +148,24 @@ function EmptyState() {
 function Members({ place }: { place: Place }) {
   const me = useSession((s) => s.me)
   const openDialog = useUI((s) => s.openDialog)
+  const bios = useSession((s) => s.bios)
   const owner = place.members.some((m) => m.id === me && m.role === 'owner')
   const agents = place.members.filter((m) => m.isAgent)
   const humans = place.members.filter((m) => !m.isAgent)
-  const row = (m: Member) => (
-    <div key={m.id} className={styles.mRow}>
-      <Avatar glyph={glyphOf(m.name)} pair={pairOf(m.id)} size={26} kind={m.isAgent ? 'agent' : 'human'} id={m.id} src={m.avatar} />
-      <span className={styles.mName}>{m.name}{m.id === me ? <span className={styles.mMe}>（你）</span> : null}</span>
-      {m.role !== 'member' && <span className={`${styles.mRole} mono`}>{m.role === 'owner' ? '群主' : '管理员'}</span>}
-    </div>
-  )
+  const row = (m: Member) => {
+    // 签名有就占第二行；agent 那一行不显示，它们的说明在自己的资料页里
+    const bio = m.isAgent ? '' : bios[m.id] ?? ''
+    return (
+      <div key={m.id} className={`${styles.mRow} ${bio ? styles.mRowTall : ''}`}>
+        <Avatar glyph={glyphOf(m.name)} pair={pairOf(m.id)} size={26} kind={m.isAgent ? 'agent' : 'human'} id={m.id} src={m.avatar} />
+        <span className={styles.mText}>
+          <span className={styles.mName}>{m.name}{m.id === me ? <span className={styles.mMe}>（你）</span> : null}</span>
+          {bio && <span className={styles.mBio}>{bio}</span>}
+        </span>
+        {m.role !== 'member' && <span className={`${styles.mRole} mono`}>{m.role === 'owner' ? '群主' : '管理员'}</span>}
+      </div>
+    )
+  }
   return (
     <div className={styles.members}>
       {place.groupID && (
@@ -165,6 +173,12 @@ function Members({ place }: { place: Place }) {
           <button className={styles.mBtn} onClick={() => openDialog({ kind: 'invite', groupID: place.groupID! })}>邀请成员</button>
           <button className={styles.mBtn} onClick={() => openDialog({ kind: 'rename', groupID: place.groupID!, current: place.title })}>改名</button>
           <button className={`${styles.mBtn} ${styles.mBtnDanger}`} onClick={() => openDialog({ kind: 'leave', groupID: place.groupID!, owner, title: place.title })}>{owner ? '解散' : '退出'}</button>
+        </div>
+      )}
+      {place.groupID && (
+        <div className={`${styles.mId} mono`} title="群号">
+          <span className={styles.mIdLabel}>群号</span>
+          <span className={styles.mIdVal}>{place.groupID}</span>
         </div>
       )}
       {agents.length > 0 && (

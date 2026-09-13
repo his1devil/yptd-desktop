@@ -1,89 +1,124 @@
 import { useRef, type ReactNode } from 'react'
 import type { Conversation, Person } from '../../../shared/model'
 import { Avatar, glyphOf, pairOf } from '../components/Avatar'
-import { IconPlus } from '../components/Icons'
+import { IconChevronDown, IconPanel, IconPlus, IconSearch } from '../components/Icons'
 import { directId } from '../im/translate'
 import { useFlip } from '../motion/useFlip'
 import { agentsOf, useSession } from '../store/session'
-import { useUI, type InboxFilter, type Section } from '../store/ui'
-import { SETTINGS_PAGES } from '../views/Settings'
+import { useUI, type InboxFilter } from '../store/ui'
 import styles from './ContextSidebar.module.css'
 
 /**
- * 上下文侧栏 252px。内容读 section：会话区是频道 / 私聊 / 常驻 agent，
- * Agent 区是会话 / 已启用，收件箱和设置是分组（M5 接内容）。
+ * 侧栏 268px，非模态：所有入口和会话列表在同一列里，点哪个主区换哪个，列表不消失。
+ *
+ * 没有独立标题栏——红绿灯直接坐在这一列的左上角（顶栏那 72px 是给它们留的空位），
+ * 收起按钮在同一行的右端。收起之后这一列宽度归零，让位的 72px 由主区头部接管。
+ *
+ * 搜索坐在收件箱上面，个人资料在最底下。
  */
-export function ContextSidebar() {
-  const section = useUI((s) => s.section)
+export function ContextSidebar({ fullscreen }: { fullscreen: boolean }) {
+  const open = useUI((s) => s.sidebarOpen)
+  const setOpen = useUI((s) => s.setSidebarOpen)
   return (
-    <aside className={styles.side}>
-      {section === 'chat' ? <ChatList /> : section === 'agent' ? <AgentList /> : section === 'set' ? <SettingsList /> : section === 'inbox' ? <InboxList /> : <Static section={section} />}
+    <aside className={`${styles.side} ${open ? '' : styles.shut}`} aria-hidden={!open}>
+      <div className={styles.inner}>
+        <div className={styles.top}>
+          {/* 红绿灯是原生的，这里只留位置；全屏时它们消失，位置也不用留 */}
+          {!fullscreen && <div className={styles.lights} />}
+          <div className={styles.topFill} />
+          <button className={styles.topBtn} title="收起侧栏（⌘\)" onClick={() => setOpen(false)}><IconPanel size={17} /></button>
+        </div>
+        <div className={styles.fixed}>
+          <button className={styles.search} title="搜索、跳转、派活（⌘K）" onClick={() => useUI.getState().setPalette(true)}>
+            <IconSearch size={14} />
+            <span className={styles.searchText}>搜索</span>
+            <kbd className={`${styles.kbd} mono`}>⌘K</kbd>
+          </button>
+        </div>
+        <InboxGroup />
+        <ChatList />
+        <Foot />
+      </div>
     </aside>
   )
 }
 
-function SettingsList() {
-  const page = useUI((s) => s.settingsPage)
-  const setPage = useUI((s) => s.setSettingsPage)
-  const group = (g: 'workspace' | 'personal') => SETTINGS_PAGES.filter((p) => p.group === g).map((p) => (
-    <button key={p.id} className={`${styles.item} ${page === p.id ? styles.active : ''}`} onClick={() => setPage(p.id)}>
-      <span className={styles.dot} />
-      <span className={styles.text}><span className={styles.name}>{p.name}</span></span>
-    </button>
-  ))
-  return (
-    <>
-      <Header title="设置" />
-      <div className={styles.scroll}>
-        <Group title="工作区 WORKSPACE">{group('workspace')}</Group>
-        <Group title="个人 PERSONAL">{group('personal')}</Group>
-      </div>
-    </>
-  )
-}
+const INBOX_FILTERS: { id: InboxFilter; name: string }[] = [
+  { id: 'all', name: '全部' },
+  { id: 'mention', name: '提及我的' },
+  { id: 'agent', name: 'Agent 结果' },
+]
 
-function InboxList() {
+/** 收件箱的三个筛选本来是页内的一排标签页，摆进侧栏当分组之后少一次跳转 */
+function InboxGroup() {
+  const section = useUI((s) => s.section)
   const filter = useUI((s) => s.inboxFilter)
-  const setFilter = useUI((s) => s.setInboxFilter)
   const conversations = useSession((s) => s.conversations)
   const mentions = conversations.filter((c) => c.unread > 0 && (c.mentioned || c.kind === 'dm' || c.kind === 'agent_session')).length
-  const items: { id: InboxFilter; name: string; badge?: number }[] = [
-    { id: 'all', name: '全部' },
-    { id: 'mention', name: '@提及我的 / 私聊', badge: mentions },
-    { id: 'agent', name: 'Agent 结果' },
-  ]
   return (
-    <>
-      <Header title="收件箱" />
-      <div className={styles.scroll}>
-        <Group title="筛选 FILTER">
-          {items.map((it) => (
-            <button key={it.id} className={`${styles.item} ${filter === it.id ? styles.active : ''}`} onClick={() => setFilter(it.id)}>
-              <span className={styles.dot} />
-              <span className={styles.text}><span className={styles.name}>{it.name}</span></span>
-              {it.badge ? <span className={`${styles.count} mono`}>{it.badge}</span> : null}
-            </button>
-          ))}
-        </Group>
-      </div>
-    </>
-  )
-}
-
-function Header({ title, action }: { title: string; action?: ReactNode }) {
-  return (
-    <div className={styles.head}>
-      <span className={styles.heading}>{title}</span>
-      {action}
+    <div className={styles.fixed}>
+      <Group id="inbox" title="收件箱">
+        {INBOX_FILTERS.map((f) => (
+          <button
+            key={f.id}
+            className={`${styles.item} ${section === 'inbox' && filter === f.id ? styles.active : ''}`}
+            onClick={() => { useUI.getState().setInboxFilter(f.id); useUI.getState().go('inbox') }}
+          >
+            <span className={styles.dot} />
+            <span className={styles.text}><span className={styles.name}>{f.name}</span></span>
+            {f.id === 'mention' && mentions > 0 && <span className={`${styles.count} ${styles.countAt} mono`}>{mentions > 99 ? '99+' : mentions}</span>}
+          </button>
+        ))}
+      </Group>
     </div>
   )
 }
 
-function Group({ title, children, empty }: { title: string; children: ReactNode[]; empty?: ReactNode }) {
+function Foot() {
+  const section = useUI((s) => s.section)
+  const me = useSession((s) => s.me)
+  const myName = useSession((s) => s.myName)
+  const myAvatar = useSession((s) => s.avatars[s.me] ?? s.myAvatar)
+  const connected = useSession((s) => s.connected)
+  const bio = useSession((s) => s.myBio)
+  return (
+    <div className={styles.foot}>
+      {/* 只留头像这一个入口：点它就是进设置，原来上面那条「设置」是同一个去处 */}
+      <button className={`${styles.me} ${section === 'set' ? styles.meOn : ''}`} title="资料与设置" onClick={() => useUI.getState().setSettingsPage('profile')}>
+        <Avatar glyph={glyphOf(myName || me)} pair={pairOf(me)} size={26} src={myAvatar} presence={connected ? 'online' : 'offline'} ring="var(--sub)" />
+        <span className={styles.text}>
+          <span className={styles.meName}>{myName || me}</span>
+          {/* 写了签名就显示签名，没写才回落到账号名 */}
+          <span className={`${styles.sub} ${bio ? '' : 'mono'}`}>{!connected ? '连接中…' : bio || `@${me}`}</span>
+        </span>
+      </button>
+    </div>
+  )
+}
+
+/** 一个可折叠的分组。收起状态按 id 记在 ui store 里，跨重启保留。 */
+function Group({ id, title, action, children, empty }: {
+  id: string
+  title: string
+  action?: ReactNode
+  children: ReactNode[]
+  empty?: ReactNode
+}) {
+  const collapsed = useUI((s) => !!s.collapsed[id])
+  const toggle = useUI((s) => s.toggleGroup)
+  const n = children.length
   return (
     <section className={styles.group}>
-      <div className={`${styles.groupTitle} mono`}>{title}</div>
-      {children.length ? children : empty ? <div className={styles.emptyLine}>{empty}</div> : null}
+      <div className={styles.groupHead}>
+        <button className={styles.groupTitle} onClick={() => toggle(id)} aria-expanded={!collapsed}>
+          <IconChevronDown size={10} className={`${styles.chev} ${collapsed ? styles.chevOff : ''}`} />
+          <span>{title}</span>
+          {/* 收起来之后条数是唯一还看得见的量，展开时它是多余的 */}
+          {collapsed && n > 0 && <span className={`${styles.groupN} mono`}>{n}</span>}
+        </button>
+        {action}
+      </div>
+      {!collapsed && (n ? children : empty ? <div className={styles.emptyLine}>{empty}</div> : null)}
     </section>
   )
 }
@@ -125,85 +160,46 @@ function AgentItem({ a, active, unread, sub }: { a: Person; active: boolean; unr
 
 function ChatList() {
   const conversationId = useUI((s) => s.conversationId)
+  const section = useUI((s) => s.section)
   const conversations = useSession((s) => s.conversations)
   const roster = useSession((s) => s.roster)
   const me = useSession((s) => s.me)
   const channels = conversations.filter((c) => c.kind === 'channel')
   const dms = conversations.filter((c) => c.kind === 'dm')
   const unreadOf = (a: Person): number => conversations.find((c) => c.id === directId(me, a.userID))?.unread ?? 0
+  // 会话只在会话区里算"选中"；停在收件箱或设置时列表不该有高亮
+  const on = (id: string): boolean => section === 'chat' && id === conversationId
   // 新消息把会话顶上去时，它是滑上去的，不是跳
   const listRef = useRef<HTMLDivElement>(null)
   useFlip(listRef, [conversations])
 
-  return (
-    <>
-      <Header title="会话" action={<button className={styles.headBtn} title="新建频道" onClick={() => useUI.getState().openDialog({ kind: 'newChannel' })}><IconPlus /></button>} />
-      <div className={styles.scroll} ref={listRef}>
-        <Group title="频道 CHANNELS" empty={<>还没有频道 · <button className={styles.emptyAction} onClick={() => useUI.getState().openDialog({ kind: 'newChannel' })}>新建一个</button></>}>
-          {channels.map((c) => <ConversationItem key={c.id} c={c} active={c.id === conversationId} />)}
-        </Group>
-        <Group title="私聊 DIRECT" empty={<>还没有私聊 · <button className={styles.emptyAction} onClick={() => useUI.getState().setPalette(true)}>⌘K 找人</button></>}>
-          {dms.map((c) => <ConversationItem key={c.id} c={c} active={c.id === conversationId} />)}
-        </Group>
-        <Group title="AGENTS">
-          {agentsOf(roster).map((a) => (
-            <AgentItem key={a.userID} a={a} active={directId(me, a.userID) === conversationId} unread={unreadOf(a)} sub={a.tag ?? undefined} />
-          ))}
-        </Group>
-      </div>
-    </>
+  const plus = (title: string, onClick: () => void) => (
+    <button className={styles.groupBtn} title={title} onClick={onClick}><IconPlus size={13} /></button>
   )
-}
 
-function AgentList() {
-  const conversationId = useUI((s) => s.conversationId)
-  const conversations = useSession((s) => s.conversations)
-  const roster = useSession((s) => s.roster)
-  const me = useSession((s) => s.me)
-  const sessions = conversations.filter((c) => c.kind === 'agent_session')
   return (
-    <>
-      <Header title="Agent" />
-      <div className={styles.scroll}>
-        <Group title="会话 SESSIONS" empty="还没和 agent 聊过">
-          {sessions.map((c) => <ConversationItem key={c.id} c={c} active={c.id === conversationId} />)}
-        </Group>
-        <Group title="已启用 ENABLED" empty="名册里还没有 agent">
-          {agentsOf(roster).map((a) => (
-            <AgentItem key={a.userID} a={a} active={directId(me, a.userID) === conversationId} unread={0} sub={a.tag ?? undefined} />
-          ))}
-        </Group>
-      </div>
-    </>
-  )
-}
-
-// ---- 还没接真数据的区段，保留设计稿的分组骨架 ----------------------------------------
-
-const STATIC: Record<Exclude<Section, 'chat' | 'agent' | 'set' | 'inbox'>, { heading: string; groups: { title: string; items: string[] }[] }> = {
-  vm: { heading: '运行机器', groups: [] },
-  lib: { heading: '知识库', groups: [] },
-  market: { heading: 'Agent 市场', groups: [] },
-}
-
-function Static({ section }: { section: Exclude<Section, 'chat' | 'agent' | 'set' | 'inbox'> }) {
-  const { heading, groups } = STATIC[section]
-  return (
-    <>
-      <Header title={heading} />
-      <div className={styles.scroll}>
-        {groups.map((g) => (
-          <Group key={g.title} title={g.title}>
-            {g.items.map((name) => (
-              <button key={name} className={styles.item}>
-                <span className={styles.dot} />
-                <span className={styles.text}><span className={styles.name}>{name}</span></span>
-              </button>
-            ))}
-          </Group>
+    <div className={styles.scroll} ref={listRef}>
+      <Group
+        id="channels"
+        title="频道"
+        action={plus('新建频道', () => useUI.getState().openDialog({ kind: 'newChannel' }))}
+        empty={<>还没有频道 · <button className={styles.emptyAction} onClick={() => useUI.getState().openDialog({ kind: 'newChannel' })}>新建一个</button></>}
+      >
+        {channels.map((c) => <ConversationItem key={c.id} c={c} active={on(c.id)} />)}
+      </Group>
+      <Group
+        id="dms"
+        title="私聊"
+        action={plus('找人（⌘K）', () => useUI.getState().setPalette(true))}
+        empty={<>还没有私聊 · <button className={styles.emptyAction} onClick={() => useUI.getState().setPalette(true)}>⌘K 找人</button></>}
+      >
+        {dms.map((c) => <ConversationItem key={c.id} c={c} active={on(c.id)} />)}
+      </Group>
+      <Group id="agents" title="Agents" empty="名册里还没有 agent">
+        {agentsOf(roster).map((a) => (
+          <AgentItem key={a.userID} a={a} active={on(directId(me, a.userID))} unread={unreadOf(a)} sub={a.tag ?? undefined} />
         ))}
-        {groups.length === 0 && <div className={styles.emptyLine}>即将推出</div>}
-      </div>
-    </>
+      </Group>
+    </div>
   )
 }

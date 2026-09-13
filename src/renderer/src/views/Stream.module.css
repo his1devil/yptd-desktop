@@ -4,8 +4,8 @@
 .vrow { position: absolute; top: 0; left: 0; width: 100%; }
 
 .empty { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 0 40px; text-align: center; }
-.emptyTitle { font-size: 14px; font-weight: 600; letter-spacing: 0; }
-.emptyDesc { font-size: 12.5px; color: var(--ink3); }
+.emptyTitle { font-size: 16px; font-weight: 600; letter-spacing: 0; }
+.emptyDesc { font-size: 13px; color: var(--ink3); }
 .starters { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 14px; max-width: 520px; }
 .starter { height: 30px; padding: 0 12px; border-radius: 99px; border: 1px solid var(--line2); background: var(--surface); font-size: 12.5px; color: var(--ink2); }
 .starter:hover { border-color: var(--accent); color: var(--ontint); background: var(--tint); }
@@ -15,13 +15,14 @@
 /* 日期分隔：线 + 等宽药丸 + 线 */
 .day { display: flex; align-items: center; gap: 12px; padding: 6px 24px 14px; }
 .dayLine { flex: 1; height: 1px; background: var(--line); }
-.dayPill { font-size: 10.5px; font-weight: 600; color: var(--ink3); border: 1px solid var(--line); border-radius: 99px; padding: 2px 10px; background: var(--bg); }
+.dayPill { font-size: 11.5px; font-weight: 600; color: var(--ink3); border: 1px solid var(--line); border-radius: 99px; padding: 2px 10px; background: var(--bg); }
 
 /* 消息行 */
 .row { display: flex; gap: 11px; padding: 7px 24px; position: relative; }
 /* 续行：没有头像和名字，行距收紧，左侧留白悬停时显示时间 */
 .cont { padding-top: 2px; padding-bottom: 2px; }
-.gut { width: 30px; flex: none; display: flex; justify-content: center; align-items: flex-start; padding-top: 5px; }
+/* 宽度必须等于头像尺寸（Stream.tsx 里的 size={34}），否则续行整条往左偏 */
+.gut { width: 34px; flex: none; display: flex; justify-content: center; align-items: flex-start; padding-top: 5px; }
 .gutTime { font-size: 9.5px; color: var(--ink3); opacity: 0; transition: opacity var(--dur-fast); }
 .cont:hover .gutTime, .cont.pinned .gutTime { opacity: 1; }
 .cont .bar { top: -18px; }
@@ -51,32 +52,32 @@
 
 .content { flex: 1; min-width: 0; }
 .meta { display: flex; align-items: baseline; gap: 7px; margin-bottom: 2px; }
-.who { font-size: 13px; font-weight: 600; letter-spacing: 0; }
-.tag { font-size: 9.5px; font-weight: 700; letter-spacing: .07em; color: var(--agent); background: var(--atint); border-radius: 4px; padding: 1px 5px; line-height: 14px; }
-.time { font-size: 10.5px; color: var(--ink3); }
-.state { font-size: 10.5px; color: var(--ink3); }
-.stateBad { font-size: 10.5px; color: var(--danger); }
+.who { font-size: 14px; font-weight: 600; letter-spacing: 0; }
+.tag { font-size: 10px; font-weight: 700; letter-spacing: .07em; color: var(--agent); background: var(--atint); border-radius: 4px; padding: 1px 5px; line-height: 14px; }
+.time { font-size: 11.5px; color: var(--ink3); }
+.state { font-size: 11.5px; color: var(--ink3); }
+.stateBad { font-size: 11.5px; color: var(--danger); }
 
 /* 引用块 */
 .quote {
   display: flex; align-items: center; gap: 7px; max-width: 620px; width: 100%;
   margin: 2px 0 6px; padding: 5px 10px 5px 9px;
-  border-left: 2px solid var(--line2); border-radius: 0 6px 6px 0; background: var(--surface2);
+  border-left: 2px solid var(--line2); border-radius: 0 8px 8px 0; background: var(--surface2);
 }
 .quote:not(:disabled):hover { border-left-color: var(--accent); background: var(--surface); }
 .quote:disabled { cursor: default; }
-.quoteWho { font-size: 11.5px; font-weight: 600; color: var(--ink2); flex: none; }
-.quoteText { font-size: 11.5px; color: var(--ink3); flex: 1; min-width: 0; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.quoteWho { font-size: 12px; font-weight: 600; color: var(--ink2); flex: none; }
+.quoteText { font-size: 12px; color: var(--ink3); flex: 1; min-width: 0; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* 正文 */
-.text { font-size: 13.5px; line-height: 1.68; color: var(--ink); max-width: 760px; text-wrap: pretty; white-space: pre-wrap; overflow-wrap: anywhere; user-select: text; }
-.textLg { font-size: 14px; line-height: 1.8; }
+.text { font-size: 14px; line-height: 22px; color: var(--ink); max-width: 760px; text-wrap: pretty; white-space: pre-wrap; overflow-wrap: anywhere; user-select: text; }
+.textLg { font-size: 15px; line-height: 24px; }
 
 /* 一张图的槽位：尺寸在图到之前就定好，图到了淡入，列表不会被推一下。
    底下铺的是本机缩略图（自己刚发的那条），远端图解码完盖上去。 */
 .shot {
   position: relative; display: block; flex: none; margin-top: 3px;
-  border-radius: 8px; overflow: hidden; border: 1px solid var(--line);
+  border-radius: 10px; overflow: hidden; border: 1px solid var(--line);
   background: var(--surface2) center / cover no-repeat;
 }
 .shot:hover { border-color: var(--line2); }
@@ -94,11 +95,11 @@
   background: var(--surface2); color: var(--ink3); font-size: 11px; line-height: 1.6; text-align: center;
 }
 
-.file { display: inline-flex; align-items: center; gap: 10px; margin-top: 3px; padding: 9px 12px; border: 1px solid var(--line); border-radius: 9px; background: var(--surface); color: var(--ink); max-width: 420px; }
+.file { display: inline-flex; align-items: center; gap: 10px; margin-top: 3px; padding: 9px 12px; border: 1px solid var(--line); border-radius: 11px; background: var(--surface); color: var(--ink); max-width: 420px; }
 .file:hover { border-color: var(--line2); text-decoration: none; }
 .fileIcon { width: 34px; height: 34px; border-radius: 8px; background: var(--tint); color: var(--ontint); display: flex; align-items: center; justify-content: center; flex: none; }
 .fileText { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.fileName { font-size: 12.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fileName { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .fileMeta { font-size: 10.5px; color: var(--ink3); }
 .unsupported { font-size: 13px; color: var(--ink3); font-style: italic; }
 

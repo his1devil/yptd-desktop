@@ -24,35 +24,37 @@ describe('区段与会话解耦', () => {
     expect(s.section).toBe('chat')
   })
 
-  it('从 Agent 区 SESSIONS 打开同一个会话，侧栏是 agent 列表', () => {
-    useUI.getState().open('ag:triage', { section: 'agent', agent: true })
-    expect(useUI.getState().section).toBe('agent')
-  })
-
   it('点「会话」回到之前的频道，不是硬编码回默认频道', () => {
     useUI.getState().open('ch:mkt')
-    useUI.getState().open('ag:triage', { section: 'agent', agent: true })
+    useUI.getState().open('ag:triage', { agent: true })
     useUI.getState().go('chat')
     const s = useUI.getState()
     expect(s.section).toBe('chat')
     expect(s.conversationId).toBe('ch:mkt')
   })
 
-  it('从收件箱或设置里打开会话，回到会话区；在 Agent 区打开则留在 Agent 区', () => {
+  it('从收件箱或设置里打开会话，一律回到会话区', () => {
     useUI.getState().go('inbox')
     useUI.getState().open('ch:mkt')
     expect(useUI.getState().section).toBe('chat')
     useUI.getState().go('set')
     useUI.getState().open('ag:triage', { agent: true })
     expect(useUI.getState().section).toBe('chat')
-    useUI.getState().go('agent')
-    useUI.getState().open('ag:quant', { agent: true })
-    expect(useUI.getState().section).toBe('agent')
   })
 
   it('agent 会话不会成为"最后一个非 agent 会话"', () => {
     useUI.getState().open('ag:quant', { agent: true })
     expect(useUI.getState().lastChannelId).toBe('ch:eng')
+  })
+})
+
+describe('侧栏分组折叠', () => {
+  it('按 id 记，互不影响，再点一下展开', () => {
+    useUI.getState().toggleGroup('dms')
+    expect(useUI.getState().collapsed.dms).toBe(true)
+    expect(useUI.getState().collapsed.channels).toBeUndefined()
+    useUI.getState().toggleGroup('dms')
+    expect(useUI.getState().collapsed.dms).toBe(false)
   })
 })
 

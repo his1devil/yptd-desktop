@@ -1,4 +1,4 @@
-import { app, BrowserWindow, clipboard, dialog, ipcMain, nativeImage, net, safeStorage, session, shell } from 'electron'
+import { app, BrowserWindow, clipboard, dialog, ipcMain, nativeImage, net, safeStorage, screen, session, shell } from 'electron'
 import { mkdirSync, readFileSync, statSync, unlinkSync, writeFileSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { IPC, type HttpRequest, type HttpResponse, type StreamBatch } from '../shared/ipc'
@@ -142,18 +142,79 @@ ipcMain.handle(IPC.fileStash, (_e, name: string, bytes: ArrayBuffer | Uint8Array
   return file
 })
 
+// 另存图片。渲染进程里 `<a download>` 对跨域地址不生效，交给 Chromium 自己的下载流程：
+// 它会弹系统保存对话框，也会进下载列表。对象地址会 302 到签名地址，所以认文件名时
+// 整条跳转链上的每一站都要比一次。
+const downloadNames = new Map<string, string>()
+ipcMain.on(IPC.fileDownload, (e, url: string, name?: string) => {
+  const wc = BrowserWindow.fromWebContents(e.sender)
+  if (!wc) return
+  if (name) downloadNames.set(url, name)
+  wc.webContents.downloadURL(url)
+})
+
 // 登录页预填邀请码用；渲染进程读剪贴板要权限弹窗，主进程不用
 ipcMain.handle(IPC.clipboardReadText, () => clipboard.readText())
 
 // 开发用：YPTD_DEV_CDP=9222 开远程调试口，联调脚本能在页面里跑 JS、截图。打包后不认。
 if (!app.isPackaged && process.env.YPTD_DEV_CDP) app.commandLine.appendSwitch('remote-debugging-port', process.env.YPTD_DEV_CDP)
 
-// 设计窗口尺寸 1440×900，最小 1100×700（README §Screens）。
-const DESIGN = { width: 1440, height: 900, minWidth: 1100, minHeight: 700 }
+// 最小 1100×700（README §Screens）。第一次打开按屏幕比例算，之后记住用户调过的大小。
+const MIN = { width: 1100, height: 700 }
+type Bounds = { x: number; y: number; width: number; height: number }
+const boundsFile = (): string => join(app.getPath('userData'), 'window.json')
+
+// 头一次打开占工作区的 74%×82%，居中。固定 1440×900 在 14 寸屏上几乎铺满，
+// 一开就盖住所有东西；上限留着，免得在超宽屏上开成一条。
+function defaultBounds(): Bounds {
+  const { workArea } = screen.getPrimaryDisplay()
+  const width = Math.round(Math.min(1440, Math.max(MIN.width, workArea.width * 0.74)))
+  const height = Math.round(Math.min(900, Math.max(MIN.height, workArea.height * 0.82)))
+  return {
+    width,
+    height,
+    x: Math.round(workArea.x + (workArea.width - width) / 2),
+    y: Math.round(workArea.y + (workArea.height - height) / 2),
+  }
+}
+
+// 记住的位置只在还落在某块屏幕上时才用：外接显示器拔了之后，
+// 不该把窗口开到看不见的坐标去。
+function savedBounds(): Bounds | null {
+  try {
+    const b = JSON.parse(readFileSync(boundsFile(), 'utf8')) as Partial<Bounds>
+    const ok = [b.x, b.y, b.width, b.height].every((n) => typeof n === 'number' && Number.isFinite(n))
+    if (!ok) return null
+    const r = b as Bounds
+    if (r.width < MIN.width || r.height < MIN.height) return null
+    const onScreen = screen.getAllDisplays().some(({ workArea: a }) =>
+      r.x + r.width > a.x + 80 && r.x < a.x + a.width - 80 && r.y + 40 > a.y && r.y < a.y + a.height - 40)
+    return onScreen ? r : null
+  } catch {
+    return null
+  }
+}
+
+function rememberBounds(win: BrowserWindow): void {
+  let timer: ReturnType<typeof setTimeout> | undefined
+  const write = (): void => {
+    if (win.isDestroyed() || win.isFullScreen() || win.isMinimized()) return
+    try { writeFileSync(boundsFile(), JSON.stringify(win.getNormalBounds())) } catch { /* 记不住就下次重来 */ }
+  }
+  const save = (): void => {
+    clearTimeout(timer)
+    timer = setTimeout(write, 400)
+  }
+  win.on('resize', save)
+  win.on('move', save)
+  win.on('close', () => { clearTimeout(timer); write() })
+}
 
 function createWindow(): BrowserWindow {
   const win = new BrowserWindow({
-    ...DESIGN,
+    ...(savedBounds() ?? defaultBounds()),
+    minWidth: MIN.width,
+    minHeight: MIN.height,
     show: false,
     // 无边框 + 自定义标题栏。macOS 保留原生红绿灯，不自绘。
     // 三个灯一共 52px 宽，x=10 让它们在 72px 的红绿灯区（与图标栏同宽）里居中；
@@ -170,6 +231,7 @@ function createWindow(): BrowserWindow {
   })
 
   win.once('ready-to-show', () => win.show())
+  rememberBounds(win)
 
   // 开发用：YPTD_THEME=dark 起一个深色窗口截图对比 token。不进产品逻辑。
   if (!app.isPackaged && process.env.YPTD_THEME) {
@@ -229,6 +291,14 @@ void app.whenReady().then(() => {
       })
     })
   }
+  // 另存时给保存对话框一个像样的默认文件名：对象地址里那串是 uuid，不给就存成一堆乱码
+  session.defaultSession.on('will-download', (_e, item) => {
+    const hit = [item.getURL(), ...item.getURLChain()].find((u) => downloadNames.has(u))
+    if (!hit) return
+    const name = downloadNames.get(hit)!
+    downloadNames.delete(hit)
+    item.setSaveDialogOptions({ defaultPath: name })
+  })
   const win = createWindow()
   setupUpdater(() => (win.isDestroyed() ? null : win.webContents))
   app.on('activate', () => {

@@ -32,18 +32,73 @@ export function rememberPreview(url: string, dataURL: string | null): void {
 export const previewFor = (url: string): string | undefined => previews.get(url)
 
 /**
+ * 服务端缩图的真实上限，2026-09-13 在 im.zhanghuanyang.com 上逐档实测：1024 及以下给真缩图，
+ * 1088 起把原文件当 200 返回，content-type 变成 binary/octet-stream。
+ * 这个回退是 HTTP 200，`<img onError>` 抓不到，只会看到一张几 MB 的原图悄悄下下来——
+ * 所以任何地方都不许请求超过这个数。
+ */
+export const MAX_THUMB = 1024
+/** 缩图档位的步长：不同槽位算出来的尺寸收敛成几个值，缓存才命中得上 */
+const STEP = 160
+/** 按步长归档后不越过 MAX_THUMB 的最大一档 */
+const MAX_STEPPED = Math.floor(MAX_THUMB / STEP) * STEP
+
+/** 只有本服务的对象地址能改尺寸：data: 预览、已经带参数的（OpenIM 自己的缩略图）和外站地址都不行 */
+const resizable = (url: string): boolean =>
+  url.startsWith('http') && !url.includes('?') && url.includes('/object/')
+
+const thumb = (url: string, n: number): string => `${url}?type=image&width=${n}&height=${n}`
+
+/**
  * 列表里按槽位取裁过的图。对象存储认 `?type=image&width=&height=`，只给宽高不带 type 会返回原图。
  * 900×500 的图请求 200px：116501 字节降到 7953——在出口只有 2Mbps 的服务器上，这是图片"卡顿"的大头。
- *
- * 只对本服务的对象地址生效：data: 预览、已经带参数的（OpenIM 自己的缩略图）和外站地址都原样返回。
- * 请求的尺寸比原图大时服务端会回原图，所以不用担心把小图放大。
  */
 export function sized(url: string, px: number): string {
-  if (!url.startsWith('http') || url.includes('?') || !url.includes('/object/')) return url
-  // 归到 160 的整数倍：不同槽位算出来的尺寸收敛成几个值，缓存才命中得上
-  const n = Math.min(2048, Math.max(160, Math.ceil(px / 160) * 160))
-  return `${url}?type=image&width=${n}&height=${n}`
+  if (!resizable(url)) return url
+  const n = Math.min(MAX_STEPPED, Math.max(STEP, Math.ceil(px / STEP) * STEP))
+  return thumb(url, n)
 }
+
+/**
+ * 头像档位。右栏的槽只有 26 CSS px，2 倍屏要 52 物理像素；原来直接上原图，
+ * 实测三个头像 2.95MB，换成 64 档合计 22KB。档位少几个，缓存才共用得起来。
+ */
+const AVATAR_TIERS = [32, 64, 128, 256] as const
+export function avatarSized(url: string, px: number): string {
+  if (!resizable(url)) return url
+  return thumb(url, AVATAR_TIERS.find((t) => t >= px) ?? AVATAR_TIERS[AVATAR_TIERS.length - 1]!)
+}
+
+/**
+ * 原图小到这个数以内就别要缩图了。服务端缩图输出的是 PNG，一张压得好的 JPEG 转成 PNG
+ * 往往比原文件还大：实测一张 1280×2275 的 239KB 图，1024 档缩图 721KB，是原图的三倍。
+ */
+const SMALL_ENOUGH = 512 * 1024
+
+/**
+ * 查看器要请求的那张「显示图」。拿不到比原图更好的结果时就直接用原图——
+ * 要么原图本来就不大，要么原图比想要的尺寸还小，缩图只会更糊或更大。
+ */
+export function displaySrc(url: string, px: number, natural: { width: number; height: number } | null, bytes = 0): string {
+  if (!resizable(url)) return url
+  if (bytes > 0 && bytes <= SMALL_ENOUGH) return url
+  const n = Math.min(MAX_THUMB, Math.max(STEP, Math.round(px)))
+  const longest = natural ? Math.max(natural.width, natural.height) : 0
+  if (longest > 0 && longest <= n) return url
+  return thumb(url, n)
+}
+
+/**
+ * 消息流里那张图实际用的地址。查看器打开时先拿它顶上——浏览器缓存里已经有了，
+ * 是零网络的一帧，不用对着空屏等原图下完。
+ */
+const THUMB_KEEP = 120
+const loaded = new Map<string, string>()
+export function rememberThumb(url: string, src: string): void {
+  loaded.set(url, src)
+  while (loaded.size > THUMB_KEEP) loaded.delete(loaded.keys().next().value as string)
+}
+export const thumbFor = (url: string): string | undefined => loaded.get(url)
 
 /** 有限并发，保持原顺序。三张图串行传要等三倍的时间，同时全开又会互相抢上行带宽。 */
 export async function mapLimit<T, R>(items: readonly T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {

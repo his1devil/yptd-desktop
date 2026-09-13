@@ -14,8 +14,19 @@ import styles from './Settings.module.css'
  */
 export function Settings() {
   const page = useUI((s) => s.settingsPage)
+  const setPage = useUI((s) => s.setSettingsPage)
+  // 这一列原来在左侧栏里。侧栏改成非模态、常驻会话列表之后，设置的分页跟着设置页走
+  const group = (g: 'workspace' | 'personal') => SETTINGS_PAGES.filter((x) => x.group === g).map((x) => (
+    <button key={x.id} className={`${styles.navItem} ${page === x.id ? styles.navOn : ''}`} onClick={() => setPage(x.id)}>{x.name}</button>
+  ))
   return (
     <div className={styles.wrap}>
+      <nav className={styles.nav}>
+        <div className={styles.navTitle}>工作区</div>
+        {group('workspace')}
+        <div className={styles.navTitle} style={{ marginTop: 14 }}>个人</div>
+        {group('personal')}
+      </nav>
       <div className={styles.page}>
         {page === 'profile' && <Profile />}
         {page === 'members' && <Members />}
@@ -51,17 +62,26 @@ function Profile() {
   const me = useSession((s) => s.me)
   const myName = useSession((s) => s.myName)
   const avatar = useSession((s) => s.avatars[s.me] ?? s.myAvatar)
+  const myBio = useSession((s) => s.myBio)
   const [name, setName] = useState(myName)
-  const [busy, setBusy] = useState<'name' | 'avatar' | 'out' | null>(null)
+  const [bio, setBio] = useState(myBio)
+  const [busy, setBusy] = useState<'name' | 'bio' | 'avatar' | 'out' | null>(null)
   const [err, setErr] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
   useEffect(() => setName(myName), [myName])
+  useEffect(() => setBio(myBio), [myBio])
 
   const saveName = async (): Promise<void> => {
     const n = name.trim()
     if (!n || n === myName) return
     setBusy('name'); setErr(null)
     try { await useSession.getState().updateNickname(n); setSaved(true); window.setTimeout(() => setSaved(false), 1500) } catch (e) { setErr(describe(e)) } finally { setBusy(null) }
+  }
+  const saveBio = async (): Promise<void> => {
+    const b = bio.trim()
+    if (b === myBio) return
+    setBusy('bio'); setErr(null)
+    try { await useSession.getState().updateBio(b); setSaved(true); window.setTimeout(() => setSaved(false), 1500) } catch (e) { setErr(describe(e)) } finally { setBusy(null) }
   }
   const pickAvatar = async (): Promise<void> => {
     const [path] = await window.desktop.files.pick('image')
@@ -72,7 +92,7 @@ function Profile() {
 
   return (
     <>
-      <Section title="资料" desc="昵称是别人在群里看到的名字，随时能改；账号名按注册时的昵称生成，改不了。">
+      <Section title="资料" desc="昵称是别人在群里看到的名字，随时能改；签名跟着你出现在成员列表里；账号名按注册时的昵称生成，改不了。">
         <div className={styles.profileRow}>
           <button className={styles.avatarBtn} title="换头像" onClick={() => void pickAvatar()} disabled={busy === 'avatar'}>
             <Avatar glyph={glyphOf(myName || me)} pair={pairOf(me)} size={64} src={avatar} />
@@ -84,6 +104,13 @@ function Profile() {
               <div className={styles.inline}>
                 <input className={inputClass} value={name} onChange={(e) => setName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && void saveName()} maxLength={32} />
                 <button className={primaryClass} disabled={!name.trim() || name.trim() === myName || busy === 'name'} onClick={() => void saveName()}>{busy === 'name' ? '保存中…' : saved ? '已保存' : '保存'}</button>
+              </div>
+            </label>
+            <label className={styles.field}>
+              <span className={styles.label}>个性签名</span>
+              <div className={styles.inline}>
+                <input className={inputClass} value={bio} placeholder="一句话介绍自己，别人在成员列表里看得到" onChange={(e) => setBio(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && void saveBio()} maxLength={80} />
+                <button className={primaryClass} disabled={bio.trim() === myBio || busy === 'bio'} onClick={() => void saveBio()}>{busy === 'bio' ? '保存中…' : '保存'}</button>
               </div>
             </label>
             <label className={styles.field}>
@@ -275,7 +302,7 @@ function Appearance() {
   const theme = useUI((s) => s.theme)
   const setTheme = useUI((s) => s.setTheme)
   return (
-    <Section title="外观" desc="两套配色都过了对比度审计。图标栏底部的太阳/月亮也能切。">
+    <Section title="外观" desc="两套配色都过了对比度审计。切换只在这里。">
       <div className={styles.choices}>
         {(['light', 'dark'] as const).map((t) => (
           <button key={t} className={`${styles.choice} ${theme === t ? styles.choiceOn : ''}`} onClick={() => setTheme(t)}>
@@ -293,6 +320,7 @@ function Keys() {
     ['⌘K', '搜索会话、成员、消息；直接派活给 agent'],
     ['⌥ ↑ / ⌥ ↓', '上一个 / 下一个会话（按侧栏顺序）'],
     ['⌥ ⇧ ↓', '下一个有未读的会话'],
+    ['⌘ \\', '收起 / 展开左侧栏'],
     ['⌘ 1 … 9', '侧栏里的第 1 到第 9 个会话'],
     ['Enter', '发送'],
     ['Shift + Enter', '换行'],

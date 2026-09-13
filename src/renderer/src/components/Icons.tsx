@@ -212,3 +212,53 @@ export const IconHash = ({ size = 14, ...p }: P) => (
     <path d="M6.2 2.5 4.8 13.5M11.2 2.5 9.8 13.5M2.8 6h11M2.2 10.3h11" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
   </svg>
 )
+
+// ---- 图片查看器 ----------------------------------------------------------------------
+
+export const IconZoomIn = ({ size = 16, ...p }: P) => (
+  <svg {...base(size, 18, p)}>
+    <circle cx="8" cy="8" r="5.4" stroke="currentColor" strokeWidth="1.5" />
+    <path d="M8 5.6v4.8M5.6 8h4.8M11.9 11.9 15.4 15.4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+  </svg>
+)
+
+export const IconZoomOut = ({ size = 16, ...p }: P) => (
+  <svg {...base(size, 18, p)}>
+    <circle cx="8" cy="8" r="5.4" stroke="currentColor" strokeWidth="1.5" />
+    <path d="M5.6 8h4.8M11.9 11.9 15.4 15.4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+  </svg>
+)
+
+/** 适应窗口：一个框，四角朝里 */
+export const IconFit = ({ size = 16, ...p }: P) => (
+  <svg {...base(size, 18, p)}>
+    <rect x="2.6" y="3.6" width="12.8" height="10.8" rx="1.6" stroke="currentColor" strokeWidth="1.5" />
+    <path d="M6.2 6.9h1.9v1.9M11.8 11.1H9.9V9.2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+)
+
+export const IconRotate = ({ size = 16, ...p }: P) => (
+  <svg {...base(size, 18, p)}>
+    <path d="M15 9a6 6 0 1 1-1.9-4.4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+    <path d="M15.2 2.4v3.1h-3.1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+)
+
+export const IconDownload = ({ size = 16, ...p }: P) => (
+  <svg {...base(size, 18, p)}>
+    <path d="M9 2.8v8.4m0 0L5.9 8.1M9 11.2l3.1-3.1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M3.2 12.4v1.4a1.6 1.6 0 0 0 1.6 1.6h8.4a1.6 1.6 0 0 0 1.6-1.6v-1.4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+  </svg>
+)
+
+export const IconPrev = ({ size = 16, ...p }: P) => (
+  <svg {...base(size, 18, p)}>
+    <path d="M11.2 3.6 5.8 9l5.4 5.4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+)
+
+export const IconNext = ({ size = 16, ...p }: P) => (
+  <svg {...base(size, 18, p)}>
+    <path d="M6.8 3.6 12.2 9l-5.4 5.4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+)

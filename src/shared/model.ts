@@ -50,7 +50,7 @@ export interface PixelSize { width: number; height: number }
 
 export type Body =
   | { kind: 'text'; text: string }
-  | { kind: 'picture'; url: string; name: string; natural: PixelSize | null }
+  | { kind: 'picture'; url: string; name: string; natural: PixelSize | null; bytes: number }
   | { kind: 'file'; url: string; name: string; bytes: number }
   | { kind: 'unsupported'; label: string }
 

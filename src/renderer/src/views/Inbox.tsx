@@ -8,6 +8,7 @@ import { useSession } from '../store/session'
 import { useUI } from '../store/ui'
 import styles from './Inbox.module.css'
 
+
 /**
  * 收件箱：需要我看一眼的东西，两类——有人 @ 我或私聊我、agent 出了结果。
  * 每张卡点开就到那条消息，右上「全部标记已读」一次清掉。

@@ -4,7 +4,7 @@ import type { Attachment, Message, MessageId, PixelSize, QuotePreview } from '..
 import { summarize } from '../../../shared/model'
 import { Avatar, glyphOf, pairOf } from '../components/Avatar'
 import { IconCopy, IconEmoji, IconFile, IconHandoff, IconMore, IconQuote, IconUndo } from '../components/Icons'
-import { previewFor, sized } from '../im/files'
+import { previewFor, rememberThumb, sized } from '../im/files'
 import { visible } from '../im/timeline'
 import { flyEmoji } from '../motion/fly'
 import { reduceMotion } from '../motion/transition'
@@ -40,20 +40,20 @@ const pictureBox = (m: Message): { natural: PixelSize | null } => ({ natural: m.
 // 估高只用于第一次布局，量过之后按真实高度。图片部分和渲染共用 galleryLayout，
 // 两边算出来的行数一致，量高之后就不会再把列表推一下。
 function estimate(row: Row, available: number): number {
-  if (row.kind === 'day') return 44
-  if (row.kind === 'pending') return row.message.runID ? 170 : 46
-  if (row.kind === 'gallery') return 52 + galleryLayout(row.messages.map(pictureBox), available).height - (row.continued ? 36 : 0)
+  if (row.kind === 'day') return 46
+  if (row.kind === 'pending') return row.message.runID ? 174 : 50
+  if (row.kind === 'gallery') return 56 + galleryLayout(row.messages.map(pictureBox), available).height - (row.continued ? 38 : 0)
   const m = row.message
-  let h = 52
+  let h = 56
   h += attachmentsHeight(m.attachments, available)
   if (m.runID) h += 96
-  if (m.body.kind === 'text') h += Math.ceil(m.body.text.length / 70) * 22
+  if (m.body.kind === 'text') h += Math.ceil(m.body.text.length / 67) * 22
   else if (m.body.kind === 'picture') h += (fit(m.body.natural)?.height ?? 220) + 6
   else h += 56
-  if (m.quote) h += 34
-  if (m.reactions.length) h += 34
+  if (m.quote) h += 36
+  if (m.reactions.length) h += 36
   // 续行没有头像和名字那一行
-  if (row.continued) h -= 36
+  if (row.continued) h -= 38
   return Math.max(h, 24)
 }
 
@@ -92,7 +92,7 @@ export function Stream({ place }: { place: Place }) {
   const harness = place.isAgent
   const tick = useSession((s) => s.tick)
   const me = useSession((s) => s.me)
-  const loadingOlder = useSession((s) => s.loadingOlder)
+  // 「正在往上翻」记在这个会话自己的时间线上；tick 变了这里就重读
   const setQuote = useUI((s) => s.setQuote)
   const profiles = useAgentProfiles()
   const agentDesc = harness ? profiles?.find((p) => p.userID === place.peer?.userID)?.description : undefined
@@ -363,7 +363,7 @@ export function Stream({ place }: { place: Place }) {
           </div>
         )}
       </div>
-      {loadingOlder && <div className={styles.loadingPill}>加载更早的消息…</div>}
+      {timeline(id).loadingOlder && <div className={styles.loadingPill}>加载更早的消息…</div>}
       {fresh && (
         <button className={styles.newPill} onClick={() => scrollToBottom(true)}>
           <span>↓ {fresh.n} 条新消息</span>
@@ -436,7 +436,7 @@ function DaySep({ label }: { label: string }) {
 function Pending({ message: m, harness }: { message: Message; harness: boolean }) {
   return (
     <div className={harness ? styles.pendingTurn : styles.pending}>
-      <SenderAvatar id={m.sender} name={m.senderName} fallback={m.senderAvatar} size={harness ? 24 : 30} agent={m.isAgent} />
+      <SenderAvatar id={m.sender} name={m.senderName} fallback={m.senderAvatar} size={harness ? 28 : 34} agent={m.isAgent} />
       <div className={styles.shimmer} />
     </div>
   )
@@ -484,7 +484,7 @@ const MessageRow = memo(function MessageRow({ message: m, gallery, continued = f
       {continued ? (
         <span className={styles.gut}><span className={`${styles.gutTime} mono`}>{m.sendState === 'sending' ? '…' : hhmm(m.sentAt)}</span></span>
       ) : (
-        <SenderAvatar id={m.sender} name={m.senderName} fallback={m.senderAvatar} size={30} agent={m.isAgent} style={{ marginTop: 1 }} />
+        <SenderAvatar id={m.sender} name={m.senderName} fallback={m.senderAvatar} size={34} agent={m.isAgent} style={{ marginTop: 1 }} />
       )}
       <div className={styles.content} data-body>
         {!continued && <div className={styles.meta}>
@@ -543,7 +543,7 @@ function Body({ message: m, onImage, large }: { message: Message; onImage: OpenI
       )
     case 'picture': {
       const box = fit(b.natural) ?? { width: 320, height: 240 }
-      const one = [{ url: b.url, name: b.name }]
+      const one = [{ url: b.url, name: b.name, natural: b.natural, bytes: b.bytes }]
       return <Shot url={b.url} name={b.name} box={{ w: box.width, h: box.height }} busy={m.sendState === 'sending'} group={one} onImage={onImage} />
     }
     case 'file':
@@ -601,7 +601,9 @@ function Attachments({ message: m, onImage }: { message: Message; onImage: OpenI
 
 /** 同一个人连着发的几张图并排成一行。宽高在图到之前就定好，点开看原图。 */
 function Gallery({ messages, onImage }: { messages: Message[]; onImage: OpenImage }) {
-  const pics = messages.flatMap((m) => (m.body.kind === 'picture' ? [{ id: m.id, url: m.body.url, name: m.body.name, natural: m.body.natural }] : []))
+  const pics = messages.flatMap((m) => (m.body.kind === 'picture'
+    ? [{ id: m.id, url: m.body.url, name: m.body.name, natural: m.body.natural, bytes: m.body.bytes }]
+    : []))
   const { boxes } = galleryLayout(pics)
   return (
     <div className={styles.gallery}>
@@ -644,7 +646,7 @@ function Shot({ url, name, box, busy, group, onImage }: { url: string; name: str
       <img
         src={retryOf(src, nonce)} alt={name} draggable={false} loading="lazy"
         className={state === 'ok' ? styles.shotIn : styles.shotOut}
-        onLoad={() => setState('ok')}
+        onLoad={() => { setState('ok'); rememberThumb(url, src) }}
         onError={() => { if (src !== url) { setSrc(url); setState('loading') } else setState('failed') }}
       />
       {state === 'failed' && <span className={styles.shotFail}>图片没加载出来<br />点一下重试</span>}
@@ -683,7 +685,7 @@ const Turn = memo(function Turn({ message: m, gallery, mine, flash, onCopy, onQu
   return (
     <div className={`${styles.turn} ${flash ? styles.flash : ''}`}>
       <div className={styles.turnHead}>
-        <SenderAvatar id={m.sender} name={m.senderName} fallback={m.senderAvatar} size={24} agent={m.isAgent} />
+        <SenderAvatar id={m.sender} name={m.senderName} fallback={m.senderAvatar} size={28} agent={m.isAgent} />
         <span className={styles.who}>{m.senderName}</span>
         {m.isAgent && <span className={`${styles.tag} mono`}>{m.agentTag || 'AGENT'}</span>}
         <span className={`${styles.time} mono`}>{hhmm(m.sentAt)}</span>

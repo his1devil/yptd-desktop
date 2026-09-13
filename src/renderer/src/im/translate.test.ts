@@ -104,7 +104,8 @@ describe('图片', () => {
         snapshotPicture: { uuid: 'c', url: 'https://x/snap.jpg', size: 100, width: 320, height: 180, type: 'jpg' },
       },
     }))!
-    expect(m.body).toEqual({ kind: 'picture', url: 'https://x/big.jpg', name: 'cat.jpg', natural: { width: 1600, height: 900 } })
+    // bytes 跟着选中的那张走：查看器靠它判断「原图本来就不大，别去要更大的 PNG 缩图」
+    expect(m.body).toEqual({ kind: 'picture', url: 'https://x/big.jpg', name: 'cat.jpg', natural: { width: 1600, height: 900 }, bytes: 1234 })
   })
 })
 

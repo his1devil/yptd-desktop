@@ -125,7 +125,8 @@ export class Translator {
           ?? [el.sourcePicture, el.bigPicture, el.snapshotPicture].find((p) => p && p.url)
         if (!best) return null
         const natural: PixelSize | null = best.width > 0 && best.height > 0 ? { width: best.width, height: best.height } : null
-        return { kind: 'picture', url: best.url, name: fileName(el.sourcePath, best.uuid, 'png'), natural }
+        // bytes 给查看器判断「原图本来就不大，别去要更大的 PNG 缩图」；回显里可能是 0，当成未知
+        return { kind: 'picture', url: best.url, name: fileName(el.sourcePath, best.uuid, 'png'), natural, bytes: best.size > 0 ? best.size : 0 }
       }
       case ContentType.file: {
         const el = raw.fileElem

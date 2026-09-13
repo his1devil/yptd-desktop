@@ -15,7 +15,6 @@
 }
 .chip:hover { border-color: var(--agent); color: var(--agent); }
 .chipGlyph { font-size: 10px; color: var(--agent); font-weight: 700; }
-.chipsHint { margin-left: auto; font-size: 11px; color: var(--ink3); white-space: nowrap; }
 
 /* 引用条 */
 .quoteBar { display: flex; align-items: center; gap: 9px; padding: 8px 12px 8px 10px; border-bottom: 1px solid var(--line); background: var(--surface2); }

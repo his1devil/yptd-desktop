@@ -120,7 +120,7 @@ export function Composer({ place }: { place: Place }) {
   const hint = place.isAgent
     ? `和 ${place.title} 对话 — 直接派活或追问`
     : place.kind === 'channel'
-      ? `发消息到 #${place.title} — @agent 可直接派活`
+      ? `发消息到 #${place.title} — 试试 @ agent 伙伴`
       : `发消息给 ${place.title}`
   const nothingToSend = isEmpty(segments) && attachments.length === 0
 
@@ -134,7 +134,6 @@ export function Composer({ place }: { place: Place }) {
                 <span className={styles.chipGlyph}>{glyphOf(a.nickname)}</span>{a.nickname}
               </button>
             ))}
-            <span className={styles.chipsHint}>@ 点名 agent 就是派活</span>
           </div>
         )}
 

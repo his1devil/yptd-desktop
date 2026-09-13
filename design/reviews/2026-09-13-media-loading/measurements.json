@@ -1,0 +1,247 @@
+{
+  "date": "2026-09-13",
+  "baseline": "762f342 / v0.3.5",
+  "method": "Sequential curl GET following up to 3 redirects; no curl local HTTP cache; transformation/server caches may already be warm. Timings are individual samples, not app startup or P95.",
+  "asset_requests": [
+    {
+      "sample": "avatar-0-original",
+      "exit": 0,
+      "http_code": 200,
+      "size_download": 343407,
+      "time_namelookup": 0.063873,
+      "time_connect": 0.133187,
+      "time_appconnect": 0.216446,
+      "time_starttransfer": 0.309483,
+      "time_total": 1.13224,
+      "dimensions": [
+        "pixelWidth: 1066",
+        "pixelHeight: 936"
+      ],
+      "headers": {
+        "server": "nginx/1.30.2",
+        "content-type": "image/jpeg",
+        "content-length": "343407",
+        "etag": "\"ffb6b815226dc15b71effa4bcc17d6f6\"",
+        "last-modified": "Wed, 09 Sep 2026 06:00:41 GMT",
+        "vary": "Accept-Encoding"
+      }
+    },
+    {
+      "sample": "avatar-0-64",
+      "exit": 0,
+      "http_code": 200,
+      "size_download": 7053,
+      "time_namelookup": 0.009428,
+      "time_connect": 0.095552,
+      "time_appconnect": 0.181658,
+      "time_starttransfer": 0.339361,
+      "time_total": 0.339932,
+      "dimensions": [
+        "pixelWidth: 64",
+        "pixelHeight: 56"
+      ],
+      "headers": {
+        "server": "nginx/1.30.2",
+        "content-type": "image/png",
+        "content-length": "7053",
+        "etag": "\"a4269405979e792b37900dd0551dc9c0\"",
+        "last-modified": "Sun, 13 Sep 2026 04:41:47 GMT",
+        "vary": "Accept-Encoding"
+      }
+    },
+    {
+      "sample": "avatar-1-original",
+      "exit": 0,
+      "http_code": 200,
+      "size_download": 1416131,
+      "time_namelookup": 0.01157,
+      "time_connect": 0.135007,
+      "time_appconnect": 0.262472,
+      "time_starttransfer": 0.338257,
+      "time_total": 5.078038,
+      "dimensions": [
+        "pixelWidth: 1220",
+        "pixelHeight: 1212"
+      ],
+      "headers": {
+        "server": "nginx/1.30.2",
+        "content-type": "image/png",
+        "content-length": "1416131",
+        "etag": "\"a0dbe912a41de370e8e974d97144aab0\"",
+        "last-modified": "Wed, 09 Sep 2026 06:25:37 GMT",
+        "vary": "Accept-Encoding"
+      }
+    },
+    {
+      "sample": "avatar-1-64",
+      "exit": 0,
+      "http_code": 200,
+      "size_download": 6913,
+      "time_namelookup": 0.008774,
+      "time_connect": 0.176559,
+      "time_appconnect": 0.276998,
+      "time_starttransfer": 0.367196,
+      "time_total": 0.367598,
+      "dimensions": [
+        "pixelWidth: 64",
+        "pixelHeight: 63"
+      ],
+      "headers": {
+        "server": "nginx/1.30.2",
+        "content-type": "image/png",
+        "content-length": "6913",
+        "etag": "\"c9eaa22e2d3d23cf4c5d8d5a8cbfb17d\"",
+        "last-modified": "Sun, 13 Sep 2026 04:41:47 GMT",
+        "vary": "Accept-Encoding"
+      }
+    },
+    {
+      "sample": "avatar-2-original",
+      "exit": 0,
+      "http_code": 200,
+      "size_download": 1192153,
+      "time_namelookup": 0.011779,
+      "time_connect": 0.098914,
+      "time_appconnect": 0.202615,
+      "time_starttransfer": 0.296341,
+      "time_total": 4.015144,
+      "dimensions": [
+        "pixelWidth: 946",
+        "pixelHeight: 940"
+      ],
+      "headers": {
+        "server": "nginx/1.30.2",
+        "content-type": "image/png",
+        "content-length": "1192153",
+        "etag": "\"764ddfeeb18ebcb768e7471629a67762\"",
+        "last-modified": "Sat, 12 Sep 2026 14:39:04 GMT",
+        "vary": "Accept-Encoding"
+      }
+    },
+    {
+      "sample": "avatar-2-64",
+      "exit": 0,
+      "http_code": 200,
+      "size_download": 8245,
+      "time_namelookup": 0.00582,
+      "time_connect": 0.081975,
+      "time_appconnect": 0.17453,
+      "time_starttransfer": 0.257756,
+      "time_total": 0.300293,
+      "dimensions": [
+        "pixelWidth: 64",
+        "pixelHeight: 63"
+      ],
+      "headers": {
+        "server": "nginx/1.30.2",
+        "content-type": "image/png",
+        "content-length": "8245",
+        "etag": "\"61fcc7356e6df51f1b2625de89353db7\"",
+        "last-modified": "Sun, 13 Sep 2026 04:41:48 GMT",
+        "vary": "Accept-Encoding"
+      }
+    },
+    {
+      "sample": "photo-3-1280",
+      "exit": 0,
+      "http_code": 200,
+      "size_download": 3830755,
+      "time_namelookup": 0.011455,
+      "time_connect": 0.247584,
+      "time_appconnect": 0.38138,
+      "time_starttransfer": 1.045988,
+      "time_total": 15.092445,
+      "dimensions": [
+        "pixelWidth: 5712",
+        "pixelHeight: 3799"
+      ],
+      "headers": {
+        "server": "nginx/1.30.2",
+        "content-type": "binary/octet-stream",
+        "content-length": "3830755",
+        "etag": "\"92b1180497be8e397ccaf47e97ab8ec1\"",
+        "last-modified": "Tue, 08 Sep 2026 16:59:35 GMT",
+        "vary": "Accept-Encoding"
+      }
+    },
+    {
+      "sample": "photo-3-original",
+      "exit": 0,
+      "http_code": 200,
+      "size_download": 3830755,
+      "time_namelookup": 0.004419,
+      "time_connect": 0.179245,
+      "time_appconnect": 0.262192,
+      "time_starttransfer": 0.343492,
+      "time_total": 15.149265,
+      "dimensions": [
+        "pixelWidth: 5712",
+        "pixelHeight: 3799"
+      ],
+      "headers": {
+        "server": "nginx/1.30.2",
+        "content-type": "image/png",
+        "content-length": "3830755",
+        "etag": "\"92b1180497be8e397ccaf47e97ab8ec1\"",
+        "last-modified": "Tue, 08 Sep 2026 16:59:35 GMT",
+        "vary": "Accept-Encoding"
+      }
+    }
+  ],
+  "photo_supported_sizes": [
+    {
+      "requested": 640,
+      "http_code": 200,
+      "size_download": 435290,
+      "time_starttransfer": 0.263104,
+      "time_total": 1.367511,
+      "dimensions": [
+        "  pixelWidth: 640",
+        "  pixelHeight: 425"
+      ]
+    },
+    {
+      "requested": 960,
+      "http_code": 200,
+      "size_download": 905131,
+      "time_starttransfer": 0.284827,
+      "time_total": 3.217202,
+      "dimensions": [
+        "  pixelWidth: 960",
+        "  pixelHeight: 638"
+      ]
+    }
+  ],
+  "photo_redirect_classes": [
+    {
+      "requested": 160,
+      "kind": "thumbnail"
+    },
+    {
+      "requested": 320,
+      "kind": "thumbnail"
+    },
+    {
+      "requested": 640,
+      "kind": "thumbnail"
+    },
+    {
+      "requested": 960,
+      "kind": "thumbnail"
+    },
+    {
+      "requested": 1280,
+      "kind": "original"
+    },
+    {
+      "requested": 2048,
+      "kind": "original"
+    }
+  ],
+  "avatar_totals": {
+    "original_bytes": 2951691,
+    "64px_bytes": 22211,
+    "reduction_percent": 99.25
+  },
+  "privacy": "No original resource URLs, signed URL values, account identifiers, or raw response headers stored."
+}

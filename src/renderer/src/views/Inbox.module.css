@@ -30,3 +30,19 @@
 
 .wrap { animation: global(rl-fade) var(--dur-fast) var(--ease-out) backwards; }
 .card { transition: box-shadow var(--dur-fast), border-color var(--dur-fast); }
+
+/* 筛选条。原来是侧栏里的一个分组，侧栏改成非模态之后搬到这里，紧贴标题下面 */
+.filters { display: flex; gap: 6px; padding: 0 24px 14px; flex: none; }
+.filter {
+  height: 30px; padding: 0 12px; border-radius: 9px;
+  display: flex; align-items: center; gap: 6px;
+  font-size: 13px; font-weight: 500; color: var(--ink2);
+  transition: background-color var(--dur-fast), color var(--dur-fast);
+}
+.filter:hover { background: var(--surface2); color: var(--ink); }
+.filterOn, .filterOn:hover { background: var(--tint); color: var(--ontint); font-weight: 600; }
+.filterN {
+  min-width: 16px; height: 16px; padding: 0 4px; border-radius: 99px;
+  background: var(--accent); color: var(--onacc);
+  font-size: 10px; font-weight: 600; line-height: 16px; text-align: center;
+}

@@ -7,7 +7,7 @@ const base = (id: string, at: number, over: Partial<Message> = {}): Message => (
   body: { kind: 'text', text: id }, attachments: [], quote: null, reactions: [], sendState: 'sent', mentionsMe: false,
   isAgent: false, agentTag: null, transient: false, runID: null, mentions: [], agentMentions: [], dayIndex: 1, ...over,
 })
-const pic = (id: string, at: number, sender = 'a'): Message => base(id, at, { sender, body: { kind: 'picture', url: `u/${id}`, name: id, natural: null } })
+const pic = (id: string, at: number, sender = 'a'): Message => base(id, at, { sender, body: { kind: 'picture', url: `u/${id}`, name: id, natural: null, bytes: 0 } })
 
 describe('画廊分组', () => {
   it('同一个人连着发的图并成一行，别人的不并', () => {

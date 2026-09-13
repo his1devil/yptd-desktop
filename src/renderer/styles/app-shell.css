@@ -1,0 +1,13 @@
+/*
+ * 只属于 app 外壳的几条。
+ *
+ * 不能放进 base.css：base.css 会整份打进设计系统（.design-sync/），
+ * 而「铺满视口、不滚动、默认不可选」是这个 Electron 窗口的性质，不是这套设计的性质——
+ * 跟着下发出去，用这套组件搭出来的每一个页面都会被钉成不可滚动的整屏。
+ */
+html, body, #root { height: 100%; }
+
+body {
+  overflow: hidden;
+  user-select: none;
+}

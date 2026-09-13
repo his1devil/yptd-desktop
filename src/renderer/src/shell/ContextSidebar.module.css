@@ -1,86 +1,149 @@
+/*
+ * 侧栏 268px，整条可以收起来。没有独立标题栏：红绿灯坐在这一列的左上角，
+ * 收起按钮在同一行右端。字号比主区小一档——它是导航，不是要读的内容。
+ */
 .side {
-  width: 252px;
+  width: 268px;
   flex: none;
   background: var(--sub);
   border-right: 1px solid var(--line);
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
+  overflow: hidden;
+  min-width: 0;
+  transition: width var(--dur-slow) var(--ease-out), border-color var(--dur-slow), background-color var(--dur-slow);
 }
+/* 收起：宽度归零，里面的内容保持原宽被裁掉，不重排 */
+.shut { width: 0; border-right-color: transparent; }
+.inner { width: 268px; height: 100%; display: flex; flex-direction: column; min-height: 0; }
 
-.head {
-  height: 46px;
+/* 顶栏：左边给原生红绿灯留位，整条可拖窗口 */
+.top {
+  height: 48px;
   flex: none;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 0 12px 0 16px;
-  border-bottom: 1px solid var(--line);
+  padding-right: 8px;
+  -webkit-app-region: drag;
 }
-.heading { font-size: 13.5px; font-weight: 600; letter-spacing: -.006em; }
-.headBtn {
-  width: 26px; height: 26px; border-radius: 7px;
+.lights { width: var(--lights-w); height: 100%; flex: none; }
+.topFill { flex: 1; min-width: 0; }
+.topBtn {
+  width: 28px; height: 28px; border-radius: 8px; flex: none;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--ink3);
+  -webkit-app-region: no-drag;
+  transition: background-color var(--dur-fast), color var(--dur-fast);
+}
+.topBtn:hover { background: var(--railhover); color: var(--ink2); }
+
+.fixed { flex: none; padding: 0 8px; }
+
+/* 搜索：hover 只抬一层底色，不换边框颜色 */
+.search {
+  width: 100%;
+  display: flex; align-items: center; gap: 8px;
+  height: 30px; padding: 0 10px; margin: 4px 0 8px;
+  border-radius: 8px;
+  background: var(--railfield);
+  color: var(--ink3);
+  transition: background-color var(--dur-fast), color var(--dur-fast);
+}
+.search:hover { background: var(--railhover); color: var(--ink2); }
+.searchText { flex: 1; min-width: 0; text-align: left; font-size: 13px; }
+.kbd { font-size: 10.5px; opacity: .7; flex: none; }
+.scroll { flex: 1; min-height: 0; overflow-y: auto; padding: 4px 8px 12px; }
+.foot {
+  flex: none;
+  padding: 6px 8px 8px;
+  border-top: 1px solid var(--railline);
+  display: flex; flex-direction: column; gap: 1px;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 32px;
+  padding: 0 10px;
+  border-radius: 8px;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--ink3);
+}
+.row:hover { background: var(--railhover); color: var(--ink2); }
+.rowOn, .rowOn:hover { background: var(--railactbg); color: var(--railactink); box-shadow: inset 0 0 0 1px var(--line); font-weight: 600; }
+.rowName { flex: 1; min-width: 0; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* 底部的自己：头像 + 名字 + 账号 */
+.me {
+  display: flex; align-items: center; gap: 9px;
+  height: 42px; padding: 0 8px; border-radius: 9px;
+  transition: background-color var(--dur-fast);
+}
+.me:hover { background: var(--railhover); }
+.meOn, .meOn:hover { background: var(--railactbg); box-shadow: inset 0 0 0 1px var(--line); }
+.meName { font-size: 13.5px; font-weight: 600; color: var(--ink2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.group { margin-bottom: 10px; }
+.groupHead { display: flex; align-items: center; height: 28px; padding: 0 2px 0 4px; }
+.groupTitle {
+  flex: 1; min-width: 0;
+  display: flex; align-items: center; gap: 5px;
+  height: 100%;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .04em;
+  color: var(--ink3);
+}
+.groupTitle:hover { color: var(--ink2); }
+.chev { flex: none; transition: transform var(--dur-fast) var(--ease-out); }
+/* 收起来时箭头指向右边 */
+.chevOff { transform: rotate(-90deg); }
+.groupN { font-size: 10.5px; font-weight: 600; color: var(--ink3); opacity: .8; }
+
+.groupBtn {
+  width: 20px; height: 20px; border-radius: 6px; flex: none;
   display: flex; align-items: center; justify-content: center;
   color: var(--ink3);
 }
-.headBtn:hover { background: var(--surface2); color: var(--ink); }
-
-.scroll { flex: 1; min-height: 0; overflow-y: auto; padding: 12px 8px 16px; }
-
-.group { margin-bottom: 18px; }
-.groupTitle {
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: .08em;
-  text-transform: uppercase;
-  color: var(--ink3);
-  margin: 0 0 8px 8px;
-}
+.groupBtn:hover { background: var(--railhover); color: var(--ink2); }
 
 .item {
   width: 100%;
-  min-height: 32px;
+  min-height: 31px;
   display: flex;
   align-items: center;
   gap: 9px;
-  padding: 5px 8px;
-  border-radius: 7px;
-  color: var(--ink2);
+  padding: 4px 10px;
+  border-radius: 8px;
+  color: var(--ink3);
 }
-.item:hover { background: var(--surface2); color: var(--ink); }
-.active, .active:hover { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px rgba(20,25,22,.05); }
+.item:hover { background: var(--railhover); color: var(--ink2); }
+.active, .active:hover { background: var(--railactbg); color: var(--railactink); box-shadow: inset 0 0 0 1px var(--line); }
 
-.hash { width: 20px; text-align: center; font-size: 13px; color: var(--ink3); flex: none; }
-.dot { width: 20px; display: inline-flex; justify-content: center; flex: none; }
-.dot::before { content: ''; width: 5px; height: 5px; border-radius: 99px; background: var(--ink3); }
+.hash { width: 20px; text-align: center; font-size: 14px; color: var(--ink3); flex: none; }
+.dot { width: 20px; display: inline-flex; justify-content: center; align-items: center; flex: none; }
+.dot::before { content: ''; width: 5px; height: 5px; border-radius: 99px; background: currentColor; opacity: .55; }
 
 .text { flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 1.25; }
-.name { font-size: 12.5px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.name { font-size: 13.5px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .active .name { font-weight: 600; }
-.sub { font-size: 10.5px; color: var(--ink3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-
-.live {
-  width: 6px; height: 6px; border-radius: 99px; flex: none;
-  background: var(--agent);
-  animation: global(rl-pulse) 1.4s ease-in-out infinite;
-}
+.sub { font-size: 11px; color: var(--ink3); opacity: .72; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 .count {
   flex: none;
   min-width: 17px; height: 17px; padding: 0 5px;
   border-radius: 99px;
   background: var(--line2);
-  color: var(--ink);
+  color: var(--ink2);
   font-size: 10px; font-weight: 600; line-height: 17px; text-align: center;
   animation: global(rl-spring-in) var(--dur-slow) var(--spring) backwards;
 }
-
-.emptyLine { font-size: 11.5px; color: var(--ink3); padding: 4px 8px; }
-.unread .name { color: var(--ink); font-weight: 600; }
 .countAt { background: var(--accent); color: var(--onacc); }
 
+.emptyLine { font-size: 12px; color: var(--ink3); padding: 4px 10px; }
+.unread .name { color: var(--ink2); font-weight: 600; }
+
 .scroll { animation: global(rl-fade) var(--dur-fast) var(--ease-out) backwards; }
-.item { transition: background-color var(--dur-fast), color var(--dur-fast); }
-.side { transition: background-color var(--dur-slow), border-color var(--dur-slow); }
+.row, .item { transition: background-color var(--dur-fast), color var(--dur-fast); }
 .emptyAction { color: var(--ontint); font-size: inherit; font-weight: 500; }
 .emptyAction:hover { text-decoration: underline; }

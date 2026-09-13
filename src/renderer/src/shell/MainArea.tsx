@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type DragEvent } from 'react'
 import { Avatar, glyphOf, pairOf } from '../components/Avatar'
-import { IconMore, IconPanel } from '../components/Icons'
+import { IconMore, IconPanel, IconSearch } from '../components/Icons'
 import { directId } from '../im/translate'
 import { usePlace, type Place } from '../store/selectors'
 import { agentsOf, useSession } from '../store/session'
@@ -17,6 +17,24 @@ import styles from './MainArea.module.css'
  * 主区：频道头 + 消息流 + 输入框。消息流和输入框按会话 key 挂载——切会话就是新的一份，
  * 滚动位置、量高缓存、草稿各归各。
  */
+/**
+ * 侧栏收起时，红绿灯会浮到主区上。这一条负责给它们让位，并补回侧栏里那两个入口：
+ * 展开侧栏和搜索。侧栏展开时它整条不存在。
+ *
+ * 放在 MainArea 这层而不是会话头部里——收件箱和设置页没有会话头部，
+ * 挂在头部里的话，侧栏一收起那两个页面就再也展不开了。
+ */
+function TopBar() {
+  const open = useUI((s) => s.sidebarOpen)
+  if (open) return null
+  return (
+    <div className={styles.topbar}>
+      <button className={styles.iconBtn} title="展开侧栏（⌘\\）" onClick={() => useUI.getState().setSidebarOpen(true)}><IconPanel size={17} /></button>
+      <button className={styles.iconBtn} title="搜索、跳转、派活（⌘K）" onClick={() => useUI.getState().setPalette(true)}><IconSearch size={16} /></button>
+    </div>
+  )
+}
+
 export function MainArea() {
   const section = useUI((s) => s.section)
   const conversationId = useUI((s) => s.conversationId)
@@ -24,8 +42,8 @@ export function MainArea() {
   const welcome = useUI((s) => s.welcome)
   const [dragging, setDragging] = useState(false)
 
-  if (section === 'inbox') return <main className={styles.main}><Inbox /></main>
-  if (section === 'set') return <main className={styles.main}><Settings /></main>
+  if (section === 'inbox') return <main className={styles.main}><TopBar /><Inbox /></main>
+  if (section === 'set') return <main className={styles.main}><TopBar /><Settings /></main>
 
   const onDragOver = (e: DragEvent): void => {
     if (!place || ![...e.dataTransfer.types].includes('Files')) return
@@ -40,10 +58,11 @@ export function MainArea() {
     composerBus.attach([...e.dataTransfer.files])
   }
 
-  if (!place) return <main className={styles.main}>{welcome ? <Welcome /> : <Landing />}</main>
+  if (!place) return <main className={styles.main}><TopBar />{welcome ? <Welcome /> : <Landing />}</main>
 
   return (
     <main className={styles.main} onDragOver={onDragOver} onDragLeave={() => setDragging(false)} onDrop={onDrop}>
+      <TopBar />
       <Head place={place} />
       <Stream key={`stream-${place.id}`} place={place} />
       <Composer key={`composer-${place.id}`} place={place} />
@@ -82,11 +101,8 @@ function Head({ place }: { place: Place }) {
             <Avatar glyph={place.glyph} pair={place.pair} size={22} kind={place.isAgent ? 'agent' : 'human'} id={place.peer?.userID} src={place.avatar} style={{ viewTransitionName: 'conv-avatar' }} />
           )}
           <span className={styles.title} style={{ viewTransitionName: 'conv-title' }}>{place.kind === 'channel' ? `#${place.title}` : place.title}</span>
-          {place.isAgent ? (
-            <span className={`${styles.tag} mono`}>{place.peer?.tag || 'AGENT'}</span>
-          ) : place.groupID ? (
-            <span className={`${styles.slug} mono`}>{place.groupID.slice(0, 8)}</span>
-          ) : null}
+          {/* 群号挪到右栏成员页了：它是查东西时才用的，占着标题行没意义 */}
+          {place.isAgent && <span className={`${styles.tag} mono`}>{place.peer?.tag || 'AGENT'}</span>}
         </div>
         <div className={styles.topic}>{subtitle}</div>
       </div>
@@ -95,7 +111,7 @@ function Head({ place }: { place: Place }) {
           <>
             <div className={styles.stack}>
               {place.members.slice(0, 3).map((m) => (
-                <Avatar key={m.id} glyph={glyphOf(m.name)} pair={pairOf(m.id)} size={22} kind={m.isAgent ? 'agent' : 'human'} id={m.id} src={m.avatar} style={{ border: '2px solid var(--bg)', boxSizing: 'content-box', marginLeft: -6 }} />
+                <Avatar key={m.id} glyph={glyphOf(m.name)} pair={pairOf(m.id)} size={26} kind={m.isAgent ? 'agent' : 'human'} id={m.id} src={m.avatar} style={{ border: '2px solid var(--bg)', boxSizing: 'content-box', marginLeft: -7 }} />
               ))}
             </div>
             <span className={`${styles.count} mono`}>{place.members.length}</span>

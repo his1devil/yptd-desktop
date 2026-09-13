@@ -16,6 +16,20 @@ export class Timeline {
    *  消息流按它决定画骨架、画空态还是画「重试」——不能用 hasMore 猜，猜错就是永远的骨架。 */
   status: TimelineStatus = 'idle'
   error: string | null = null
+  /**
+   * 往上翻页的游标：上一页原始 SDK 结果里最老那条的 clientMsgID。
+   *
+   * 不能用最老的**可见**消息：一整页全是回应或通知时它们会被过滤光，游标原地不动，
+   * 再翻还是同一页。分页要跟着 SDK 的原始边界走。
+   */
+  olderCursor: string | null = null
+  /** 这个会话自己的「正在往上翻」。原来是全局一个开关，A 会话的慢请求会把 B 的历史卡住。 */
+  loadingOlder = false
+  /**
+   * 上一次用这个游标往上翻什么也没拿到。SDK 说还有历史却给不出来时不要原地打转，
+   * 也不要就此宣告到底——游标一动就自动解开。
+   */
+  stalledAt: string | null = null
 
   get messages(): readonly Message[] { return this.items }
   get length(): number { return this.items.length }

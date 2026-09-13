@@ -11,21 +11,21 @@
 :root {
   --desk: #C9CDD6;
   --bg: #FFFFFF;
-  --sub: #F2F3F5;
+  --sub: #F8F9FA;
   --rail: #E3E5E8;
   --surface: #FFFFFF;
-  --surface2: #F7F8FA;
+  --surface2: #F1F2F4;
   --line: #E3E5E8;
   --line2: #CFD2D8;
   --ink: #060607;
   --ink2: #4E5058;
   --ink3: #666971;
-  --accent: #5865F2;
-  --accent2: #4752C4;
-  --tint: #E8EAFE;
-  --ontint: #4752C4;
-  --agent: #B32275;
-  --atint: #FCE7F3;
+  --accent: #0A6CFF;
+  --accent2: #0857D4;
+  --tint: #E8F1FF;
+  --ontint: #0A55CC;
+  --agent: #C2570B;
+  --atint: #FDEBD9;
   --user: #1668B8;
   --utint: #E1EFF9;
   --ok: #1D6A3A;
@@ -58,8 +58,9 @@
   --font: 'gg sans', 'PingFang SC', 'Noto Sans SC', system-ui, sans-serif;
   --mono: 'gg mono', 'gg sans', ui-monospace, Menlo, monospace;
 
-  /* 图标栏与标题栏红绿灯区同宽。原生红绿灯 52px 宽，放在 x=10 正好居中，58px 装不下。 */
-  --rail-w: 72px;
+  /* 给原生红绿灯留的位置。三个灯一共 52px 宽，放在 x=10 正好居中，58px 装不下。
+     侧栏展开时这块空位在侧栏左上角，收起时由会话区头部让出来。 */
+  --lights-w: 72px;
 
   /* 动效：只动 opacity / transform，进出用 ease-out，位移不超过 10px。 */
   --ease-out: cubic-bezier(.2, .8, .2, 1);
@@ -84,12 +85,12 @@
   --ink: #F2F3F5;
   --ink2: #D5D8DC;
   --ink3: #ADB2B9;
-  --accent: #5865F2;
-  --accent2: #7983F5;
-  --tint: #2C2E40;
-  --ontint: #A3ADF9;
-  --agent: #F58EC4;
-  --atint: #32212A;
+  --accent: #0A6CFF;
+  --accent2: #4F95FF;
+  --tint: #132C53;
+  --ontint: #78AEFF;
+  --agent: #F5A55E;
+  --atint: #33261A;
   --user: #58B2F0;
   --utint: #11283A;
   --ok: #4FC47F;

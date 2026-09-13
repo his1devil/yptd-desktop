@@ -1,8 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Toast } from './components/Toast'
 import { UpdateBanner } from './components/UpdateBanner'
-import { TitleBar } from './shell/TitleBar'
-import { Rail } from './shell/Rail'
 import { ContextSidebar } from './shell/ContextSidebar'
 import { Inspector } from './shell/Inspector'
 import { MainArea } from './shell/MainArea'
@@ -56,6 +54,7 @@ export function App() {
       if (e.key === 'k' || e.key === 'K') { e.preventDefault(); ui.setPalette(!ui.paletteOpen) }
       else if (e.key === ',') { e.preventDefault(); ui.setSettingsPage('profile') }
       else if (e.key === '.') { e.preventDefault(); ui.setInspectorOpen(!ui.inspectorOpen) }
+      else if (e.key === '\\') { e.preventDefault(); ui.setSidebarOpen(!ui.sidebarOpen) }
       else if (e.shiftKey && (e.key === 'e' || e.key === 'E')) { e.preventDefault(); if (ui.conversationId) void useSession.getState().markRead(ui.conversationId) }
       else if (!e.shiftKey && !e.altKey && /^[1-9]$/.test(e.key)) {
         const id = orderedConversationIds(useSession.getState())[Number(e.key) - 1]
@@ -79,10 +78,8 @@ export function App() {
   return (
     // 冷启动：四块区域按 60ms 错开各浮一次（App.module.css），之后各自的进场接着播
     <div className={styles.window}>
-      <TitleBar fullscreen={fullscreen} />
       <div className={styles.body}>
-        <Rail />
-        <ContextSidebar />
+        <ContextSidebar fullscreen={fullscreen} />
         <MainArea />
         <Inspector />
       </div>

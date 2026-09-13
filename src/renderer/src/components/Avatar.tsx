@@ -1,7 +1,11 @@
-import type { CSSProperties } from 'react'
+import { useState, type CSSProperties } from 'react'
+import { avatarSized } from '../im/files'
 import { agentColor } from './identity'
 import { Mark } from './Mark'
 import styles from './Avatar.module.css'
+
+/** 屏幕像素密度。26px 的槽在 2 倍屏要 52 物理像素，按它挑档位 */
+const DPR = typeof window === 'undefined' ? 1 : Math.min(2, window.devicePixelRatio || 1)
 
 /**
  * 头像 = 一个字 + 一对色块（--a1bg/--a1fg … --a5bg/--a5fg），有真头像图就贴图。
@@ -32,6 +36,12 @@ export function Avatar({ glyph, pair, size, kind = 'human', id, src, presence, r
   const radius = agent ? Math.max(4, Math.round(size * 0.23)) : 99
   const font = Math.round(size * 0.42)
   const dot = Math.round(size / 3)
+  // 按槽位挑一档，不下原图：右栏 26px 的槽原来在下最高 1200px、1MB 多的原文件，
+  // 实测三个头像 2.95MB，换成 64 档合计 22KB
+  const [ready, setReady] = useState<string | null>(null)
+  const [failed, setFailed] = useState<string | null>(null)
+  const want = src ? avatarSized(src, Math.round(size * DPR)) : null
+  const face = want && want !== failed ? want : null
   return (
     <span
       className={agent ? styles.agent : undefined}
@@ -53,12 +63,19 @@ export function Avatar({ glyph, pair, size, kind = 'human', id, src, presence, r
         ...style,
       }}
     >
-      {src ? (
-        <img src={src} alt="" draggable={false} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-      ) : agent ? (
-        <Mark size={Math.round(size * 0.82)} />
-      ) : (
-        glyph
+      {/* 字形和 agent 标记始终铺在底下：下载期间看到的是字，不是一块空色；失败也还留着它 */}
+      {agent ? <Mark size={Math.round(size * 0.82)} /> : glyph}
+      {face && (
+        <img
+          src={face} alt="" draggable={false} loading="lazy"
+          onLoad={() => setReady(face)}
+          onError={() => setFailed(face)}
+          style={{
+            position: 'absolute', inset: 0, width: '100%', height: '100%',
+            objectFit: 'cover', display: 'block',
+            opacity: ready === face ? 1 : 0, transition: 'opacity .14s ease-out',
+          }}
+        />
       )}
       {presence && (
         <span
