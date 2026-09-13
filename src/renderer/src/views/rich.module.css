@@ -8,6 +8,12 @@
   padding: 0 5px;
 }
 
+/* 涨跌幅：同一个芯片换套色，不描边——描边会让它看着像个按钮。
+   红涨绿跌走 --up / --down，翻不翻这套习惯在 tokens.css 里改一处。 */
+.up, .down { font-family: var(--mono); font-size: 12px; font-weight: 700; border-radius: 4px; padding: 0 5px; }
+.up   { background: var(--uptint);   color: var(--up); }
+.down { background: var(--downtint); color: var(--down); }
+
 /* @提及色块：人是蓝的，agent 是橙的（设计稿 segs() 的 chip） */
 .mentionUser,
 .mentionAgent {

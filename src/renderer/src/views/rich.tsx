@@ -10,9 +10,15 @@ import styles from './rich.module.css'
  *
  * @人是蓝的（--user/--utint），@agent 是橙的（--agent/--atint）。哪个名字是 agent
  * 在入库时已经分好，这里只认 props 里的两张名单。
+ *
+ * 代码芯片里如果整段就是一个带正负号的百分比（`+3.20%`、`-7.85%`），换成涨跌色。
+ * 行情推送靠这个一眼看出方向，人手打的 `-12%` 蹭到这条规则也读得通。要求带符号，
+ * 是为了把「涨跌幅」和普普通通的百分比（`99%` 的准确率）分开。
  */
 const TOKEN = /(\*\*[^*\n]+?\*\*)|(`[^`\n]+?`)|(~~[^~\n]+?~~)|(\[[^\]\n]+?\]\((https?:\/\/[^)\s]+)\))|(https?:\/\/[^\s<>)\]]+)|(@[A-Za-z][A-Za-z0-9_]*|@[一-龥]{2,4})/g
 const FENCE = /```[\w+-]*\n([\s\S]*?)```/g
+/** 带正负号的百分比，且整段只有它——涨跌幅，上语义色 */
+const MOVE = /^[+-]\d+(\.\d+)?%$/
 
 export const Rich = memo(function Rich({ text, mentions, agentMentions }: { text: string; mentions: string[]; agentMentions: string[] }) {
   const people = new Set(mentions)
@@ -40,7 +46,11 @@ function inline(text: string, people: Set<string>, agents: Set<string>): ReactNo
     if (i > last) out.push(text.slice(last, i))
     const [whole, bold, code, strike, link, linkUrl, bare, mention] = m
     if (bold) out.push(<strong key={key++}>{bold.slice(2, -2)}</strong>)
-    else if (code) out.push(<code key={key++} className={styles.code}>{code.slice(1, -1)}</code>)
+    else if (code) {
+      const body = code.slice(1, -1)
+      const cls = MOVE.test(body) ? (body[0] === '+' ? styles.up : styles.down) : styles.code
+      out.push(<code key={key++} className={cls}>{body}</code>)
+    }
     else if (strike) out.push(<s key={key++}>{strike.slice(2, -2)}</s>)
     else if (link && linkUrl) out.push(<a key={key++} href={linkUrl} target="_blank" rel="noreferrer">{link.slice(1, link.indexOf(']'))}</a>)
     else if (bare) out.push(<a key={key++} href={bare} target="_blank" rel="noreferrer">{bare}</a>)

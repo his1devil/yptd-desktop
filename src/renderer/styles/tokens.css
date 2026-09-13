@@ -36,6 +36,14 @@
   --onacc: #FFFFFF;
   --ondanger: #FFFFFF;
 
+  /* 涨跌。国内习惯是红涨绿跌，和 --ok / --danger 的语义正好相反，所以在这里转一道：
+     底下的组件只写 --up / --down，不要直接摸 --ok / --danger，不然改一次习惯要翻全仓。
+     只声明这一处——深色主题重定义 --danger / --ok 之后这四个会跟着变。 */
+  --up: var(--danger);
+  --uptint: var(--dtint);
+  --down: var(--ok);
+  --downtint: var(--gtint);
+
   --railink: var(--ink2);
   --railink2: var(--ink);
   --railline: var(--line);
