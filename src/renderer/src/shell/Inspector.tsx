@@ -5,7 +5,7 @@ import { IconCloseSmall, IconPanel } from '../components/Icons'
 import { usePlace, type Place } from '../store/selectors'
 import { useSession } from '../store/session'
 import { INSPECTOR_MAX, INSPECTOR_MIN, useUI } from '../store/ui'
-import { AgentProfile, RunsList } from '../views/InspectorTabs'
+import { AgentProfile, ChannelSettings, RunsList } from '../views/InspectorTabs'
 import styles from './Inspector.module.css'
 
 /**
@@ -15,7 +15,7 @@ import styles from './Inspector.module.css'
  * 决定，详情页签由点击推入、按会话键存、带 ✕。没有任何页签时不能白屏——
  * 显示"左宽右窄"的分栏示意和三条提示。
  */
-const BASE_TABS: Record<string, string> = { members: '成员', runs: '运行', profile: '资料' }
+const BASE_TABS: Record<string, string> = { members: '成员', settings: '设置', runs: '运行', profile: '资料' }
 const DETAIL_TABS: Record<string, string> = {}
 
 export function Inspector() {
@@ -33,7 +33,7 @@ export function Inspector() {
   // agent 会话没有基础页签；频道有成员（话题与运行等 M4 接上）
   // 频道：成员 + 运行；agent 会话：资料 + 运行；人和人的私聊没有基础页签
   const place = usePlace(conversationId)
-  const base = !place ? [] : place.kind === 'channel' ? ['members', 'runs'] : place.isAgent ? ['profile', 'runs'] : []
+  const base = !place ? [] : place.kind === 'channel' ? ['members', 'settings', 'runs'] : place.isAgent ? ['profile', 'runs'] : []
   const detail = conversationId ? tabsBy[conversationId] ?? [] : []
   const tabs = [...base, ...detail]
   const current = tab && tabs.includes(tab) ? tab : tabs[0] ?? null
@@ -99,6 +99,8 @@ export function Inspector() {
       <div className={styles.body}>
         {current === 'members' && place ? (
           <Members place={place} />
+        ) : current === 'settings' && place ? (
+          <ChannelSettings place={place} />
         ) : current === 'runs' && place ? (
           <RunsList place={place} />
         ) : current === 'profile' && place ? (

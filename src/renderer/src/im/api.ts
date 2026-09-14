@@ -92,6 +92,10 @@ export const api = {
   /** 两个隐私开关，各自可单独改：不传的那个不动 */
   privacy: (p: { discoverable?: boolean; joinable?: boolean }) =>
     call<{ discoverable: boolean; joinable: boolean }>('/v1/me/privacy', { method: 'PUT', body: p }),
+  /** 频道目录。客户端 SDK 的 searchGroups 只搜本地库，找没加入的频道只能走这里。 */
+  channels: (q: string) =>
+    call<{ channels: { group_id: string; name: string; members: number; joinable: boolean }[] }>(
+      `/v1/channels?q=${encodeURIComponent(q)}`),
   /** 按完整 ID 找人。没开放被搜索的人只有这一条路找得到，所以不接受前缀和昵称。 */
   lookup: (id: string) =>
     call<{ user: { user_id: string; nickname: string; is_agent?: boolean; tag?: string; color?: string } }>(`/v1/users/${encodeURIComponent(id)}`),

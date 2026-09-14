@@ -78,6 +78,8 @@ interface SessionState {
   createChannel(name: string, memberIDs: string[]): Promise<ConversationId>
   renameChannel(groupID: string, name: string): Promise<void>
   inviteToChannel(groupID: string, userIDs: string[]): Promise<void>
+  /** 自己走进一个公开频道。没开放自由加入的话服务端会拒，错误里说得清原因。 */
+  joinChannel(groupID: string): Promise<ConversationId>
   leaveChannel(groupID: string): Promise<void>
   dismissChannel(groupID: string): Promise<void>
   updateNickname(nickname: string): Promise<void>
@@ -373,6 +375,14 @@ export const useSession = create<SessionState>()((set, get) => ({
     await im.renameGroup(groupID, name)
     await refreshConversations(set, get)
   },
+  async joinChannel(groupID) {
+    await im.joinGroup(groupID)
+    await refreshConversations(set, get)
+    const id: ConversationId = `sg_${groupID}`
+    await get().open(id)
+    return id
+  },
+
   async inviteToChannel(groupID, userIDs) {
     await im.invite(groupID, userIDs)
     await get().loadMembers(groupID)

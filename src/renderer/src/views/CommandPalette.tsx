@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Avatar, glyphOf, pairOf } from '../components/Avatar'
 import { IconSearch } from '../components/Icons'
+import { api } from '../im/api'
 import { im } from '../im/client'
 import { directId } from '../im/translate'
 import { knownPeople } from '../store/mentions'
-import { agentsOf, useSession } from '../store/session'
+import { agentsOf, describe, useSession } from '../store/session'
 import { useUI } from '../store/ui'
 import { composerBus } from './composerBus'
 import styles from './CommandPalette.module.css'
@@ -15,7 +16,7 @@ import styles from './CommandPalette.module.css'
  */
 interface Item {
   key: string
-  group: '会话' | 'AGENT' | '成员' | '消息'
+  group: '会话' | 'AGENT' | '成员' | '频道' | '消息'
   title: string
   sub: string
   avatar?: { glyph: string; pair: number; agent?: boolean; id?: string | null; src?: string | null; hash?: boolean }
@@ -49,6 +50,21 @@ function Palette({ onClose }: { onClose(): void }) {
 
   // 这里也能找人，同样在打开时补一次（store 那边有节流，和选人面板不会打架）
   useEffect(() => { void useSession.getState().refreshRoster() }, [])
+
+  // 频道目录：只有这条能找到「还没加入的频道」——SDK 的 searchGroups 只搜本地库，
+  // 本地库里只有已经加入的群。走网络，所以比消息搜索多等一会儿。
+  const [channels, setChannels] = useState<{ group_id: string; name: string; members: number; joinable: boolean }[]>([])
+  useEffect(() => {
+    const kw = q.trim()
+    if (kw.length < 2) { setChannels([]); return }
+    let alive = true
+    const t = window.setTimeout(() => {
+      api.channels(kw)
+        .then((r) => { if (alive) setChannels(r.channels) })
+        .catch(() => { if (alive) setChannels([]) }) // 找不到频道不该把整个搜索框弄坏
+    }, 300)
+    return () => { alive = false; window.clearTimeout(t) }
+  }, [q])
 
   // 消息全文搜索：两个字起，停 200ms 再搜
   useEffect(() => {
@@ -111,8 +127,25 @@ function Palette({ onClose }: { onClose(): void }) {
         avatar: { glyph: glyphOf(p.nickname), pair: pairOf(p.userID), src: avatars[p.userID] ?? null },
         run: open(directId(me, p.userID)),
       }))
-    return [...conv, ...agents, ...humans, ...hits]
-  }, [q, conversations, people, me, avatars, hits, inChannel, current])
+    const rooms: Item[] = channels.map((c) => ({
+      key: `c:${c.group_id}`, group: '频道' as const,
+      title: c.name,
+      sub: c.joinable ? `${c.members} 位成员 · 回车加入` : `${c.members} 位成员 · 只能被邀请`,
+      avatar: { glyph: '#', pair: 0, hash: true },
+      run: () => {
+        if (!c.joinable) {
+          // 不开放自由加入的频道也照样列出来：知道它存在、去找人要邀请，
+          // 比假装它不存在有用。但别让回车变成一次注定失败的请求。
+          useSession.setState({ notice: `「${c.name}」没有开放自由加入，找频道里的人邀请你` })
+          return
+        }
+        void useSession.getState().joinChannel(c.group_id).catch((e) => {
+          useSession.setState({ notice: `加入失败：${describe(e)}` })
+        })
+      },
+    }))
+    return [...conv, ...agents, ...humans, ...rooms, ...hits]
+  }, [q, conversations, people, me, avatars, hits, channels, inChannel, current])
 
   useEffect(() => { setIdx(0) }, [q, items.length])
   useEffect(() => {

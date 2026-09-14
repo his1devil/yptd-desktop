@@ -99,6 +99,18 @@ export const im = {
   invite: (groupID: string, userIDs: string[], reason = '') =>
     unwrap(sdk.inviteUserToGroup({ groupID, userIDList: userIDs, reason })),
   quitGroup: (groupID: string) => unwrap(sdk.quitGroup(groupID)),
+  /** 自己申请加入。频道设了「不开放」时服务端会拒，错误里说明原因。 */
+  joinGroup: (groupID: string, reqMsg = '') =>
+    unwrap(sdk.joinGroup({ groupID, reqMsg, joinSource: 3 })),
+  /** 改群设置。Partial：只传要改的字段，别的不动。 */
+  setGroupInfo: (groupID: string, patch: { ex?: string; needVerification?: number }) =>
+    unwrap(sdk.setGroupInfo({ groupID, ...patch } as Parameters<typeof sdk.setGroupInfo>[0])),
+  /** 读一个群的完整信息（ex、needVerification 这些会话列表里没有的字段） */
+  groupInfo: (groupID: string) =>
+    unwrap(sdk.getSpecifiedGroupsInfo([groupID])).then((list) => list[0] ?? null),
+  /** 按名字找群。注意：这个搜的是本地库（只有已加入的群），不是服务端目录。 */
+  searchGroups: (keyword: string) =>
+    unwrap(sdk.searchGroups({ keywordList: [keyword], isSearchGroupID: false, isSearchGroupName: true })),
   dismissGroup: (groupID: string) => unwrap(sdk.dismissGroup(groupID)),
   renameGroup: (groupID: string, groupName: string) => unwrap(sdk.setGroupInfo({ groupID, groupName })),
   forget: (conversationID: string) => unwrap(sdk.deleteConversationAndDeleteAllMsg(conversationID)),
