@@ -92,6 +92,15 @@ export const api = {
   /** 两个隐私开关，各自可单独改：不传的那个不动 */
   privacy: (p: { discoverable?: boolean; joinable?: boolean }) =>
     call<{ discoverable: boolean; joinable: boolean }>('/v1/me/privacy', { method: 'PUT', body: p }),
+  /**
+   * agent 在某个频道里怎么表现。表单由服务端描述（字段、类型、范围、每个字段的
+   * 解释），客户端按 type 通用渲染——以后加新 agent 不用改客户端。
+   */
+  agentConfig: (agentID: string, groupID: string) =>
+    call<AgentConfig>(`/v1/agents/${encodeURIComponent(agentID)}/config?group=${encodeURIComponent(groupID)}`),
+  saveAgentConfig: (agentID: string, groupID: string, value: Record<string, unknown>) =>
+    call<{ ok: boolean }>(`/v1/agents/${encodeURIComponent(agentID)}/config?group=${encodeURIComponent(groupID)}`,
+      { method: 'PUT', body: value }),
   /** 频道目录。客户端 SDK 的 searchGroups 只搜本地库，找没加入的频道只能走这里。 */
   channels: (q: string) =>
     call<{ channels: { group_id: string; name: string; members: number; joinable: boolean }[] }>(
@@ -115,3 +124,25 @@ const fromInvite = (i: RawInvite): Invite => ({
   code: i.code, note: i.note ?? '', createdAt: i.created_at ?? 0, expiresAt: i.expires_at,
   expired: !!i.expired, usedBy: i.used_by ?? null, usedAt: i.used_at ?? null,
 })
+
+/** 服务端下发的表单描述 */
+export interface AgentField {
+  key: string
+  /** symbols 是带校验的标签输入，number 是数字，duration 是时长，text 是一行字 */
+  type: 'symbols' | 'number' | 'duration' | 'text'
+  label: string
+  hint?: string
+  unit?: string
+  min?: number | string
+  max?: number | string
+  step?: number
+}
+
+export interface AgentConfig {
+  form: { kind: string; title: string; note?: string; fields: AgentField[] }
+  /** 这个频道有没有单独配过。没配过时 value 是名册里的默认值。 */
+  configured: boolean
+  value: Record<string, unknown>
+  updated_by?: string
+  updated_at?: number
+}

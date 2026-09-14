@@ -19,7 +19,14 @@ const SRC = path.join(root, 'build/icon.png')
 const PAD = 0.14
 /** 亮度低于这个值当背景，透明 */
 const FLOOR = 110
-const SIZES = [[18, 'trayTemplate.png'], [36, 'trayTemplate@2x.png']]
+/**
+ * 画布高度。macOS 菜单栏是 22pt，惯例是 16pt 的图标——留白留在画布里，而不是把
+ * 内容铺满。原来是 18px 且内容裁到外接框、四周零留白，结果图标比旁边的未读数字
+ * "胖"一圈，看着就是没对齐。
+ */
+const BOX = [[16, 'trayTemplate.png'], [32, 'trayTemplate@2x.png']]
+/** 图形占画布高度的比例，剩下的是上下留白。1 就是铺满，也就是原来那个样子。 */
+const FILL = 0.86
 
 app.whenReady().then(() => {
   const src = nativeImage.createFromPath(SRC)
@@ -56,12 +63,20 @@ app.whenReady().then(() => {
   const mark = nativeImage.createFromBitmap(out, { width: bw, height: bh })
 
   const b64 = {}
-  for (const [h, name] of SIZES) {
-    const w = Math.max(1, Math.round(bw * h / bh))
-    const png = mark.resize({ width: w, height: h, quality: 'best' }).toPNG()
+  for (const [box, name] of BOX) {
+    // 图形按比例缩到 FILL，再垂直居中放进 box 高的画布里：上下各留一点白，
+    // 图标的视觉重量才和旁边的数字持平。
+    const glyphH = Math.round(box * FILL)
+    const glyphW = Math.max(1, Math.round(bw * glyphH / bh))
+    const scaled = mark.resize({ width: glyphW, height: glyphH, quality: 'best' })
+    const src = scaled.toBitmap()
+    const top = Math.round((box - glyphH) / 2)
+    const canvas = Buffer.alloc(glyphW * box * 4) // 全 0 = 全透明
+    src.copy(canvas, top * glyphW * 4)
+    const png = nativeImage.createFromBitmap(canvas, { width: glyphW, height: box }).toPNG()
     fs.writeFileSync(path.join(root, 'build', name), png)
-    b64[h] = png.toString('base64')
-    console.log(name, `${w}x${h}`, png.length, 'bytes')
+    b64[box] = png.toString('base64')
+    console.log(name, `${glyphW}x${box}（图形 ${glyphW}x${glyphH}，上下各留 ${top}）`, png.length, 'bytes')
   }
 
   const wrap = (s) => s.replace(/(.{100})/g, "$1'\n  + '").replace(/^/, "  '").replace(/$/, "'")
@@ -78,10 +93,10 @@ app.whenReady().then(() => {
  * 改了 build/icon.png 之后跑 \`npm run tray:icon\` 重新生成。
  */
 export const TRAY_ICON_1X =
-${wrap(b64[18])}
+${wrap(b64[16])}
 
 export const TRAY_ICON_2X =
-${wrap(b64[36])}
+${wrap(b64[32])}
 `)
   console.log('写好了 src/main/trayIcon.ts')
   app.quit()
