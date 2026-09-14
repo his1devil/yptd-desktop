@@ -25,8 +25,20 @@ const FLOOR = 110
  * "胖"一圈，看着就是没对齐。
  */
 const BOX = [[16, 'trayTemplate.png'], [32, 'trayTemplate@2x.png']]
-/** 图形占画布高度的比例，剩下的是上下留白。1 就是铺满，也就是原来那个样子。 */
-const FILL = 0.86
+/**
+ * 图形占画布高度的比例，剩下的是上下留白。1 就是铺满。
+ *
+ * 0.80 是照着真机截图量出来的：系统自带项（✳）在 2 倍图上是 25px 高，我们原来 28px
+ * 比它还高一圈——图标越高，旁边那个矮矮的未读数字越显得"飘在上面"。
+ */
+const FILL = 0.80
+/**
+ * 垂直微调，画布高度的比例，负数往上。
+ *
+ * 同样是量出来的：系统所有菜单栏项的外接框中心都在 32.0（2 倍图），我们居中放是 32.5，
+ * 低半像素。这个图形帽子在上、圆脸在下，实心的重量压在下半部，几何居中看着就偏低。
+ */
+const NUDGE = -0.03
 
 app.whenReady().then(() => {
   const src = nativeImage.createFromPath(SRC)
@@ -70,13 +82,13 @@ app.whenReady().then(() => {
     const glyphW = Math.max(1, Math.round(bw * glyphH / bh))
     const scaled = mark.resize({ width: glyphW, height: glyphH, quality: 'best' })
     const src = scaled.toBitmap()
-    const top = Math.round((box - glyphH) / 2)
+    const top = Math.round((box - glyphH) / 2 + NUDGE * box)
     const canvas = Buffer.alloc(glyphW * box * 4) // 全 0 = 全透明
     src.copy(canvas, top * glyphW * 4)
     const png = nativeImage.createFromBitmap(canvas, { width: glyphW, height: box }).toPNG()
     fs.writeFileSync(path.join(root, 'build', name), png)
     b64[box] = png.toString('base64')
-    console.log(name, `${glyphW}x${box}（图形 ${glyphW}x${glyphH}，上下各留 ${top}）`, png.length, 'bytes')
+    console.log(name, `${glyphW}x${box}（图形 ${glyphW}x${glyphH}，上留 ${top}、下留 ${box - glyphH - top}）`, png.length, 'bytes')
   }
 
   const wrap = (s) => s.replace(/(.{100})/g, "$1'\n  + '").replace(/^/, "  '").replace(/$/, "'")

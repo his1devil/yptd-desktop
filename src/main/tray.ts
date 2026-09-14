@@ -38,9 +38,13 @@ export function setupTray(show: () => void): void {
 /** 未读数变了就更新菜单栏和 Dock。0 就把数字撤掉，只留图标。 */
 export function setUnread(n: number): void {
   const count = Math.max(0, Math.floor(n) || 0)
-  // 99+ 是为了菜单栏：那一条的宽度是所有 app 分的，一个四位数会把别人挤走
+  // 99+ 是为了菜单栏：那一条的宽度是所有 app 分的，一个四位数会把别人挤走。
+  //
+  // 前面那个空格不是笔误。Electron 没有暴露图标和标题之间的间距，而系统默认给的
+  // 太窄：在真机截图上量过，我们是 3.5pt，旁边系统项（✳ 和 15%）是 9pt——数字
+  // 贴着图标，看着就是没对齐。补一个空格把它拉到接近系统的间距。
   if (tray) {
-    tray.setTitle(count > 0 ? (count > 99 ? '99+' : String(count)) : '')
+    tray.setTitle(count > 0 ? ' ' + (count > 99 ? '99+' : String(count)) : '')
     tray.setToolTip(count > 0 ? `yptd · ${count} 条待处理` : 'yptd')
   }
   if (process.platform === 'darwin') app.dock?.setBadge(count > 0 ? (count > 99 ? '99+' : String(count)) : '')
