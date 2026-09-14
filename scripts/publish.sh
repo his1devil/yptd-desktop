@@ -26,23 +26,30 @@ if [ "${1:-}" != "--upload-only" ]; then
   echo "== 构建"
   npm run build
 
-  echo "== 打包 + 签名 + 公证（两个架构，要等苹果几分钟）"
+  echo "== 打包 + 签名 + 公证（要等苹果几分钟）"
+  # 一个架构一个架构地打，不是 --arm64 --x64 一起上：两份 Electron 同时解包、签名、
+  # 公证，峰值内存能到几个 G，这台机器上被系统当成内存不足直接杀掉过。分开打慢一点，
+  # 但跑得完。
+  #
   # 苹果的时间戳服务（codesign --timestamp 要连它）对短时间内的大量请求限流，而一个
   # Electron 包要逐个签几百个文件。electron-builder 自带的三次重试是连着立刻重的，
   # 撞上限流时三次一起死。这里退到外面重来，每次等得更久一点，让限流缓过来。
-  attempt=1
-  until npx electron-builder --mac --arm64 --x64 --publish never; do
-    if [ $attempt -ge 4 ]; then
-      echo "== 打包失败 $attempt 次，放弃"
-      echo "   最常见的原因是苹果时间戳服务限流（错误里写 'A timestamp was expected but was not found'）。"
-      echo "   单独试一次可以确认服务本身是通的：codesign --force --sign <证书> --timestamp <任意文件>"
-      echo "   通的话就是限流，隔十几分钟再跑一次。"
-      exit 1
-    fi
-    wait=$((attempt * 300))
-    echo "== 打包失败（第 $attempt 次），等 $((wait / 60)) 分钟再来"
-    sleep $wait
-    attempt=$((attempt + 1))
+  for arch in $ARCHES; do
+    echo "== 打包 $arch"
+    attempt=1
+    until npx electron-builder --mac "--$arch" --publish never; do
+      if [ $attempt -ge 4 ]; then
+        echo "== $arch 打包失败 $attempt 次，放弃"
+        echo "   最常见的原因是苹果时间戳服务限流（错误里写 'A timestamp was expected but was not found'）。"
+        echo "   单独试一次可以确认服务本身是通的：codesign --force --sign <证书> --timestamp <任意文件>"
+        echo "   通的话就是限流，隔十几分钟再跑一次。"
+        exit 1
+      fi
+      wait=$((attempt * 300))
+      echo "== $arch 打包失败（第 $attempt 次），等 $((wait / 60)) 分钟再来"
+      sleep $wait
+      attempt=$((attempt + 1))
+    done
   done
 
   # electron-builder 写进 .DS_Store 的背景别名现在的 Finder 不认，得让 Finder 自己写一遍
