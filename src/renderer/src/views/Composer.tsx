@@ -26,6 +26,8 @@ const drafts = new Map<string, Segment[]>()
 /** 附件栏里的一项：图片带缩略图和原始尺寸，文件带名字和大小；都已经有本机路径，发送时交给 SDK */
 type Attachment = OutgoingAttachment & { id: string }
 let nextAttachment = 1
+/** 一次发送尝试的编号。只用来把失败回填认到对的那一条上，不出这个模块。 */
+let nextToken = 1
 const fmtBytes = (n: number): string => (n < 1024 ? `${n} B` : n < 1024 * 1024 ? `${(n / 1024).toFixed(0)} KB` : `${(n / 1024 / 1024).toFixed(1)} MB`)
 
 export function Composer({ place }: { place: Place }) {
@@ -42,9 +44,10 @@ export function Composer({ place }: { place: Place }) {
   const [segments, setSegments] = useState<Segment[]>(() => drafts.get(id) ?? [])
   const [attachments, setAttachments] = useState<Attachment[]>([])
   const [sending, setSending] = useState(false)
-  // 最近一次发送尝试的片段。回填只在发送失败时发生，而每次发送都会先把这里覆盖掉，
-  // 所以读到的一定是刚失败的那条，不会是上一条成功的。
-  const attempted = useRef<Segment[] | null>(null)
+  // 每一次发送尝试的片段，按 token 记。带附件的发送不等结果就返回，所以同一个会话
+  // 可以有好几条同时在路上；只记「最近一次」的话，先发的那条失败时回填进来的会是后发
+  // 那条的正文和 @——人会看到自己没打过的字，还可能 @ 错人。
+  const attempted = useRef(new Map<string, Segment[]>())
 
   // 草稿：每次变更记下来，切走再切回来还在
   useEffect(() => { drafts.set(id, segments) }, [id, segments])
@@ -91,8 +94,9 @@ export function Composer({ place }: { place: Place }) {
     if (cid !== id) return
     // 优先用发送时留下的片段：压成纯文本的话 @ 色块会退化成字面文字，
     // 重发时 mentions 是空的，被 @ 的人收不到提醒也不会高亮。
-    const back = attempted.current
-    attempted.current = null
+    // 按 token 认领，认的是失败的那一条，不是最后发的那一条。
+    const back = d.token ? attempted.current.get(d.token) : undefined
+    if (d.token) attempted.current.delete(d.token)
     editor.current?.load(back ?? (d.text ? [{ t: 'text', v: d.text }] : []))
     setAttachments(d.attachments.map((a) => ({ ...a, id: `a${nextAttachment++}` })))
     if (d.quote) setQuote(id, d.quote)
@@ -107,14 +111,21 @@ export function Composer({ place }: { place: Place }) {
     const text = composed.text.replace(/\s+$/, '').replace(/^\n+/, '')
     if (!text.trim() && attachments.length === 0) return
     const batch = attachments.map(({ id: _id, ...a }) => a)
-    attempted.current = editor.current?.draft() ?? null
+    const token = `d${nextToken++}`
+    const draft = editor.current?.draft()
+    if (draft) {
+      attempted.current.set(token, draft)
+      // 发成功的那些没人会来认领。在途的从来不会有几条，留个上限就够，
+      // 满了丢最早的——最坏也只是退回纯文本回填，就是修之前的行为。
+      if (attempted.current.size > 8) attempted.current.delete(attempted.current.keys().next().value!)
+    }
     editor.current?.clear()
     setSegments([])
     drafts.delete(id)
     setAttachments([])
     if (quoteId) setQuote(id, null)
     const s = useSession.getState()
-    const opts = { quote: quoteId ?? undefined, mentions: composed.mentions.length ? composed.mentions : undefined }
+    const opts = { quote: quoteId ?? undefined, mentions: composed.mentions.length ? composed.mentions : undefined, draftToken: token }
     if (batch.length) { void s.sendRich(id, text, { ...opts, attachments: batch }); return }
     setSending(true)
     void s.send(id, text, opts).finally(() => setSending(false))

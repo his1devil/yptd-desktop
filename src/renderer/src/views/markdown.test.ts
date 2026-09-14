@@ -79,3 +79,34 @@ describe('切块', () => {
     expect(b.map((x) => x.kind)).toEqual(['code'])
   })
 })
+
+describe('单元格里的竖线', () => {
+  const table = (t: string): ReturnType<typeof blocks>[number] | undefined =>
+    blocks(t).find((b) => b.kind === 'table')
+
+  it('转义的竖线是内容，不是分隔符', () => {
+    // 原来 split('|') 会把 a\|b 拆成两列，「选择之一」被多余列的截断吃掉——
+    // 内容凭空消失。agent 发正则和命令的表格天天踩这个。
+    expect(table('| 表达式 | 描述 |\n|---|---|\n| a\\|b | 选择之一 |')).toMatchObject({
+      rows: [['a|b', '选择之一']],
+    })
+  })
+
+  it('转义的反斜线不吃掉后面的竖线', () => {
+    expect(table('| a | b |\n|---|---|\n| 结尾是\\\\ | 第二列 |')).toMatchObject({
+      rows: [['结尾是\\', '第二列']],
+    })
+  })
+
+  it('空单元格还是空的', () => {
+    expect(table('| a | b |\n|---|---|\n|  | 只有右边 |')).toMatchObject({
+      rows: [['', '只有右边']],
+    })
+  })
+
+  it('行内代码里的转义竖线也按内容算', () => {
+    expect(table('| 写法 | 意思 |\n|---|---|\n| `a\\|b` | 或 |')).toMatchObject({
+      rows: [['`a|b`', '或']],
+    })
+  })
+})

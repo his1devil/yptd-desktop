@@ -36,7 +36,15 @@ export function App() {
   // 未读数推给主进程画到菜单栏图标旁边和 Dock 角标上。订阅 store 而不是放在渲染里，
   // 这样窗口藏起来、组件没在重绘的时候，数字照样是新的。
   useEffect(() => {
-    const push = (): void => window.desktop.setUnread(needsYou(useSession.getState().conversations))
+    // 订阅整个 store 是因为 conversations 换引用的路径不止一条；但每次 tick、notice、
+    // 头像变动都重算并发一次 IPC 太吵，数没变就不打扰主进程。
+    let last = -1
+    const push = (): void => {
+      const n = needsYou(useSession.getState().conversations)
+      if (n === last) return
+      last = n
+      window.desktop.setUnread(n)
+    }
     push()
     return useSession.subscribe(push)
   }, [])

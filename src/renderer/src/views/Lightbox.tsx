@@ -65,12 +65,25 @@ export function Lightbox({ items, index, onIndex, onClose }: { items: Pic[]; ind
     portal.setAttribute('aria-label', `查看图片 ${cur?.name ?? ''}`)
   }, [cur?.name])
 
+  /**
+   * 每张图最后一次升级请求的编号。解码是异步的，回来的顺序不一定是发出去的顺序：
+   * 显示图还在路上时点了原图，如果原图（已缓存）先解完，晚到的显示图会把原图盖回低清，
+   * 而「原图」按钮这时已经消失了，没法再点一次。所以只认最后一次请求的结果。
+   */
+  const seq = useRef(new Map<string, number>())
+
   const swap = useCallback((key: string, target: string) => {
+    const n = (seq.current.get(key) ?? 0) + 1
+    seq.current.set(key, n)
     const img = new Image()
     img.src = target
-    // 解码完再换，换的是同比例的图，倍率和位置都不动；解码失败也照换，让 <img> 自己去报错
-    const done = (): void => setSrcs((s) => (s[key] === target ? s : { ...s, [key]: target }))
-    void (img.decode ? img.decode().then(done, done) : Promise.resolve().then(done))
+    const done = (): void => {
+      if (seq.current.get(key) !== n) return // 已经有更新的请求了，这次的结果作废
+      setSrcs((s) => (s[key] === target ? s : { ...s, [key]: target }))
+    }
+    // 解码失败就不换：原来失败也照换，结果是一张本来能看的缩略图被换成坏图，
+    // 界面上只剩一行错误，连重试的入口都没有。留着当前这张更有用。
+    void (img.decode ? img.decode().then(done, () => { /* 保留现在看得见的那张 */ }) : Promise.resolve().then(done))
   }, [])
 
   // 只升当前这张。相邻的先用缓存里的缩图顶着，不提前占带宽。
@@ -123,6 +136,10 @@ export function Lightbox({ items, index, onIndex, onClose }: { items: Pic[]; ind
     <div ref={shellRef} className={styles.shell} data-modal="true" tabIndex={-1} onKeyDown={trap}>
       <PhotoSlider
         className={styles.portal}
+        // 必须关掉。库默认图片数超过 3 就开循环（loop 默认值 3），而循环模式下
+        // PhotoBox 的 React key 里带着 src——换清晰度就等于换 key，组件重挂，
+        // 用户刚做的缩放、旋转、拖动全部归零。工具栏本来也是首尾停止，不循环。
+        loop={false}
         // 每张图挂自己的缩略图作为放大的起点。虚拟列表随时会把缩略图回收，查不到就是 null，
         // 它会退化成淡入淡出，而不是对着失效的节点做缩放
         images={items.map((p) => ({

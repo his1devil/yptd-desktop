@@ -208,8 +208,20 @@ function rememberBounds(win: BrowserWindow): void {
   }
   win.on('resize', save)
   win.on('move', save)
-  win.on('close', () => { clearTimeout(timer); write() })
+  win.on('close', (e) => {
+    clearTimeout(timer)
+    write()
+    // macOS 上关窗不等于退出；藏起来，渲染进程还活着，未读数继续往托盘上推
+    if (!quitting && process.platform === 'darwin') { e.preventDefault(); win.hide() }
+  })
 }
+
+/**
+ * 关窗和退出是两回事。菜单栏上有图标、有未读数，那就意味着「关了窗还在收消息」——
+ * 而未读数是渲染进程里的 store 订阅推上来的，窗口一销毁，数字就停在关窗那一刻，
+ * 托盘上挂着一个永远不动的数比没有更糟。所以关窗只是藏起来，真正退出才销毁。
+ */
+let quitting = false
 
 function createWindow(): BrowserWindow {
   const win = new BrowserWindow({
@@ -265,7 +277,7 @@ function createWindow(): BrowserWindow {
   return win
 }
 
-app.on('before-quit', () => { disposeOpenIM(); disposeTray() })
+app.on('before-quit', () => { quitting = true; disposeOpenIM(); disposeTray() })
 
 ipcMain.on(IPC.unreadSet, (_e, count: number) => setUnread(count))
 
@@ -314,7 +326,12 @@ void app.whenReady().then(() => {
     if (process.platform === 'darwin') void app.dock?.show()
   })
   app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow()
+    const open = BrowserWindow.getAllWindows()[0]
+    if (!open) { createWindow(); return }
+    // 藏起来的那扇窗要主动 show：Dock 点一下不会自己把 hidden 的窗口拉回来
+    if (open.isMinimized()) open.restore()
+    open.show()
+    open.focus()
   })
 })
 

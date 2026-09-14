@@ -84,10 +84,32 @@ function tableAt(lines: string[], i: number): { block: Block; end: number } | nu
   return { block: { kind: 'table', head: headCells, align, rows }, end }
 }
 
-/** 一行拆成单元格。首尾那根竖线是画框用的，不是空列。 */
+/**
+ * 一行拆成单元格。首尾那根竖线是画框用的，不是空列。
+ *
+ * 逐字符扫而不是 split('|')：单元格里可以写 `\|` 表示一根字面的竖线，split 会把它
+ * 当成分隔符多切一列，而多出来的列会被后面按表头列数截掉——于是那一行后面真正的
+ * 内容凭空消失。agent 发正则、命令、表达式的表格时常常这样写。
+ */
 function cells(line: string): string[] {
-  let s = line.trim()
-  if (s.startsWith('|')) s = s.slice(1)
-  if (s.endsWith('|') && !s.endsWith('\\|')) s = s.slice(0, -1)
-  return s.split('|').map((c) => c.trim())
+  const s = line.trim()
+  const out: string[] = []
+  let cell = ''
+  for (let i = 0; i < s.length; i++) {
+    const c = s[i]!
+    if (c === '\\' && i + 1 < s.length) {
+      const next = s[i + 1]!
+      // 只有 \| 和 \\ 是转义；别的反斜线是内容本身（Windows 路径、正则里的 \d）
+      if (next === '|' || next === '\\') { cell += next; i++; continue }
+      cell += c
+      continue
+    }
+    if (c === '|') { out.push(cell); cell = ''; continue }
+    cell += c
+  }
+  out.push(cell)
+  // 首尾那两根是边框：只有当它们切出来的是空串时才丢，不然会吃掉真的空列
+  if (out.length > 1 && out[0]!.trim() === '' && s.startsWith('|')) out.shift()
+  if (out.length > 1 && out[out.length - 1]!.trim() === '' && s.endsWith('|')) out.pop()
+  return out.map((c) => c.trim())
 }

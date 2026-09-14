@@ -30,6 +30,8 @@ export class Timeline {
    * 也不要就此宣告到底——游标一动就自动解开。
    */
   stalledAt: string | null = null
+  /** stalledAt 是什么时候标上的。同一个游标短时间内不再问，但过一会儿要能重试。 */
+  stalledSince = 0
 
   get messages(): readonly Message[] { return this.items }
   get length(): number { return this.items.length }

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Avatar, glyphOf } from '../components/Avatar'
 import { api, type AgentProfile as Profile, type RunSummary } from '../im/api'
-import { encodePolicy, parsePolicy, verificationFor, type ChannelPolicy } from '../im/channel'
+import { CLOSED, encodePolicy, parsePolicy, verificationFor, type ChannelPolicy } from '../im/channel'
 import { im } from '../im/client'
 import { loadAgents } from '../store/agents'
 import type { Place } from '../store/selectors'
@@ -105,32 +105,40 @@ const when = (ms: number): string => {
 export function ChannelSettings({ place }: { place: Place }): React.ReactElement {
   const me = useSession((s) => s.me)
   const canEdit = place.members.some((m) => m.id === me && (m.role === 'owner' || m.role === 'admin'))
-  const [policy, setPolicy] = useState<ChannelPolicy | null>(null)
+  // 读到的状态连着它属于哪个群一起存。右栏的页签是全局一个值，换频道时这个组件
+  // 不会重挂，只存 policy 的话，上一个频道的开关会一直画在下一个频道上，直到它自己
+  // 的信息回来——中间点一下，就把上一个频道的设置写进了这一个。
+  const [loaded, setLoaded] = useState<{ groupID: string; policy: ChannelPolicy; err: string } | null>(null)
   const [busy, setBusy] = useState<keyof ChannelPolicy | null>(null)
-  const [err, setErr] = useState('')
 
   const groupID = place.groupID
+  // 对不上就当还没读到：开关是禁用的加载态，而不是别人的状态
+  const mine = loaded?.groupID === groupID ? loaded : null
+  const policy = mine?.policy ?? null
+  const err = mine?.err ?? ''
+
   useEffect(() => {
     if (!groupID) return
     let alive = true
     void im.groupInfo(groupID)
-      .then((g) => { if (alive) setPolicy(parsePolicy(g?.ex)) })
-      .catch((e) => { if (alive) setErr(describe(e)) })
+      .then((g) => { if (alive) setLoaded({ groupID, policy: parsePolicy(g?.ex), err: '' }) })
+      .catch((e) => { if (alive) setLoaded({ groupID, policy: CLOSED, err: describe(e) }) })
     return () => { alive = false }
   }, [groupID])
 
   const flip = async (key: keyof ChannelPolicy, value: boolean): Promise<void> => {
     if (!policy || !groupID) return
-    const next = { ...policy, [key]: value }
-    setBusy(key); setErr('')
-    setPolicy(next) // 先画出来，失败再退回去
+    const before = policy
+    const next = { ...before, [key]: value }
+    setBusy(key)
+    setLoaded({ groupID, policy: next, err: '' }) // 先画出来，失败再退回去
     try {
       // ex 和 needVerification 必须一起写：只改 ex 的话，一个「可加入」的频道
       // 仍然停在「要验证」上，每次加入都变成一条没人会批的挂起申请。
       await im.setGroupInfo(groupID, { ex: encodePolicy(next), needVerification: verificationFor(next) })
     } catch (e) {
-      setPolicy(policy)
-      setErr(describe(e))
+      // 回滚也要认准群：这次保存还没结束就切走的话，回滚不能落到新频道身上
+      setLoaded((cur) => (cur?.groupID === groupID ? { groupID, policy: before, err: describe(e) } : cur))
     } finally { setBusy(null) }
   }
 

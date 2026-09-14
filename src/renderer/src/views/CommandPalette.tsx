@@ -51,6 +51,23 @@ function Palette({ onClose }: { onClose(): void }) {
   // 这里也能找人，同样在打开时补一次（store 那边有节流，和选人面板不会打架）
   useEffect(() => { void useSession.getState().refreshRoster() }, [])
 
+  // 按完整 ID 找人。隐私页承诺了「别人还可以用你的完整 ID 直接找到你」，而名册里
+  // 只有开了被搜索的人——这条就是兑现那句话的地方，也是关掉被搜索之后唯一的联系方式。
+  // 只在输入长得像账号时才发（服务端的规则：3–32 位字母数字下划线），免得每打一个
+  // 中文昵称都去问一次服务端。
+  const [byID, setByID] = useState<{ userID: string; nickname: string; isAgent: boolean } | null>(null)
+  useEffect(() => {
+    const kw = q.trim()
+    if (!/^[A-Za-z0-9_]{3,32}$/.test(kw)) { setByID(null); return }
+    let alive = true
+    const t = window.setTimeout(() => {
+      api.lookup(kw)
+        .then((r) => { if (alive) setByID({ userID: r.user.user_id, nickname: r.user.nickname, isAgent: !!r.user.is_agent }) })
+        .catch(() => { if (alive) setByID(null) }) // 没这个人就是没有，不用报错
+    }, 300)
+    return () => { alive = false; window.clearTimeout(t) }
+  }, [q])
+
   // 频道目录：只有这条能找到「还没加入的频道」——SDK 的 searchGroups 只搜本地库，
   // 本地库里只有已经加入的群。走网络，所以比消息搜索多等一会儿。
   const [channels, setChannels] = useState<{ group_id: string; name: string; members: number; joinable: boolean }[]>([])
@@ -127,6 +144,17 @@ function Palette({ onClose }: { onClose(): void }) {
         avatar: { glyph: glyphOf(p.nickname), pair: pairOf(p.userID), src: avatars[p.userID] ?? null },
         run: open(directId(me, p.userID)),
       }))
+    // 名册里已经有的就不用再列一遍；自己也不列
+    const extra: Item[] = byID && byID.userID !== me && !people.some((p) => p.userID === byID.userID)
+      ? [{
+          key: `id:${byID.userID}`, group: '成员' as const,
+          title: byID.nickname || byID.userID,
+          sub: `@${byID.userID} · 按 ID 找到 · 私聊`,
+          avatar: { glyph: glyphOf(byID.nickname || byID.userID), pair: pairOf(byID.userID), agent: byID.isAgent, id: byID.userID },
+          run: open(directId(me, byID.userID)),
+        }]
+      : []
+
     const rooms: Item[] = channels.map((c) => ({
       key: `c:${c.group_id}`, group: '频道' as const,
       title: c.name,
@@ -144,8 +172,8 @@ function Palette({ onClose }: { onClose(): void }) {
         })
       },
     }))
-    return [...conv, ...agents, ...humans, ...rooms, ...hits]
-  }, [q, conversations, people, me, avatars, hits, channels, inChannel, current])
+    return [...conv, ...agents, ...humans, ...extra, ...rooms, ...hits]
+  }, [q, conversations, people, me, avatars, hits, channels, byID, inChannel, current])
 
   useEffect(() => { setIdx(0) }, [q, items.length])
   useEffect(() => {

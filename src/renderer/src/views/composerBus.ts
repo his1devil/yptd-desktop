@@ -7,7 +7,19 @@ import type { MessageId, OutgoingAttachment } from '../../../shared/model'
  */
 type TextListener = (text: string) => void
 type FilesListener = (files: File[]) => void
-export interface RestoredDraft { text: string; attachments: OutgoingAttachment[]; quote: MessageId | null }
+export interface RestoredDraft {
+  text: string
+  attachments: OutgoingAttachment[]
+  quote: MessageId | null
+  /**
+   * 哪一次发送。带附件的发送是不等结果就返回的，同一个会话可以有好几条同时在路上，
+   * 所以失败回来时必须能认出是哪一条——只记「最近一次」的话，先发的那条失败了，
+   * 回填进来的会是后发那条的正文和 @。
+   *
+   * 对 store 来说它就是个字符串，原样带回来即可；里面存的是什么只有输入框知道。
+   */
+  token?: string
+}
 type RestoreListener = (conversationId: string, draft: RestoredDraft) => void
 const textListeners = new Set<TextListener>()
 const fileListeners = new Set<FilesListener>()

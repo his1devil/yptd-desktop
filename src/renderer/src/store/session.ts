@@ -65,9 +65,9 @@ interface SessionState {
   /** 第一页还没到（或上次没到）就去拉；到过了什么都不做。消息流挂上来时调，重启后恢复的会话靠它加载。 */
   ensure(id: ConversationId): Promise<void>
   loadOlder(id: ConversationId): Promise<void>
-  send(id: ConversationId, text: string, opts?: { quote?: MessageId; mentions?: string[] }): Promise<void>
+  send(id: ConversationId, text: string, opts?: { quote?: MessageId; mentions?: string[]; draftToken?: string }): Promise<void>
   /** 文字和附件一条消息：先在时间线上摆一条「发送中」，传完文件、发出去后换成服务端回显 */
-  sendRich(id: ConversationId, text: string, opts: { quote?: MessageId; mentions?: string[]; attachments: OutgoingAttachment[] }): Promise<void>
+  sendRich(id: ConversationId, text: string, opts: { quote?: MessageId; mentions?: string[]; attachments: OutgoingAttachment[]; draftToken?: string }): Promise<void>
   react(id: ConversationId, target: MessageId, emoji: string): Promise<void>
   revoke(id: ConversationId, target: MessageId): Promise<void>
   loadMembers(groupID: string): Promise<void>
@@ -105,6 +105,8 @@ export const agentsOf = (people: Person[]) => people.filter((p) => p.isAgent)
 const PAGE = 40
 /** 整页被过滤光时最多再往前翻几页。给个上限，免得一屏历史全是通知时一直转下去 */
 const SKIP_ROUNDS = 5
+/** 同一个游标要空之后，隔这么久才值得再问一次 */
+const STALL_COOLDOWN = 5_000
 /** 成员一次要多少、最多要到多少。大群要接着翻页，但也不能把几万人一次全拉下来 */
 const MEMBER_PAGE = 200
 const MEMBER_CAP = 2000
@@ -209,8 +211,9 @@ export const useSession = create<SessionState>()((set, get) => ({
     const t = timeline(id)
     // 「正在翻」记在会话自己身上：A 的慢请求不该把 B 的历史一起卡住
     if (!t.hasMore || t.loadingOlder || !t.olderCursor) return
-    // 上一轮用同一个游标什么也没拿到，别再用它去要一遍
-    if (t.stalledAt && t.stalledAt === t.olderCursor) return
+    // 上一轮用同一个游标什么也没拿到。别每滚一下就再问一遍同一个游标，但也不能
+    // 永久封死——那可能只是 SDK 同步途中的一次空页，等一会儿再试就有了。
+    if (t.stalledAt && t.stalledAt === t.olderCursor && Date.now() - t.stalledSince < STALL_COOLDOWN) return
     t.loadingOlder = true
     bump(set)
     try { await loadPage(set, get, id, t.olderCursor) } finally { t.loadingOlder = false; bump(set) }
@@ -219,7 +222,7 @@ export const useSession = create<SessionState>()((set, get) => ({
   // 发送即上屏。先让 SDK 把消息建出来——纯本地操作，clientMsgID 当场就定了——按这个 id 摆一条
   // 「发送中」。回显回来还是同一个 id，时间线原位换内容，行不卸载不重挂，入场动画只播一次。
   async send(id, text, opts) {
-    const fallback = { text, attachments: [], quote: opts?.quote ?? null }
+    const fallback = { text, attachments: [], quote: opts?.quote ?? null, token: opts?.draftToken }
     let created: MessageItem
     try {
       created = await composeText(get, id, text, opts)
@@ -242,7 +245,7 @@ export const useSession = create<SessionState>()((set, get) => ({
 
   async sendRich(id, text, opts) {
     const hasText = !!text.trim()
-    const fallback = { text, attachments: opts.attachments, quote: opts.quote ?? null }
+    const fallback = { text, attachments: opts.attachments, quote: opts.quote ?? null, token: opts.draftToken }
     // 正文还是文本消息：服务端和别的端照旧读到文字和 @；附件在 ex 里。没打字就放个占位——
     // 占位只看附件的种类和名字，上传之前就能算出来，所以消息能在传之前先上屏且 id 不变。
     let created: MessageItem
@@ -331,29 +334,46 @@ export const useSession = create<SessionState>()((set, get) => ({
     const running = memberLoads.get(groupID)
     if (running) return running
     const work = (async () => {
+      // 200 人以上要接着翻。**每页拿到就交出去**：一页 200 人已经能画了，攒齐几页
+      // 再一次性 set 的话，第一屏成员、头像和 @ 候选都得等最后一页——而 @ 候选严格
+      // 依赖群成员，这个等待会直接卡住输入。后面哪一页失败，前面成功的也还在。
+      const agents = new Set(agentsOf(get().roster).map((a) => a.userID))
+      const toMember = (m: GroupMemberItem): Member => ({
+        id: m.userID, name: m.nickname || m.userID, avatar: m.faceURL || null,
+        role: m.roleLevel >= 100 ? 'owner' : m.roleLevel >= 60 ? 'admin' : 'member',
+        isAgent: agents.has(m.userID),
+      })
+      let got = 0
       try {
-        // 200 人以上要接着翻。原来只取 offset=0/count=200，大群的名单是缺的
-        const list: GroupMemberItem[] = []
         for (let offset = 0; offset < MEMBER_CAP; offset += MEMBER_PAGE) {
           const batch = await im.members(groupID, offset, MEMBER_PAGE)
-          list.push(...batch)
+          const page = batch.map(toMember)
+          got += page.length
+
+          // 刚登录、同步还没完时 SDK 会先给一张空表。不要把这个空表当成「这个群没人」
+          // 存下来：存了之后 open() 的存在性判断就跳过重拉，这个群的成员再也不会出现。
+          // 真正补上它的是 OnSyncServerFinish，那里会重新叫一次。
+          if (offset === 0 && page.length === 0 && get().members[groupID]) return
+
+          set((s) => {
+            // 第一页替换，后面的页往上接——这一轮的结果不该和上一轮的残留混在一起
+            const base = offset === 0 ? [] : s.members[groupID] ?? []
+            const seen = new Set(base.map((m) => m.id))
+            const merged = [...base, ...page.filter((m) => !seen.has(m.id))]
+            return { members: { ...s.members, [groupID]: merged }, avatars: mergeAvatars(s.avatars, page.map((m) => [m.id, m.avatar])) }
+          })
+          // 每页各拉各的头像，不攒到最后一次性甩几千个 ID 过去
+          void loadAvatars(set, page.map((m) => m.id))
+
           if (batch.length < MEMBER_PAGE) break
         }
-        // 刚登录、同步还没完时 SDK 会先给一张空表。不要把这个空表当成「这个群没人」存下来：
-        // 存了之后 open() 的存在性判断就跳过重拉，这个群的成员再也不会出现。
-        // 真正补上它的是 OnSyncServerFinish，那里会重新叫一次，不用在这里硬等。
-        if (list.length === 0 && get().members[groupID]) return
-        const agents = new Set(agentsOf(get().roster).map((a) => a.userID))
-        const members: Member[] = list.map((m: GroupMemberItem) => ({
-          id: m.userID, name: m.nickname || m.userID, avatar: m.faceURL || null,
-          role: m.roleLevel >= 100 ? 'owner' : m.roleLevel >= 60 ? 'admin' : 'member',
-          isAgent: agents.has(m.userID),
-        }))
-        set((s) => ({ members: { ...s.members, [groupID]: members }, avatars: mergeAvatars(s.avatars, members.map((m) => [m.id, m.avatar])) }))
-        // 群成员不一定在名册里，签名和最新头像要单独拉一次；失败不影响成员列表本身
-        void loadAvatars(set, members.map((m) => m.id))
+        if (got >= MEMBER_CAP) {
+          // 到顶了就说一声。默默截断的话，名单看着是完整的，少掉的人既不显示也 @ 不到。
+          set({ notice: `这个群超过 ${MEMBER_CAP} 人，只列出了前 ${MEMBER_CAP} 位` })
+        }
       } catch (e) {
-        set({ notice: `拉成员失败：${describe(e)}` })
+        // 已经交出去的页留着，只说这次没拉全
+        set({ notice: `成员没拉全：${describe(e)}` })
       }
     })()
     memberLoads.set(groupID, work)
@@ -545,6 +565,10 @@ function subscribe(set: Set, get: Get): void {
     im.on(SdkEvent.OnSyncServerStart, () => set({ syncing: true })),
     im.on(SdkEvent.OnSyncServerFinish, () => {
       set({ syncing: false })
+      // 同步完成＝SDK 的本地库刚变过。之前因为「同一个游标要来要去都是空」而封住的
+      // 时间线，在这里解开重来一次：那可能只是同步途中的一次临时空页，封着不动的话
+      // 这段历史就再也翻不动了。
+      for (const t of timelines.values()) { t.stalledAt = null; t.stalledSince = 0 }
       void refreshConversations(set, get)
       // 刚登录时成员表可能还没同步下来，拉到的是空的；同步完了再拉一次正看着的群
       const current = useUI.getState().conversationId
@@ -681,6 +705,8 @@ async function loadPage(set: Set, get: Get, id: ConversationId, before: string):
     try {
       let cursor = before
       let added = 0
+      // 这一轮有没有往更早处挪过。挪过就说明还有没读完的历史，哪怕一条都没显示出来。
+      let moved = false
       // 整页可能全是回应、通知或认不出的自定义消息，过滤完一条不剩——那不代表没有历史了。
       // 边界和游标怎么定见 paging.step()，轮数有上限，不能为了凑一条消息一直转下去。
       for (let round = 0; round < SKIP_ROUNDS; round++) {
@@ -693,10 +719,15 @@ async function loadPage(set: Set, get: Get, id: ConversationId, before: string):
         t.hasMore = next.hasMore
         if (next.cursor) t.olderCursor = next.cursor
         if (!next.again) break
+        moved = true
         cursor = next.cursor!
       }
-      // 要来要去一条都没多，把这个游标标住；下次它变了自然解开
-      t.stalledAt = before && added === 0 ? t.olderCursor : null
+      // 一条都没多的时候才需要标住，但要分清是哪一种「没多」：
+      //   游标动过 —— 这一轮把 SKIP_ROUNDS 页全用在被过滤的消息上了，下一页还没问过，
+      //               封住它等于把这段历史永久锁死（连着五页系统通知就会踩到）。
+      //   游标没动 —— 同一个游标再问一遍还是这个结果，标住它，等它变了自然解开。
+      t.stalledAt = before && added === 0 && !moved ? t.olderCursor : null
+      t.stalledSince = t.stalledAt ? Date.now() : 0
       if (!before) t.status = 'ready'
       applyReactionChanges(set, get)
       bump(set)
