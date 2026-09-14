@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import type { Conversation, ConversationKind, Member, Person } from '../../../shared/model'
+import type { Mentions } from '../views/rich'
 import { glyphOf, pairOf } from '../components/Avatar'
 import { kindOf, peerFrom, useSession } from './session'
 
@@ -48,17 +49,4 @@ export function usePlace(id: string | null): Place | null {
   const members = useSession((s) => s.members)
   const me = useSession((s) => s.me)
   return useMemo(() => (id ? placeOf(id, { conversations, roster, members, me }) : null), [id, conversations, roster, members, me])
-}
-
-/** 能被 @ 的人：频道里是成员（名册补 agent 身份），私聊里是名册。agent 排前面。 */
-export interface Mentionable { id: string; name: string; isAgent: boolean; avatar: string | null; tag: string | null }
-
-export function mentionables(place: Place, roster: Person[], me: string): Mentionable[] {
-  const agentTag = new Map(roster.filter((p) => p.isAgent).map((p) => [p.userID, p.tag]))
-  const list: Mentionable[] = place.members.length > 0
-    ? place.members.map((m) => ({ id: m.id, name: m.name, isAgent: m.isAgent || agentTag.has(m.id), avatar: m.avatar, tag: agentTag.get(m.id) ?? null }))
-    : roster.map((p) => ({ id: p.userID, name: p.nickname, isAgent: p.isAgent, avatar: null, tag: p.tag }))
-  return list
-    .filter((p) => p.id !== me)
-    .sort((a, b) => Number(b.isAgent) - Number(a.isAgent) || a.name.localeCompare(b.name, 'zh'))
 }

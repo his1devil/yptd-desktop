@@ -10,7 +10,7 @@ import {
   $createParagraphNode, $getRoot, $getSelection, $isRangeSelection, $createTextNode, COMMAND_PRIORITY_LOW, COMMAND_PRIORITY_NORMAL,
   KEY_ENTER_COMMAND, KEY_ESCAPE_COMMAND, PASTE_COMMAND, type EditorState, type LexicalEditor,
 } from 'lexical'
-import type { Mentionable } from '../../store/selectors'
+import type { Mentionable } from '../../store/mentions'
 import { MentionNode } from './MentionNode'
 import { MentionsPlugin } from './MentionsPlugin'
 import { readComposed, readSegments, writeSegments, type Composed, type Segment } from './state'
@@ -29,6 +29,8 @@ export interface EditorApi {
   insert(text: string): void
   clear(): void
   read(): Composed
+  /** 当前内容的片段形态（带 @ 节点）。发送失败要把整条原样放回去时用。 */
+  draft(): Segment[]
   load(segments: Segment[]): void
 }
 
@@ -88,6 +90,7 @@ function Wiring({ api, onSend, onEscape, onFiles }: Pick<Props, 'api' | 'onSend'
     }, { onUpdate: () => ed.focus() }),
     clear: () => writeSegments(ed, []),
     read: () => readComposed(ed.getEditorState()),
+    draft: () => readSegments(ed.getEditorState()),
     load: (segments) => writeSegments(ed, segments),
   }), [])
 

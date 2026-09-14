@@ -10,7 +10,7 @@ import { transition } from '../motion/transition'
  * 主区内容读 conversationId。
  */
 export type Section = 'inbox' | 'chat' | 'vm' | 'lib' | 'market' | 'set'
-export type SettingsPage = 'profile' | 'members' | 'notify' | 'appearance' | 'keys' | 'about'
+export type SettingsPage = 'profile' | 'privacy' | 'members' | 'notify' | 'appearance' | 'keys' | 'about'
 export type InboxFilter = 'all' | 'mention' | 'agent'
 /** 正开着的模态卡 */
 export type DialogState =

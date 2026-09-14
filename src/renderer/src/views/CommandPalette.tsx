@@ -3,6 +3,7 @@ import { Avatar, glyphOf, pairOf } from '../components/Avatar'
 import { IconSearch } from '../components/Icons'
 import { im } from '../im/client'
 import { directId } from '../im/translate'
+import { knownPeople } from '../store/mentions'
 import { agentsOf, useSession } from '../store/session'
 import { useUI } from '../store/ui'
 import { composerBus } from './composerBus'
@@ -31,6 +32,9 @@ export function CommandPalette() {
 function Palette({ onClose }: { onClose(): void }) {
   const conversations = useSession((s) => s.conversations)
   const roster = useSession((s) => s.roster)
+  const allMembers = useSession((s) => s.members)
+  // 名册只列开放了搜索的人；同群的人也该找得到，不然关了搜索就等于对同事失联
+  const people = useMemo(() => knownPeople(roster, allMembers), [roster, allMembers])
   const me = useSession((s) => s.me)
   const avatars = useSession((s) => s.avatars)
   const currentId = useUI((s) => s.conversationId)
@@ -42,6 +46,9 @@ function Palette({ onClose }: { onClose(): void }) {
 
   const current = conversations.find((c) => c.id === currentId)
   const inChannel = current?.kind === 'channel'
+
+  // 这里也能找人，同样在打开时补一次（store 那边有节流，和选人面板不会打架）
+  useEffect(() => { void useSession.getState().refreshRoster() }, [])
 
   // 消息全文搜索：两个字起，停 200ms 再搜
   useEffect(() => {
@@ -84,7 +91,7 @@ function Palette({ onClose }: { onClose(): void }) {
         avatar: c.kind === 'channel' ? { glyph: '#', pair: 0, hash: true } : { glyph: glyphOf(c.title), pair: pairOf(c.peerID ?? c.id), agent: c.kind === 'agent_session', id: c.peerID, src: c.avatar },
         run: open(c.id),
       }))
-    const agents: Item[] = agentsOf(roster).filter((a) => match(a.nickname, a.tag ?? '')).flatMap((a) => {
+    const agents: Item[] = agentsOf(people).filter((a) => match(a.nickname, a.tag ?? '')).flatMap((a) => {
       const av = { glyph: glyphOf(a.nickname), pair: 0, agent: true, id: a.userID }
       const out: Item[] = []
       if (inChannel && current) {
@@ -96,7 +103,7 @@ function Palette({ onClose }: { onClose(): void }) {
       out.push({ key: `a:${a.userID}`, group: 'AGENT', title: `和 ${a.nickname} 单聊`, sub: a.tag ?? 'AGENT', avatar: av, run: open(directId(me, a.userID)) })
       return out
     })
-    const people: Item[] = roster
+    const humans: Item[] = people
       .filter((p) => !p.isAgent && p.userID !== me && match(p.nickname, p.userID))
       .slice(0, 8)
       .map((p) => ({
@@ -104,8 +111,8 @@ function Palette({ onClose }: { onClose(): void }) {
         avatar: { glyph: glyphOf(p.nickname), pair: pairOf(p.userID), src: avatars[p.userID] ?? null },
         run: open(directId(me, p.userID)),
       }))
-    return [...conv, ...agents, ...people, ...hits]
-  }, [q, conversations, roster, me, avatars, hits, inChannel, current])
+    return [...conv, ...agents, ...humans, ...hits]
+  }, [q, conversations, people, me, avatars, hits, inChannel, current])
 
   useEffect(() => { setIdx(0) }, [q, items.length])
   useEffect(() => {

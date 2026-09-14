@@ -3,8 +3,9 @@ import { summarize, type OutgoingAttachment } from '../../../shared/model'
 import { Avatar, glyphOf, pairOf } from '../components/Avatar'
 import { IconClose, IconFile, IconImage, IconPaperclip } from '../components/Icons'
 import { mimeOf } from '../im/files'
-import { mentionables, type Place } from '../store/selectors'
-import { agentsOf, timeline, useSession } from '../store/session'
+import { mentionables } from '../store/mentions'
+import type { Place } from '../store/selectors'
+import { timeline, useSession } from '../store/session'
 import { useUI } from '../store/ui'
 import { composerBus } from './composerBus'
 import { MessageEditor, type EditorApi } from './editor/MessageEditor'
@@ -41,6 +42,9 @@ export function Composer({ place }: { place: Place }) {
   const [segments, setSegments] = useState<Segment[]>(() => drafts.get(id) ?? [])
   const [attachments, setAttachments] = useState<Attachment[]>([])
   const [sending, setSending] = useState(false)
+  // 最近一次发送尝试的片段。回填只在发送失败时发生，而每次发送都会先把这里覆盖掉，
+  // 所以读到的一定是刚失败的那条，不会是上一条成功的。
+  const attempted = useRef<Segment[] | null>(null)
 
   // 草稿：每次变更记下来，切走再切回来还在
   useEffect(() => { drafts.set(id, segments) }, [id, segments])
@@ -85,7 +89,11 @@ export function Composer({ place }: { place: Place }) {
   // 没发出去的那条整个回来，改一改再发
   useEffect(() => composerBus.onRestore((cid, d) => {
     if (cid !== id) return
-    editor.current?.load(d.text ? [{ t: 'text', v: d.text }] : [])
+    // 优先用发送时留下的片段：压成纯文本的话 @ 色块会退化成字面文字，
+    // 重发时 mentions 是空的，被 @ 的人收不到提醒也不会高亮。
+    const back = attempted.current
+    attempted.current = null
+    editor.current?.load(back ?? (d.text ? [{ t: 'text', v: d.text }] : []))
     setAttachments(d.attachments.map((a) => ({ ...a, id: `a${nextAttachment++}` })))
     if (d.quote) setQuote(id, d.quote)
   }), [id, setQuote])
@@ -99,6 +107,7 @@ export function Composer({ place }: { place: Place }) {
     const text = composed.text.replace(/\s+$/, '').replace(/^\n+/, '')
     if (!text.trim() && attachments.length === 0) return
     const batch = attachments.map(({ id: _id, ...a }) => a)
+    attempted.current = editor.current?.draft() ?? null
     editor.current?.clear()
     setSegments([])
     drafts.delete(id)
@@ -116,27 +125,18 @@ export function Composer({ place }: { place: Place }) {
     if (paths.length) await addPaths(paths)
   }
 
-  const agents = place.kind === 'channel' ? agentsOf(roster) : []
+  // 频道里有 agent 才提 agent：不在群里的 agent @ 不到，提了是空头支票
+  const hasAgent = place.kind === 'channel' && place.members.some((m) => m.isAgent)
   const hint = place.isAgent
     ? `和 ${place.title} 对话 — 直接派活或追问`
     : place.kind === 'channel'
-      ? `发消息到 #${place.title} — 试试 @ agent 伙伴`
+      ? hasAgent ? `发消息到 #${place.title} — 试试 @ agent 伙伴` : `发消息到 #${place.title}`
       : `发消息给 ${place.title}`
   const nothingToSend = isEmpty(segments) && attachments.length === 0
 
   return (
     <div className={styles.wrap}>
       <div className={styles.box}>
-        {agents.length > 0 && (
-          <div className={styles.chips}>
-            {agents.map((a) => (
-              <button key={a.userID} className={styles.chip} onClick={() => editor.current?.insert(`@${a.nickname} `)} title={`@${a.nickname}`}>
-                <span className={styles.chipGlyph}>{glyphOf(a.nickname)}</span>{a.nickname}
-              </button>
-            ))}
-          </div>
-        )}
-
         {quoted && (
           <div className={styles.quoteBar}>
             <span className={styles.quoteRule} />

@@ -88,7 +88,13 @@ export const api = {
   },
   rename: (nickname: string) => call<{ user_id: string; nickname: string }>('/v1/me', { method: 'PATCH', body: { nickname } }),
   /** 我是谁，以及这个账号有没有设过密码 */
-  me: () => call<{ user_id: string; nickname: string; disabled: boolean; has_password: boolean }>('/v1/me'),
+  me: () => call<{ user_id: string; nickname: string; disabled: boolean; has_password: boolean; discoverable: boolean; joinable: boolean }>('/v1/me'),
+  /** 两个隐私开关，各自可单独改：不传的那个不动 */
+  privacy: (p: { discoverable?: boolean; joinable?: boolean }) =>
+    call<{ discoverable: boolean; joinable: boolean }>('/v1/me/privacy', { method: 'PUT', body: p }),
+  /** 按完整 ID 找人。没开放被搜索的人只有这一条路找得到，所以不接受前缀和昵称。 */
+  lookup: (id: string) =>
+    call<{ user: { user_id: string; nickname: string; is_agent?: boolean; tag?: string; color?: string } }>(`/v1/users/${encodeURIComponent(id)}`),
   /** 设置或修改密码。已经有密码时必须给对旧的——不然谁碰到这台没锁的机器都能悄悄接管账号 */
   setPassword: (password: string, oldPassword?: string) =>
     call<{ has_password: boolean }>('/v1/me/password', { method: 'PUT', body: { password, ...(oldPassword ? { old_password: oldPassword } : {}) } }),

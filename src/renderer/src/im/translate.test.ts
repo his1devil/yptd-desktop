@@ -61,22 +61,10 @@ describe('@ 提及', () => {
     expect(m.mentionsMe).toBe(true)
   })
 
-  it('@ 到 agent 和 @ 到人要分得开', () => {
-    const tr = t()
-    tr.setAgents([{ userID: 'agentbot', nickname: 'HALX', tag: 'AGENT', color: null }])
-    const m = tr.message(raw({ textElem: { content: '@HALX @李娜 一起看看' } }))!
-    expect(m.agentMentions).toEqual(['@HALX'])
-    expect(m.mentions).toEqual(['@李娜'])
-  })
-
-  it('还没读到花名册时，谁都不算 agent', () => {
-    const m = t().message(raw({ textElem: { content: '@HALX 在吗' } }))!
-    expect(m.agentMentions).toEqual([])
-    expect(m.isAgent).toBe(false)
-  })
-
-  it('没有 @ 的消息一次正则都不跑', () => {
-    expect(t().message(raw({ textElem: { content: '普通消息' } }))!.mentions).toEqual([])
+  // @名字 怎么上色不在这里定了：那取决于谁在这个会话里，是渲染时算的（见 selectors 的
+  // mentionLook）。这里只保留「这条消息有没有提到我」——它来自 atUserList，和文本无关。
+  it('还没读到花名册时，发信人不算 agent', () => {
+    expect(t().message(raw({ textElem: { content: '@HALX 在吗' } }))!.isAgent).toBe(false)
   })
 })
 

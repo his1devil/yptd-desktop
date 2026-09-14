@@ -6,7 +6,7 @@ const conv = (id: string, kind: Conversation['kind'], unread = 0): Conversation 
   id, kind, renderMode: kind === 'agent_session' ? 'harness' : 'im', title: id, avatar: null, unread, mentioned: false,
   pinned: false, preview: '', lastAt: 0, groupID: kind === 'channel' ? id.slice(3) : null, peerID: null,
 })
-const person = (userID: string, isAgent: boolean): Person => ({ userID, nickname: userID, isAgent, tag: null, color: null })
+const person = (userID: string, isAgent: boolean): Person => ({ userID, nickname: userID, isAgent, tag: null, color: null, joinable: true })
 
 describe('键盘切会话的顺序', () => {
   const s = { conversations: [conv('si_bob_me', 'dm', 2), conv('sg_1', 'channel'), conv('sg_2', 'channel', 1), conv('si_agentbot_me', 'agent_session')], roster: [person('bob', false), person('agentbot', true)], me: 'me' }

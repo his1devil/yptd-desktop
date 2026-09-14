@@ -19,7 +19,6 @@ export const ContentType = {
   notificationFrom: 1000, notificationTo: 5000,
 } as const
 
-const MENTION = /@[A-Za-z][A-Za-z0-9_]*|@[一-龥]{2,4}/g
 
 export interface ReactionPayload { yptd: 'reaction'; target: string; emoji: string }
 
@@ -29,7 +28,6 @@ export function reactionData(target: string, emoji: string): string {
 
 export class Translator {
   private agents = new Map<string, AgentIdentity>()
-  private agentNames = new Set<string>()
   /** 每个人当前的显示名。OpenIM 把发送时的昵称烤进每条消息，改名后旧消息还是旧名，这里覆盖它。 */
   private names = new Map<string, string>()
   /** 目标 clientMsgID → emoji → 点了的人 */
@@ -43,7 +41,6 @@ export class Translator {
 
   setAgents(list: AgentIdentity[]): void {
     this.agents = new Map(list.map((a) => [a.userID, a]))
-    this.agentNames = new Set(list.map((a) => a.nickname))
   }
   setNames(map: Record<string, string>): void {
     this.names = new Map(Object.entries(map))
@@ -74,8 +71,6 @@ export class Translator {
     if (rich?.textless && body.kind === 'text') body = { kind: 'text', text: '' }
     const text = body.kind === 'text' ? body.text : ''
     const mentioned = raw.atTextElem?.atUserList ?? []
-    const mentions = text.includes('@') ? (text.match(MENTION) ?? []) : []
-    const agentMentions = mentions.filter((m) => this.agentNames.has(m.slice(1)))
 
     // SDK 的类型把这几个字段标成可选；服务端实际上总会给，缺了就当空串
     const id = raw.clientMsgID ?? ''
@@ -99,8 +94,6 @@ export class Translator {
       agentTag: agent?.tag ?? null,
       transient: isTransient(raw.ex),
       runID: runOf(raw.ex),
-      mentions: mentions.filter((m) => !agentMentions.includes(m)),
-      agentMentions,
       dayIndex: dayIndex(raw.sendTime),
     }
   }

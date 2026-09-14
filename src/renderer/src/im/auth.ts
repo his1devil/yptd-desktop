@@ -86,10 +86,11 @@ export async function roster(cfg: ServerConfig, deviceToken: string): Promise<Pe
   const data = JSON.parse(res.text) as { users?: RawPerson[] }
   return (data.users ?? []).map((u) => ({
     userID: u.user_id, nickname: u.nickname, isAgent: !!u.is_agent, tag: u.tag ?? null, color: u.color ?? null,
+    joinable: !!u.joinable,
   }))
 }
 
-interface RawPerson { user_id: string; nickname: string; is_agent?: boolean; tag?: string; color?: string }
+interface RawPerson { user_id: string; nickname: string; is_agent?: boolean; tag?: string; color?: string; joinable?: boolean }
 interface RawSession { user_id: string; nickname: string; device_token?: string; im_token: string }
 
 async function post(url: string, body: Record<string, unknown>): Promise<AuthSession> {

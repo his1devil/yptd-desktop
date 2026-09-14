@@ -1,7 +1,8 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { Person } from '../../../shared/model'
 import { Avatar, glyphOf, pairOf } from '../components/Avatar'
 import { Dialog, Field, dangerClass, errorClass, ghostClass, inputClass, primaryClass } from '../components/Dialog'
+import { knownPeople } from '../store/mentions'
 import { describe, useSession } from '../store/session'
 import { useUI } from '../store/ui'
 import styles from './ChannelDialogs.module.css'
@@ -25,12 +26,16 @@ export function Dialogs() {
 /** 从名册里挑人：人在前、agent 在后，可搜索 */
 function Picker({ people, picked, onToggle, exclude }: { people: Person[]; picked: Set<string>; onToggle(id: string): void; exclude?: Set<string> }) {
   const [q, setQ] = useState('')
+  // 打开选人的这一刻再问一次服务端。名单先用手上这份画出来，拉到了自己会重画——
+  // 刚注册的同事最常见的遭遇就是在这里找不到自己。
+  useEffect(() => { void useSession.getState().refreshRoster() }, [])
   const list = useMemo(() => {
     const kw = q.trim().toLowerCase()
     return people
       .filter((p) => !exclude?.has(p.userID))
       .filter((p) => !kw || p.nickname.toLowerCase().includes(kw) || p.userID.toLowerCase().includes(kw))
-      .sort((a, b) => Number(a.isAgent) - Number(b.isAgent) || a.nickname.localeCompare(b.nickname, 'zh'))
+      // 拉不动的人沉到底下：它们还看得见（免得人以为对方不存在），但不占前面的位置
+      .sort((a, b) => Number(b.joinable) - Number(a.joinable) || Number(a.isAgent) - Number(b.isAgent) || a.nickname.localeCompare(b.nickname, 'zh'))
   }, [people, q, exclude])
   return (
     <div className={styles.picker}>
@@ -39,11 +44,19 @@ function Picker({ people, picked, onToggle, exclude }: { people: Person[]; picke
         {list.map((p) => {
           const on = picked.has(p.userID)
           return (
-            <button key={p.userID} className={`${styles.person} ${on ? styles.personOn : ''}`} onClick={() => onToggle(p.userID)}>
+            <button
+              key={p.userID}
+              className={`${styles.person} ${on ? styles.personOn : ''}`}
+              disabled={!p.joinable}
+              title={p.joinable ? undefined : `${p.nickname} 没有开放被加入群聊`}
+              onClick={() => onToggle(p.userID)}
+            >
               <Avatar glyph={glyphOf(p.nickname)} pair={pairOf(p.userID)} size={22} kind={p.isAgent ? 'agent' : 'human'} id={p.userID} />
               <span className={styles.personName}>{p.nickname}</span>
               <span className={`${styles.personId} mono`}>@{p.userID}</span>
               {p.isAgent && <span className={`${styles.tag} mono`}>{p.tag || 'AGENT'}</span>}
+              {/* 服务端会拒绝整批邀请，所以拉不动的人必须一开始就选不中，不能等点了才说 */}
+              {!p.joinable && <span className={styles.closed}>未开放</span>}
               <span className={`${styles.check} ${on ? styles.checkOn : ''}`}>{on ? '✓' : ''}</span>
             </button>
           )
@@ -97,11 +110,14 @@ function NewChannel({ onClose }: { onClose(): void }) {
 
 function Invite({ groupID, onClose }: { groupID: string; onClose(): void }) {
   const roster = useSession((s) => s.roster)
-  const members = useSession((s) => s.members[groupID] ?? [])
+  const allMembers = useSession((s) => s.members)
+  const here = allMembers[groupID] ?? []
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<string | null>(null)
   const { picked, toggle } = usePicked()
-  const inGroup = useMemo(() => new Set(members.map((m) => m.id)), [members])
+  const inGroup = useMemo(() => new Set(here.map((m) => m.id)), [here])
+  // 同上：名册之外，别的群里见过的人也该能拉进来
+  const people = useMemo(() => knownPeople(roster, allMembers), [roster, allMembers])
 
   const submit = async (): Promise<void> => {
     if (picked.size === 0 || busy) return
@@ -117,7 +133,7 @@ function Invite({ groupID, onClose }: { groupID: string; onClose(): void }) {
       <button className={ghostClass} onClick={onClose}>取消</button>
       <button className={primaryClass} disabled={picked.size === 0 || busy} onClick={() => void submit()}>{busy ? '正在邀请…' : `邀请 ${picked.size || ''}`.trim()}</button>
     </>}>
-      <Picker people={roster} picked={picked} onToggle={toggle} exclude={inGroup} />
+      <Picker people={people} picked={picked} onToggle={toggle} exclude={inGroup} />
       {err && <div className={errorClass}>{err}</div>}
     </Dialog>
   )

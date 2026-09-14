@@ -30,6 +30,7 @@ export function Settings() {
       <div className={styles.page}>
         {page === 'profile' && <Profile />}
         {page === 'members' && <Members />}
+        {page === 'privacy' && <Privacy />}
         {page === 'notify' && <Notify />}
         {page === 'appearance' && <Appearance />}
         {page === 'keys' && <Keys />}
@@ -42,6 +43,7 @@ export function Settings() {
 export const SETTINGS_PAGES: { id: SettingsPage; name: string; group: 'workspace' | 'personal' }[] = [
   { id: 'members', name: '成员与邀请', group: 'workspace' },
   { id: 'profile', name: '资料', group: 'personal' },
+  { id: 'privacy', name: '隐私', group: 'personal' },
   { id: 'notify', name: '通知', group: 'personal' },
   { id: 'appearance', name: '外观', group: 'personal' },
   { id: 'keys', name: '快捷键', group: 'personal' },
@@ -276,6 +278,56 @@ function Members() {
         </div>
       </Section>
     </>
+  )
+}
+
+/**
+ * 两个开关默认都是关的，新账号一进来就是私密的。
+ *
+ * 关掉「被搜索」不等于失联：已经和你同群的人照常看得见你（群成员表不走名册），
+ * 知道你完整 ID 的人也找得到你，你邀请进来的人和邀请你进来的人一直互相可见。
+ */
+function Privacy() {
+  const [state, setState] = useState<{ discoverable: boolean; joinable: boolean } | null>(null)
+  const [busy, setBusy] = useState<'discoverable' | 'joinable' | null>(null)
+  const [err, setErr] = useState('')
+  const me = useSession((s) => s.me)
+
+  useEffect(() => { void api.me().then((m) => setState({ discoverable: m.discoverable, joinable: m.joinable })).catch((e) => setErr(describe(e))) }, [])
+
+  const flip = async (key: 'discoverable' | 'joinable', value: boolean): Promise<void> => {
+    if (!state) return
+    setBusy(key); setErr('')
+    // 先画出来，失败了再改回去——开关拨下去要立刻有反应
+    setState({ ...state, [key]: value })
+    try {
+      setState(await api.privacy({ [key]: value }))
+    } catch (e) {
+      setState(state)
+      setErr(describe(e))
+    } finally { setBusy(null) }
+  }
+
+  return (
+    <Section title="隐私" desc="默认两个都是关的。关着的时候你不出现在别人的名册里，也不能被直接拉进群。">
+      {err && <div className={errorClass}>{err}</div>}
+      <label className={styles.switchRow}>
+        <input type="checkbox" disabled={!state || busy !== null} checked={!!state?.discoverable} onChange={(e) => void flip('discoverable', e.target.checked)} />
+        <span>出现在别人的名册和搜索里</span>
+      </label>
+      <p className={styles.desc}>
+        关着也不会失联：已经和你同群的人照常看得见你，你邀请进来的人、邀请你进来的人也一直互相可见。
+        别人还可以用你的完整 ID <code className="mono">{me}</code> 直接找到你。
+      </p>
+      <label className={styles.switchRow}>
+        <input type="checkbox" disabled={!state || busy !== null} checked={!!state?.joinable} onChange={(e) => void flip('joinable', e.target.checked)} />
+        <span>允许别人把我加进群聊</span>
+      </label>
+      <p className={styles.desc}>
+        关着的时候，别人建群或拉人时带上你，整个操作会被服务端拒绝——不是客户端的礼貌，是真的拉不动。
+        想进某个群，让群里的人把入口发给你。
+      </p>
+    </Section>
   )
 }
 

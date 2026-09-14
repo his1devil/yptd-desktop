@@ -1,10 +1,11 @@
 import { create } from 'zustand'
 import type { Attachment, Conversation, ConversationId, ConversationKind, Member, Message, MessageId, OutgoingAttachment, Person, Reaction } from '../../../shared/model'
 import { summarize } from '../../../shared/model'
-import { DEFAULT_SERVER, clearCredential, loadCredential, login, loginWithPassword, register, roster, saveCredential, setServerAuth, AuthError, type ServerConfig } from '../im/auth'
+import { DEFAULT_SERVER, clearCredential, loadCredential, login, loginWithPassword, register, roster, saveCredential, serverAuth, setServerAuth, AuthError, type ServerConfig } from '../im/auth'
 import { api } from '../im/api'
 import { setAgentColors } from '../components/identity'
 import { im, SdkEvent, type ConversationItem, type GroupMemberItem, type MessageItem } from '../im/client'
+import { tidyError } from '../im/errors'
 import { Translator, directId, placeholderFor, reactionData, richEx } from '../im/translate'
 import { Timeline } from '../im/timeline'
 import { step } from '../im/paging'
@@ -70,6 +71,8 @@ interface SessionState {
   react(id: ConversationId, target: MessageId, emoji: string): Promise<void>
   revoke(id: ConversationId, target: MessageId): Promise<void>
   loadMembers(groupID: string): Promise<void>
+  /** 重新拉一次花名册。新注册的人只有这一条路能进来：服务端没有「有人注册了」这种推送。 */
+  refreshRoster(): Promise<void>
   dismissNotice(): void
 
   createChannel(name: string, memberIDs: string[]): Promise<ConversationId>
@@ -293,6 +296,34 @@ export const useSession = create<SessionState>()((set, get) => ({
     }
   },
 
+  async refreshRoster() {
+    const { base, token } = serverAuth()
+    // 没登录（或凭据还没安好）就不要打这个请求：拿回来的是 401，白白盖掉一份好名册
+    if (!token || !get().me) return
+    if (rosterLoad) return rosterLoad
+    const at = Date.now()
+    // 焦点会连着来好几次（切窗口、点回来、Cmd-Tab），压一压
+    if (at - rosterAt < ROSTER_COOLDOWN) return
+    rosterAt = at
+    rosterLoad = (async () => {
+      try {
+        const people = await roster({ ...cfg, server: base }, token)
+        // 拉空多半是出了什么岔子，别拿它把现有名册清掉
+        if (people.length === 0) return
+        const before = new Set(get().roster.map((p) => p.userID))
+        seatRoster(set, people)
+        // 只给新面孔拉头像和签名：焦点每来一次就重拉全员是没必要的
+        const fresh = people.filter((p) => !before.has(p.userID)).map((p) => p.userID)
+        if (fresh.length) void loadAvatars(set, fresh)
+      } catch {
+        // 拉不到就还用旧的，这是个后台刷新，不该弹任何东西
+      } finally {
+        rosterLoad = null
+      }
+    })()
+    return rosterLoad
+  },
+
   async loadMembers(groupID) {
     // 同一个群同时只发一次：open()、同步完成事件和成员变动事件会一起要
     const running = memberLoads.get(groupID)
@@ -448,10 +479,11 @@ async function connect(set: Set, get: Get, authenticate: () => Promise<{ userID:
 
     // 花名册先于连接：它说明谁是 agent、谁叫什么，翻译历史时就要知道
     const people = await roster(cfg, token).catch(() => [] as Person[])
-    translator.setAgents(agentsOf(people).map((p) => ({ userID: p.userID, nickname: p.nickname, tag: p.tag ?? 'AGENT', color: p.color })))
-    translator.setNames(Object.fromEntries(people.map((p) => [p.userID, p.nickname])))
-    setAgentColors(people.map((p) => [p.userID, p.color] as [string, string | null]))
-    set({ me: auth.userID, myName: auth.nickname, roster: people })
+    seatRoster(set, people)
+    // 记上时间：紧接着连上会发 OnConnectSuccess，那里也要拉一次，
+    // 不占住的话开机这一下白拉两遍。
+    rosterAt = Date.now()
+    set({ me: auth.userID, myName: auth.nickname })
 
     set({ phase: { kind: 'connecting', what: '正在连接…' } })
     if (!(await im.loggedIn())) {
@@ -492,7 +524,11 @@ function subscribe(set: Set, get: Get): void {
       if (!taken.clientMsgID) return
       for (const t of timelines.values()) if (t.remove(taken.clientMsgID)) bump(set)
     }),
-    im.on(SdkEvent.OnConnectSuccess, () => set({ connected: true })),
+    im.on(SdkEvent.OnConnectSuccess, () => {
+      set({ connected: true })
+      // 断网期间注册的人，重连这一下是最自然的补拉时机
+      void get().refreshRoster()
+    }),
     im.on(SdkEvent.OnConnectFailed, () => set({ connected: false })),
     im.on(SdkEvent.OnKickedOffline, () => set({ connected: false, notice: '这个账号在别处登录了' })),
     im.on(SdkEvent.OnUserTokenExpired, () => set({ connected: false, notice: '登录过期了，重开一下 app' })),
@@ -522,6 +558,22 @@ function subscribe(set: Set, get: Get): void {
 }
 
 // ---- 数据流 -----------------------------------------------------------------------
+
+/** 花名册刷新的节流与去重 */
+let rosterLoad: Promise<void> | null = null
+let rosterAt = 0
+const ROSTER_COOLDOWN = 30_000
+
+/**
+ * 安置一份新花名册。翻译器、agent 配色和 store 得一起换：
+ * 只 set(roster) 的话，新 agent 在消息里既没有身份色也不会被认成 agent。
+ */
+function seatRoster(set: Set, people: Person[]): void {
+  translator.setAgents(agentsOf(people).map((p) => ({ userID: p.userID, nickname: p.nickname, tag: p.tag ?? 'AGENT', color: p.color })))
+  translator.setNames(Object.fromEntries(people.map((p) => [p.userID, p.nickname])))
+  setAgentColors(people.map((p) => [p.userID, p.color] as [string, string | null]))
+  set({ roster: people })
+}
 
 async function loadAvatars(set: Set, userIDs: string[]): Promise<void> {
   if (userIDs.length === 0) return
@@ -734,7 +786,10 @@ export function describe(e: unknown): string {
   // SDK 抛的常是 { errCode, errMsg } 这样的普通对象，别让它显示成 [object Object]
   if (e && typeof e === 'object') {
     const o = e as { errMsg?: string; message?: string; errCode?: number }
-    return o.errMsg || o.message || (o.errCode !== undefined ? `错误 ${o.errCode}` : JSON.stringify(e))
+    const msg = o.errMsg || o.message
+    // OpenIM 每包一层就粘一次错误码和正文，到这儿已经是重复三遍的一句话
+    if (msg) return tidyError(msg, o.errCode)
+    return o.errCode !== undefined ? `错误 ${o.errCode}` : JSON.stringify(e)
   }
   return String(e)
 }

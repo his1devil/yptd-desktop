@@ -63,7 +63,7 @@ export const RunBody = memo(function RunBody({ message, live }: { message: Messa
       {run?.detached && run.status === 'running' && <Detached runID={runID} />}
       {(text || streaming) && (
         <div className={styles.text}>
-          <Rich text={text} mentions={message.mentions} agentMentions={message.agentMentions} />
+          <Rich text={text} />
           {streaming && text !== '' && <span className={styles.caret} />}
         </div>
       )}
@@ -211,7 +211,7 @@ export const RunCard = memo(function RunCard({ message, live, final }: { message
       <div className={styles.result}>
         {text !== null ? (
           <div className={styles.text}>
-            {text ? <Rich text={text} mentions={[]} agentMentions={[]} /> : <span className={`${styles.waiting} ${styles.pulse}`}>{run?.thinking ? '正在思考…' : '正在处理…'}</span>}
+            {text ? <Rich text={text} /> : <span className={`${styles.waiting} ${styles.pulse}`}>{run?.thinking ? '正在思考…' : '正在处理…'}</span>}
             {streaming && text !== '' && <span className={styles.caret} />}
           </div>
         ) : (

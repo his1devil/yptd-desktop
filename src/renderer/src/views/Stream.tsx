@@ -9,14 +9,15 @@ import { visible } from '../im/timeline'
 import { flyEmoji } from '../motion/fly'
 import { reduceMotion } from '../motion/transition'
 import { useAgentProfiles } from '../store/agents'
+import { mentionLook } from '../store/mentions'
 import type { Place } from '../store/selectors'
 import { timeline, useSession } from '../store/session'
 import { useUI } from '../store/ui'
 import { composerBus } from './composerBus'
 import { Lightbox, type Pic } from './Lightbox'
-import { Rich } from './rich'
+import { MentionsProvider, Rich } from './rich'
 import { GALLERY_MAX_W, galleryLayout, type Box } from './gallery'
-import { buildRows, rowHas, type Row } from './rows'
+import { buildRows, rowHas, type Row, textLines } from './rows'
 import { RunBody, RunCard } from './Run'
 import styles from './Stream.module.css'
 
@@ -47,7 +48,7 @@ function estimate(row: Row, available: number): number {
   let h = 56
   h += attachmentsHeight(m.attachments, available)
   if (m.runID) h += 96
-  if (m.body.kind === 'text') h += Math.ceil(m.body.text.length / 67) * 22
+  if (m.body.kind === 'text') h += textLines(m.body.text) * 22
   else if (m.body.kind === 'picture') h += (fit(m.body.natural)?.height ?? 220) + 6
   else h += 56
   if (m.quote) h += 36
@@ -96,6 +97,10 @@ export function Stream({ place }: { place: Place }) {
   const setQuote = useUI((s) => s.setQuote)
   const profiles = useAgentProfiles()
   const agentDesc = harness ? profiles?.find((p) => p.userID === place.peer?.userID)?.description : undefined
+  // 谁在这个会话里，决定正文里的 @ 怎么画。引用要稳，不然每渲染一次就把所有 Rich 的 memo 作废
+  const roster = useSession((s) => s.roster)
+  const myName = useSession((s) => s.myName)
+  const look = useMemo(() => mentionLook(place, roster, myName), [place, roster, myName])
   // eslint-disable-next-line react-hooks/exhaustive-deps -- tick 是时间线的版本号
   const rows = useMemo(() => buildRows(visible(timeline(id).messages)), [id, tick])
   const [popover, setPopover] = useState<Popover | null>(null)
@@ -285,6 +290,7 @@ export function Stream({ place }: { place: Place }) {
   const loading = rows.length === 0 && !failed && !empty
 
   return (
+    <MentionsProvider value={look}>
     <div className={styles.wrap} style={{ viewTransitionName: 'conv-stream' }}>
       <div ref={scrollRef} className={styles.scroll} onScroll={onScroll}>
         {loading ? (
@@ -386,6 +392,7 @@ export function Stream({ place }: { place: Place }) {
         />
       )}
     </div>
+    </MentionsProvider>
   )
 }
 
@@ -538,7 +545,7 @@ function Body({ message: m, onImage, large }: { message: Message; onImage: OpenI
       if (!b.text) return null
       return (
         <div className={`${styles.text} ${large ? styles.textLg : ''}`}>
-          <Rich text={b.text} mentions={m.mentions} agentMentions={m.agentMentions} />
+          <Rich text={b.text} />
         </div>
       )
     case 'picture': {

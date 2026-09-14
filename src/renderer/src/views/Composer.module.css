@@ -6,16 +6,6 @@
 }
 .box:focus-within { border-color: var(--accent); }
 
-/* agent 芯片行 */
-.chips { display: flex; align-items: center; gap: 6px; padding: 6px 10px; border-bottom: 1px solid var(--line); background: var(--surface2); border-radius: 10px 10px 0 0; }
-.chip {
-  display: flex; align-items: center; gap: 5px; height: 22px; padding: 0 8px;
-  border-radius: 6px; border: 1px solid var(--line2); background: var(--bg);
-  font-size: 11px; font-weight: 500; color: var(--ink2);
-}
-.chip:hover { border-color: var(--agent); color: var(--agent); }
-.chipGlyph { font-size: 10px; color: var(--agent); font-weight: 700; }
-
 /* 引用条 */
 .quoteBar { display: flex; align-items: center; gap: 9px; padding: 8px 12px 8px 10px; border-bottom: 1px solid var(--line); background: var(--surface2); }
 .quoteRule { width: 2px; align-self: stretch; background: var(--accent); border-radius: 2px; flex: none; }

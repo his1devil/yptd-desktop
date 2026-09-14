@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import type { Message } from '../../../shared/model'
-import { buildRows } from './rows'
+import { buildRows, textLines } from './rows'
 
 const base = (id: string, at: number, over: Partial<Message> = {}): Message => ({
   id, conversation: 'sg_1', sender: 'a', senderName: 'A', senderAvatar: null, sentAt: at, seq: 0,
   body: { kind: 'text', text: id }, attachments: [], quote: null, reactions: [], sendState: 'sent', mentionsMe: false,
-  isAgent: false, agentTag: null, transient: false, runID: null, mentions: [], agentMentions: [], dayIndex: 1, ...over,
+  isAgent: false, agentTag: null, transient: false, runID: null, dayIndex: 1, ...over,
 })
 const pic = (id: string, at: number, sender = 'a'): Message => base(id, at, { sender, body: { kind: 'picture', url: `u/${id}`, name: id, natural: null, bytes: 0 } })
 
@@ -48,5 +48,40 @@ describe('连续发言折叠', () => {
     const rows = buildRows([base('t', 1000), pic('p1', 2000), pic('p2', 3000)])
     expect(rows.map((r) => r.kind)).toEqual(['day', 'msg', 'gallery'])
     expect(cont(rows)).toEqual([false, true])
+  })
+})
+
+describe('正文估高', () => {
+  it('按真实换行数算，不是把整条当一行折', () => {
+    // 三行短句：原来 length/67 算出来是 1 行，实际画三行
+    expect(textLines('第一行\n第二行\n第三行')).toBe(3)
+  })
+  it('空行也占一行', () => {
+    expect(textLines('a\n\nb')).toBe(3)
+  })
+  it('链接按画出来的字算，不按 URL 长度', () => {
+    const line = '[路透](https://www.reuters.com/technology/tsmc-2nm-ahead-of-schedule) · 6 小时前'
+    expect(textLines(line)).toBe(1)
+    // 不去掉 URL 的话这一行就被算成两行
+    expect(Math.ceil(line.length / 67)).toBe(2)
+  })
+  it('长段落还是要折', () => {
+    expect(textLines('x'.repeat(140))).toBe(3)
+  })
+  it('JOMO 那条新闻推送', () => {
+    const digest = [
+      '**科技热点** · 2 条',
+      '',
+      '**OpenAI 开放 Sora 2 API**',
+      '定价压到 Runway 一档以下，视频生成的价格战从这里开始。',
+      '[OpenAI 博客](https://openai.com/index/sora-2-api) · 2 小时前',
+      '',
+      '**台积电 2nm 提前量产**',
+      '比原定快一个季度，苹果 A21 和高通的排产窗口都要往前挪。',
+      '[路透](https://www.reuters.com/technology/tsmc-2nm) · 6 小时前',
+    ].join('\n')
+    expect(textLines(digest)).toBe(9)
+    // 老算法不数换行，9 行的播报被估成 4 行——一条消息矮了一百多像素
+    expect(Math.ceil(digest.length / 67)).toBeLessThan(textLines(digest))
   })
 })

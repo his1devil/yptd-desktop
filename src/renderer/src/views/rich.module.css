@@ -14,9 +14,10 @@
 .up   { background: var(--uptint);   color: var(--up); }
 .down { background: var(--downtint); color: var(--down); }
 
-/* @提及色块：人是蓝的，agent 是橙的（设计稿 segs() 的 chip） */
+/* @提及色块：人是蓝的，agent 是橙的，不在这个会话里的是灰的 */
 .mentionUser,
-.mentionAgent {
+.mentionAgent,
+.mentionOff {
   display: inline-block;
   border-radius: 4px;
   padding: 0 5px;
@@ -25,6 +26,8 @@
 }
 .mentionUser  { background: var(--utint); color: var(--user); }
 .mentionAgent { background: var(--atint); color: var(--agent); }
+/* 灰的：这个人在，但不在这儿。@ 了收不到，所以别让它看着像通了 */
+.mentionOff   { background: var(--surface2); color: var(--ink3); font-weight: 500; }
 
 /* 围栏代码块 */
 .pre {

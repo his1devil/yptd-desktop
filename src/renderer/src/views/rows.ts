@@ -59,3 +59,21 @@ export function rowHas(row: Row, messageId: string): boolean {
   if (row.kind === 'gallery') return row.messages.some((m) => m.id === messageId)
   return row.message.id === messageId
 }
+
+/**
+ * 正文占几行。先按真实换行切，每行再按可见宽度折——原来是把整条当一行连续折行，
+ * 换行一个都不算，agent 的多行播报会被估矮一大截。
+ *
+ * 折行按「画得出来的字符」数，不是原文长度：`[标题](很长的链接)` 只画得出「标题」，
+ * 把 URL 算进去能把一条两行的消息估成五行，进来那一下滚动位置就会跳。
+ * 这只是个估值，真高度由 measureElement 量，估准一点只是为了少跳。
+ */
+export function textLines(text: string): number {
+  return text.split('\n').reduce((n, line) => n + Math.max(1, Math.ceil(visibleWidth(line) / 67)), 0)
+}
+
+const visibleWidth = (line: string): number =>
+  line
+    .replace(/\[([^\]\n]+?)\]\(https?:\/\/[^)\s]+\)/g, '$1')
+    .replace(/\*\*|~~|`/g, '')
+    .length

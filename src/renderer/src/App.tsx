@@ -32,6 +32,20 @@ export function App() {
     void useSession.getState().boot()
   }, [])
 
+  // 回到窗口时补一次花名册：新注册的人没有任何推送会告诉我们，只能自己再问一次。
+  // 切回 app 就是要干事了，正是最该有一份新名单的时刻；store 那边有 30 秒的节流。
+  useEffect(() => {
+    const again = (): void => { void useSession.getState().refreshRoster() }
+    // 最小化再打开只发 visibilitychange，切别的 app 再回来只发 focus，两个都要听
+    const shown = (): void => { if (!document.hidden) again() }
+    window.addEventListener('focus', again)
+    document.addEventListener('visibilitychange', shown)
+    return () => {
+      window.removeEventListener('focus', again)
+      document.removeEventListener('visibilitychange', shown)
+    }
+  }, [])
+
   // 全局快捷键：⌘K 搜索/派活，⌘, 设置，⌥↑↓ 切会话（加 ⇧ 只在有未读的里跳），⌘1–9 前九个会话，
   // ⌘. 右栏，⌘⇧E 标已读，Esc 回到输入框
   useEffect(() => {

@@ -4,7 +4,7 @@ import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext
 import { LexicalTypeaheadMenuPlugin, MenuOption, type MenuTextMatch } from '@lexical/react/LexicalTypeaheadMenuPlugin'
 import { $createTextNode, $getSelection, $isRangeSelection, COMMAND_PRIORITY_NORMAL, type TextNode } from 'lexical'
 import { Avatar, glyphOf, pairOf } from '../../components/Avatar'
-import type { Mentionable } from '../../store/selectors'
+import type { Mentionable } from '../../store/mentions'
 import { $createMentionNode } from './MentionNode'
 import styles from '../Composer.module.css'
 

@@ -101,9 +101,6 @@ export interface Message {
   transient: boolean
   /** 这条消息背后的 agent 运行（占位和最终回答都带着它），没有就是普通消息 */
   runID: string | null
-  /** 正文里的 @名字，人和 agent 分开，渲染时各自上色 */
-  mentions: string[]
-  agentMentions: string[]
   /** 本地日序号，列表按它插日期分隔 */
   dayIndex: number
 }
@@ -122,6 +119,8 @@ export interface Person {
   isAgent: boolean
   tag: string | null
   color: string | null
+  /** 允不允许被拉进群。服务端会拒绝整批邀请，所以选人时要先把这些人排除掉。 */
+  joinable: boolean
 }
 
 export const plainText = (b: Body): string => {
