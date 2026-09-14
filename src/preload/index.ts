@@ -17,6 +17,7 @@ const bridge: DesktopBridge = {
       return () => ipcRenderer.removeListener(IPC.windowFullscreen, handler)
     },
   },
+  setUnread: (count) => ipcRenderer.send(IPC.unreadSet, count),
   secret: {
     get: (key) => ipcRenderer.invoke(IPC.secretGet, key),
     set: (key, value) => ipcRenderer.invoke(IPC.secretSet, key, value),

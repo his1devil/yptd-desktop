@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import { IPC, type HttpRequest, type HttpResponse, type StreamBatch } from '../shared/ipc'
 import { attachOpenIM, disposeOpenIM } from './openim'
 import { setupUpdater } from './updater'
+import { disposeTray, setUnread, setupTray } from './tray'
 
 // ---- 凭据 --------------------------------------------------------------------
 // 设备 token 用 safeStorage 加密后落在 userData 下。macOS 上 safeStorage 的密钥在
@@ -264,7 +265,9 @@ function createWindow(): BrowserWindow {
   return win
 }
 
-app.on('before-quit', () => disposeOpenIM())
+app.on('before-quit', () => { disposeOpenIM(); disposeTray() })
+
+ipcMain.on(IPC.unreadSet, (_e, count: number) => setUnread(count))
 
 ipcMain.handle(IPC.appVersion, () => app.getVersion())
 ipcMain.on(IPC.windowMinimize, (e) => BrowserWindow.fromWebContents(e.sender)?.minimize())
@@ -301,6 +304,15 @@ void app.whenReady().then(() => {
   })
   const win = createWindow()
   setupUpdater(() => (win.isDestroyed() ? null : win.webContents))
+  // 菜单栏图标：窗口关掉之后它还在，点一下把窗口叫回来
+  setupTray(() => {
+    const open = BrowserWindow.getAllWindows()[0] ?? createWindow()
+    if (open.isMinimized()) open.restore()
+    open.show()
+    open.focus()
+    // 关窗之后 Dock 图标是隐藏的（LSUIElement 没开时不会，但 activate 仍然要叫一次）
+    if (process.platform === 'darwin') void app.dock?.show()
+  })
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
   })

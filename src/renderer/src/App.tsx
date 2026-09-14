@@ -4,6 +4,7 @@ import { UpdateBanner } from './components/UpdateBanner'
 import { ContextSidebar } from './shell/ContextSidebar'
 import { Inspector } from './shell/Inspector'
 import { MainArea } from './shell/MainArea'
+import { needsYou } from './store/mentions'
 import { nextConversation, orderedConversationIds } from './store/order'
 import { useSession } from './store/session'
 import { useUI } from './store/ui'
@@ -30,6 +31,14 @@ export function App() {
     if (booted.current) return
     booted.current = true
     void useSession.getState().boot()
+  }, [])
+
+  // 未读数推给主进程画到菜单栏图标旁边和 Dock 角标上。订阅 store 而不是放在渲染里，
+  // 这样窗口藏起来、组件没在重绘的时候，数字照样是新的。
+  useEffect(() => {
+    const push = (): void => window.desktop.setUnread(needsYou(useSession.getState().conversations))
+    push()
+    return useSession.subscribe(push)
   }, [])
 
   // 回到窗口时补一次花名册：新注册的人没有任何推送会告诉我们，只能自己再问一次。

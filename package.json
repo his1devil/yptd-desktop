@@ -13,7 +13,8 @@
     "preview": "electron-vite preview",
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
     "test": "vitest run",
-    "dist": "electron-vite build && electron-builder --mac --arm64"
+    "dist": "electron-vite build && electron-builder --mac --arm64",
+    "tray:icon": "electron scripts/make-tray-icon.cjs"
   },
   "dependencies": {
     "@lexical/react": "0.50.0",

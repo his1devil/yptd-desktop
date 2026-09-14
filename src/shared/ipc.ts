@@ -32,6 +32,8 @@ export const IPC = {
   streamOpen: 'stream:open',
   streamClose: 'stream:close',
   streamEvent: 'stream:event',
+  /** 渲染进程 → 主进程：待处理消息数，画到菜单栏图标和 Dock 角标上 */
+  unreadSet: 'unread:set',
   /** 自动更新：主进程 → 渲染进程推状态；渲染进程可以要求检查、安装 */
   updateStatus: 'update:status',
   updateStatusGet: 'update:statusGet',
@@ -75,6 +77,8 @@ export interface DesktopBridge {
     close(): void
     onFullscreen(listener: (full: boolean) => void): () => void
   }
+  /** 待处理消息数：画到菜单栏图标旁边和 Dock 角标上 */
+  setUnread(count: number): void
   secret: {
     get(key: string): Promise<string | null>
     set(key: string, value: string): Promise<void>

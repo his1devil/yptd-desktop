@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import type { Member, Person } from '../../../shared/model'
-import { knownPeople, mentionLook, mentionables, resolveMention } from './mentions'
+import type { Conversation, Member, Person } from '../../../shared/model'
+import { knownPeople, mentionLook, mentionables, needsYou, resolveMention } from './mentions'
 import type { Place } from './selectors'
 
 const person = (id: string, name: string, isAgent = false): Person =>
@@ -144,5 +144,27 @@ describe('你能看见的人', () => {
 
   it('同一个人在几个群里只出现一次', () => {
     expect(knownPeople([], { g1: [hidden], g2: [hidden] })).toHaveLength(1)
+  })
+})
+
+describe('要你回应的消息数', () => {
+  const conv = (over: Partial<Conversation>): Conversation => ({
+    id: 'x', kind: 'channel', renderMode: 'im', title: 't', avatar: null, unread: 0, mentioned: false,
+    pinned: false, preview: '', lastAt: 0, groupID: null, peerID: null, ...over,
+  })
+
+  it('私聊和 agent 会话全算', () => {
+    expect(needsYou([conv({ kind: 'dm', unread: 3 }), conv({ kind: 'agent_session', unread: 2 })])).toBe(5)
+  })
+
+  it('频道只算 @ 到你的那些', () => {
+    // 全算进去的话这个数每天四位数，看一眼等于没看
+    expect(needsYou([conv({ kind: 'channel', unread: 400 })])).toBe(0)
+    expect(needsYou([conv({ kind: 'channel', unread: 2, mentioned: true })])).toBe(2)
+  })
+
+  it('没有未读就是 0', () => {
+    expect(needsYou([conv({ kind: 'dm', unread: 0 }), conv({})])).toBe(0)
+    expect(needsYou([])).toBe(0)
   })
 })

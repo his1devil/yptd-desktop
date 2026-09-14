@@ -1,4 +1,4 @@
-import type { Member, Person } from '../../../shared/model'
+import type { Conversation, Member, Person } from '../../../shared/model'
 import type { Mentions } from '../views/rich'
 import type { Place } from './selectors'
 
@@ -99,4 +99,19 @@ export function knownPeople(roster: Person[], members: Record<string, Member[]>)
     }
   }
   return [...out.values()]
+}
+
+/**
+ * 要你回应的消息有多少条：私聊、agent 会话、以及频道里 @ 到你的。
+ *
+ * 频道里没点你名字的消息不算。全算进去的话这个数每天四位数，看一眼等于没看——
+ * 菜单栏和 Dock 上那个数字要能让人决定「现在要不要放下手里的事」，做不到就是装饰。
+ * 和收件箱「提及我的」同一套口径，两处对不上会让人以为哪边漏了。
+ */
+export function needsYou(conversations: Conversation[]): number {
+  let n = 0
+  for (const c of conversations) {
+    if (c.unread > 0 && (c.mentioned || c.kind === 'dm' || c.kind === 'agent_session')) n += c.unread
+  }
+  return n
 }

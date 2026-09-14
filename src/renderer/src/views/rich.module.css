@@ -45,3 +45,20 @@
   max-width: 100%;
 }
 .pre code { font: inherit; }
+
+/* 表格：正文是 pre-wrap，表格自己不跟着走，横着放不下就自己滚，
+   不要把整条消息撑宽——消息列的宽度是给字读的。 */
+.tableWrap { margin: 6px 0; max-width: 100%; overflow-x: auto; }
+.table {
+  border-collapse: collapse;
+  font-size: 13px;
+  line-height: 1.5;
+  white-space: normal;
+  font-variant-numeric: tabular-nums;
+}
+.table th, .table td {
+  border: 1px solid var(--line);
+  padding: 4px 10px;
+  vertical-align: top;
+}
+.table th { background: var(--surface2); font-weight: 600; white-space: nowrap; }

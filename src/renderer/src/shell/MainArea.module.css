@@ -10,9 +10,13 @@
 /* 频道头 54px：名称 14.5/600 + 等宽 slug + 主题行 11.5 + 头像堆 + 人数 + 无边框开合图标 */
 /* 左右两块给同一个高度，再整体居中——只要两边一样高就不会错位，
    不用去猜「两行文字」和「一排图标」各自的视觉重心在哪。 */
+/* 高度写死，切会话时头部不跳：频道没有头像，私聊和 agent 多一个，自然高度差 5px。
+   两边都居中，装不下就往 13px 的内边距里挤，而不是把里面的字压扁。 */
 .head {
   flex: none;
   position: relative;
+  height: 61px;
+  box-sizing: border-box;
   -webkit-app-region: drag;
   display: flex;
   align-items: center;
@@ -21,10 +25,14 @@
   border-bottom: 1px solid var(--line);
 }
 .titleBlock {
-  height: 34px;
+  min-height: 34px;
   display: flex; flex-direction: column; justify-content: center;
   gap: 2px; min-width: 0;
 }
+/* 不许被压缩。写死 34px 的年代这里装的是「一行标题 + 一行副标题」，
+   私聊和 agent 那个 22px 头像一进来就超了 5px，flex 全从副标题身上扣，
+   11px 的字只剩 10px 行高，descender 被切掉——就是「字被覆盖了」的样子。 */
+.titleRow, .topic { flex: none; }
 .titleRow { display: flex; align-items: baseline; gap: 8px; }
 .title { font-size: 13px; font-weight: 600; letter-spacing: -.006em; }
 .topic { font-size: 11px; color: var(--ink2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

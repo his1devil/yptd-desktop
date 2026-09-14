@@ -1,13 +1,15 @@
 import { createContext, Fragment, memo, useContext, type ReactNode } from 'react'
 import { resolveMention } from '../store/mentions'
+import { blocks, type Block } from './markdown'
 import styles from './rich.module.css'
 
 /**
- * 消息正文：围栏代码块 + 行内 markdown + @提及色块，换行原样保留。
+ * 消息正文：围栏代码块 + 表格 + 行内 markdown + @提及色块，换行原样保留。
  *
- * 块级只认 ``` 围栏——agent 的回答里代码块常见，得像代码。其余块级语法（列表、标题）
- * 保留发送者打的字面字符：它们会把聊天消息的空行折掉，agent 分段的回答就成一坨了，
- * 别的聊天软件也是这么显示的。
+ * 块级只认 ``` 围栏和表格。围栏是因为 agent 的回答里代码块常见，得像代码；表格是
+ * 因为一张 markdown 表原样显示根本读不了——比例字体下列对不齐，`|---|---|` 那行纯是
+ * 噪音——而 agent 一天要发好几张。其余块级语法（列表、标题）仍然保留字面字符：它们
+ * 会把聊天消息的空行折掉，agent 分段的回答就成一坨了，别的聊天软件也是这么显示的。
  *
  * @名字有三种下场，由它在不在这个会话里决定：
  *   群里的 agent   橙色（--agent/--atint）
@@ -24,7 +26,6 @@ import styles from './rich.module.css'
  */
 // 最后那一段只是「@ 后面一串像名字的字」，具体到哪儿为止交给 resolveMention 按名单定
 const TOKEN = /(\*\*[^*\n]+?\*\*)|(`[^`\n]+?`)|(~~[^~\n]+?~~)|(\[[^\]\n]+?\]\((https?:\/\/[^)\s]+)\))|(https?:\/\/[^\s<>)\]]+)|(@[A-Za-z0-9_\u4e00-\u9fa5]{1,32})/g
-const FENCE = /```[\w+-]*\n([\s\S]*?)```/g
 /** 带正负号的百分比，且整段只有它——涨跌幅，上语义色 */
 const MOVE = /^[+-]\d+(\.\d+)?%$/
 
@@ -47,19 +48,36 @@ export const MentionsProvider = MentionContext.Provider
 
 export const Rich = memo(function Rich({ text }: { text: string }) {
   const mentions = useContext(MentionContext)
-  if (!text.includes('```')) return <Fragment>{inline(text, mentions)}</Fragment>
-  const out: ReactNode[] = []
-  let last = 0
-  let key = 0
-  for (const f of text.matchAll(FENCE)) {
-    const i = f.index ?? 0
-    if (i > last) out.push(<Fragment key={key++}>{inline(text.slice(last, i).replace(/\n$/, ''), mentions)}</Fragment>)
-    out.push(<pre key={key++} className={styles.pre}><code>{(f[1] ?? '').replace(/\n$/, '')}</code></pre>)
-    last = i + f[0].length
-  }
-  if (last < text.length) out.push(<Fragment key={key++}>{inline(text.slice(last).replace(/^\n/, ''), mentions)}</Fragment>)
-  return <Fragment>{out}</Fragment>
+  const parts = blocks(text)
+  // 绝大多数消息就是一段字，别为它建一层 Fragment 数组
+  if (parts.length === 1 && parts[0]!.kind === 'text') return <Fragment>{inline(parts[0]!.text, mentions)}</Fragment>
+  return <Fragment>{parts.map((b, i) => <Chunk key={i} block={b} look={mentions} />)}</Fragment>
 })
+
+function Chunk({ block, look }: { block: Block; look: Mentions }): ReactNode {
+  switch (block.kind) {
+    case 'code':
+      return <pre className={styles.pre}><code>{block.code}</code></pre>
+    case 'table':
+      // 表比正文宽是常态，让它自己横向滚，而不是把整条消息撑宽
+      return (
+        <div className={styles.tableWrap}>
+          <table className={styles.table}>
+            <thead>
+              <tr>{block.head.map((c, i) => <th key={i} style={{ textAlign: block.align[i] }}>{inline(c, look)}</th>)}</tr>
+            </thead>
+            <tbody>
+              {block.rows.map((row, r) => (
+                <tr key={r}>{row.map((c, i) => <td key={i} style={{ textAlign: block.align[i] }}>{inline(c, look)}</td>)}</tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )
+    default:
+      return <Fragment>{inline(block.text, look)}</Fragment>
+  }
+}
 
 function inline(text: string, look: Mentions): ReactNode[] {
   const out: ReactNode[] = []
