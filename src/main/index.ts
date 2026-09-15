@@ -6,6 +6,12 @@ import { attachOpenIM, disposeOpenIM } from './openim'
 import { setupUpdater } from './updater'
 import { disposeTray, setUnread, setupTray } from './tray'
 
+// 开发用：换一个数据目录，就能和已安装的那份同时跑而不互相踢下线——
+// 登录凭据、本地消息库都按 userData 走，两份各用各的。打包后不认。
+if (!app.isPackaged && process.env.YPTD_DEV_PROFILE) {
+  app.setPath('userData', process.env.YPTD_DEV_PROFILE)
+}
+
 // ---- 凭据 --------------------------------------------------------------------
 // 设备 token 用 safeStorage 加密后落在 userData 下。macOS 上 safeStorage 的密钥在
 // 钥匙串里，只有这个签名的 app 能解——效果等同上一版直接写钥匙串，但不会再撞上
