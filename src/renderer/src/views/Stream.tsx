@@ -43,7 +43,7 @@ const pictureBox = (m: Message): { natural: PixelSize | null } => ({ natural: m.
 function estimate(row: Row, available: number): number {
   if (row.kind === 'day') return 46
   if (row.kind === 'pending') return row.message.runID ? 174 : 50
-  if (row.kind === 'gallery') return 56 + galleryLayout(row.messages.map(pictureBox), available).height - (row.continued ? 38 : 0)
+  if (row.kind === 'gallery') return 56 + galleryLayout(row.messages.map(pictureBox), available).height - (row.continued ? 38 : 0) - (row.leads ? 5 : 0)
   const m = row.message
   let h = 56
   h += attachmentsHeight(m.attachments, available)
@@ -55,6 +55,8 @@ function estimate(row: Row, available: number): number {
   if (m.reactions.length) h += 36
   // 续行没有头像和名字那一行
   if (row.continued) h -= 38
+  // 后面跟着续行的，下边距从 7 收到 2
+  if (row.leads) h -= 5
   return Math.max(h, 24)
 }
 
@@ -344,6 +346,7 @@ export function Stream({ place }: { place: Place }) {
                         message={row.messages[0]!}
                         gallery={row.messages}
                         continued={row.continued}
+                        leads={row.leads}
                         mine={row.messages[0]!.sender === me}
                         pinned={popover?.id === row.messages[0]!.id}
                         flash={row.messages.some((m) => m.id === flash)}
@@ -356,6 +359,7 @@ export function Stream({ place }: { place: Place }) {
                     <MessageRow
                       message={row.message}
                       continued={row.kind === 'msg' && row.continued}
+                      leads={row.kind === 'msg' && row.leads}
                       mine={row.message.sender === me}
                       pinned={popover?.id === row.message.id}
                       flash={flash === row.message.id}
@@ -455,6 +459,8 @@ interface RowProps {
   gallery?: Message[]
   /** 紧接着上一行、同一个人在说：省掉头像和名字，悬停才看时间 */
   continued?: boolean
+  /** 后面紧跟着续行：下边距收紧，免得首条和第二条之间比后面几条宽 */
+  leads?: boolean
   mine: boolean
   pinned: boolean
   flash: boolean
@@ -466,9 +472,9 @@ interface RowProps {
   onPopover: Anchor
 }
 
-const MessageRow = memo(function MessageRow({ message: m, gallery, continued = false, pinned, flash, onReact, onQuote, onHandoff, onJump, onImage, onPopover }: RowProps) {
+const MessageRow = memo(function MessageRow({ message: m, gallery, continued = false, leads = false, pinned, flash, onReact, onQuote, onHandoff, onJump, onImage, onPopover }: RowProps) {
   const rootRef = useRef<HTMLDivElement>(null)
-  const cls = [styles.row, continued && styles.cont, pinned && styles.pinned, flash && styles.flash, m.mentionsMe && styles.mentioned].filter(Boolean).join(' ')
+  const cls = [styles.row, continued && styles.cont, leads && styles.leads, pinned && styles.pinned, flash && styles.flash, m.mentionsMe && styles.mentioned].filter(Boolean).join(' ')
   // 表情先从按钮飞到回应行再发出去：飞到一半回显就到了，网络那几百毫秒感觉不到
   const reactFrom = (emoji: string, from: HTMLElement): void => {
     const to = rootRef.current?.querySelector('[data-rx]') ?? rootRef.current?.querySelector('[data-body]')

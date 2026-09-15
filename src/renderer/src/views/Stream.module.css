@@ -21,6 +21,11 @@
 .row { display: flex; gap: 11px; padding: 7px 24px; position: relative; }
 /* 续行：没有头像和名字，行距收紧，左侧留白悬停时显示时间 */
 .cont { padding-top: 2px; padding-bottom: 2px; }
+/* 后面还跟着续行的那一条，下边也要收紧。
+   .cont 只管得了自己的上下，管不到上一条——而带头像的首条 padding-bottom 还是 7，
+   于是「首条→第二条」比「第二条→第三条」宽 5px，同一个人连着说的几句看着不齐。
+   不能用 :has(+ .cont)：虚拟列表给每行套了绝对定位的 .vrow，行与行之间不是兄弟。 */
+.leads { padding-bottom: 2px; }
 /* 宽度必须等于头像尺寸（Stream.tsx 里的 size={34}），否则续行整条往左偏 */
 .gut { width: 34px; flex: none; display: flex; justify-content: center; align-items: flex-start; padding-top: 5px; }
 .gutTime { font-size: 9.5px; color: var(--ink3); opacity: 0; transition: opacity var(--dur-fast); }

@@ -85,3 +85,28 @@ describe('正文估高', () => {
     expect(Math.ceil(digest.length / 67)).toBeLessThan(textLines(digest))
   })
 })
+
+describe('后面跟着续行的那一条', () => {
+  it('要标出来，好把下边距收紧', () => {
+    // .cont 只收得了自己的上下边，管不到上一条。不标的话「首条→第二条」的缝
+    // 比「第二条→第三条」宽 5px，同一个人连着说的几句看着不齐。
+    const rows = buildRows([base('a', 1000), base('b', 2000), base('c', 3000)])
+    const msgs = rows.filter((r) => r.kind === 'msg')
+    expect(msgs.map((r) => [r.continued, r.leads])).toEqual([
+      [false, true],  // 首条：不是续行，但后面跟着续行
+      [true, true],   // 中间：两头都要收
+      [true, false],  // 最后一条：后面没有了
+    ])
+  })
+
+  it('换人之后就不标了', () => {
+    const rows = buildRows([base('a', 1000), base('b', 2000, { sender: 'other', senderName: '别人' })])
+    const msgs = rows.filter((r) => r.kind === 'msg')
+    expect(msgs.map((r) => r.leads)).toEqual([false, false])
+  })
+
+  it('只有一条时也不标', () => {
+    const rows = buildRows([base('a', 1000)])
+    expect(rows.filter((r) => r.kind === 'msg')[0]!.leads).toBe(false)
+  })
+})

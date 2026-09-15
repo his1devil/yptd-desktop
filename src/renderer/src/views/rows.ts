@@ -12,9 +12,9 @@ import { dayLabel } from '../im/translate'
  */
 export type Row =
   | { key: string; kind: 'day'; label: string }
-  | { key: string; kind: 'msg'; message: Message; continued: boolean }
+  | { key: string; kind: 'msg'; message: Message; continued: boolean; leads: boolean }
   | { key: string; kind: 'pending'; message: Message }
-  | { key: string; kind: 'gallery'; messages: Message[]; continued: boolean }
+  | { key: string; kind: 'gallery'; messages: Message[]; continued: boolean; leads: boolean }
 
 /** 两张图隔多久还算同一组 */
 export const GALLERY_GAP_MS = 90_000
@@ -34,11 +34,21 @@ export function buildRows(messages: readonly Message[]): Row[] {
     if (m.body.kind === 'picture' && !m.quote) {
       if (last?.kind === 'gallery' && joins(last.messages[last.messages.length - 1]!, m)) { last.messages.push(m); continue }
       if (last?.kind === 'msg' && last.message.body.kind === 'picture' && !last.message.quote && joins(last.message, m)) {
-        rows[rows.length - 1] = { key: last.key, kind: 'gallery', messages: [last.message, m], continued: last.continued }
+        rows[rows.length - 1] = { key: last.key, kind: 'gallery', messages: [last.message, m], continued: last.continued, leads: false }
         continue
       }
     }
-    rows.push({ key: m.id, kind: 'msg', message: m, continued: follows(last, m) })
+    rows.push({ key: m.id, kind: 'msg', message: m, continued: follows(last, m), leads: false })
+  }
+  // 后面紧跟着续行的那一条，下边距也要收紧。不这么做的话「首条→第二条」比
+  // 「第二条→第三条」宽 5px，同一个人连着说的几句看着不齐——.cont 只收得了自己的
+  // 上下边，管不到上一条。放在这里算，渲染和估高用的是同一份事实。
+  for (let i = 0; i < rows.length - 1; i++) {
+    const here = rows[i]!
+    const next = rows[i + 1]!
+    if ((here.kind === 'msg' || here.kind === 'gallery') && (next.kind === 'msg' || next.kind === 'gallery') && next.continued) {
+      here.leads = true
+    }
   }
   return rows
 }
