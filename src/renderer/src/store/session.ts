@@ -93,6 +93,25 @@ interface SessionState {
 
 // ---- store 外的重对象 -----------------------------------------------------------
 const timelines = new Map<ConversationId, Timeline>()
+/**
+ * 内存里同时留着的会话数。当前这个 + 最近几个来回切的，再往前的从本地库重读是毫秒级。
+ *
+ * 以前只增不减：开着窗口刷一天，进过的每个会话都原样留在内存里。这些消息本地 SQLite 里
+ * 都有，回来时重读就是了。
+ */
+const KEEP_TIMELINES = 6
+const recent: ConversationId[] = []
+
+function touchTimeline(id: ConversationId): void {
+  const at = recent.indexOf(id)
+  if (at >= 0) recent.splice(at, 1)
+  recent.push(id)
+  while (recent.length > KEEP_TIMELINES) {
+    const drop = recent.shift()!
+    // 正开着的那个不动——它正在屏幕上
+    if (drop !== useUI.getState().conversationId) timelines.delete(drop)
+  }
+}
 let translator = new Translator('')
 let cfg: ServerConfig = DEFAULT_SERVER
 let unsubscribe: (() => void)[] = []
@@ -191,6 +210,7 @@ export const useSession = create<SessionState>()((set, get) => ({
   },
 
   async open(id) {
+    touchTimeline(id)
     const agent = kindOf(id, get()) === 'agent_session'
     // 换会话走 View Transition：旧流淡出、头部的头像和标题滑过去（同一个会话就不折腾）
     if (useUI.getState().conversationId !== id) void transition(() => useUI.getState().open(id, { agent }))
