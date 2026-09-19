@@ -239,7 +239,16 @@ function parseEx(ex: string | undefined): Ex | null {
  * m mime，p 视频封面地址，d 时长（秒）。规格见 yptd-serve docs/media-pipeline.md §2。
  * 不认识的键一律忽略——iOS 以后加 th / o / b，这里读不懂也不该出错。
  */
-interface RichAtt { k: 'i' | 'v' | 'f'; u: string; n: string; s: number; w?: number; h?: number; m?: string; p?: string; d?: number }
+interface RichAtt {
+  k: 'i' | 'v' | 'f'; u: string; n: string; s: number
+  w?: number; h?: number; m?: string; p?: string; d?: number
+  /** 缩略档：地址、尺寸、字节数 */
+  th?: { u: string; w?: number; h?: number; s?: number }
+  /** 原图：地址和字节数 */
+  o?: { u: string; s?: number }
+  /** ThumbHash，base64，≤40 字符 */
+  b?: string
+}
 
 const KIND: Record<Attachment['kind'], RichAtt['k']> = { image: 'i', video: 'v', file: 'f' }
 
@@ -250,6 +259,9 @@ export function richEx(attachments: Attachment[], hasText: boolean): string {
     ...(x.mime ? { m: x.mime } : {}),
     ...(x.poster ? { p: x.poster } : {}),
     ...(typeof x.duration === 'number' && x.duration > 0 ? { d: Math.round(x.duration * 10) / 10 } : {}),
+    ...(x.thumb ? { th: { u: x.thumb, ...(x.thumbSize ? { w: x.thumbSize.width, h: x.thumbSize.height } : {}) } } : {}),
+    ...(x.original ? { o: { u: x.original, ...(x.originalBytes ? { s: x.originalBytes } : {}) } } : {}),
+    ...(x.blur ? { b: x.blur } : {}),
   }))
   return JSON.stringify({ yptd: 'rich', a, t: hasText ? 1 : 0 })
 }
@@ -268,6 +280,20 @@ export function parseRich(ex: string | undefined): { attachments: Attachment[]; 
       ...(kind === 'video' && typeof x.p === 'string' && x.p ? { poster: x.p } : {}),
       ...(typeof x.d === 'number' && x.d > 0 ? { duration: x.d } : {}),
       ...(typeof x.m === 'string' && x.m ? { mime: x.m } : {}),
+      ...(x.th && typeof x.th.u === 'string' && x.th.u
+        ? {
+            thumb: x.th.u,
+            ...(typeof x.th.w === 'number' && typeof x.th.h === 'number' && x.th.w > 0 && x.th.h > 0
+              ? { thumbSize: { width: x.th.w, height: x.th.h } }
+              : {}),
+          }
+        : {}),
+      ...(x.o && typeof x.o.u === 'string' && x.o.u
+        ? { original: x.o.u, ...(typeof x.o.s === 'number' ? { originalBytes: x.o.s } : {}) }
+        : {}),
+      // 40 是协议给的上限：实测最长的 hash 是 36 个字符（方图带 alpha），余量只剩 4 个，
+      // 这个字段不能再塞别的东西
+      ...(typeof x.b === 'string' && x.b && x.b.length <= 40 ? { blur: x.b } : {}),
     })
   }
   return { attachments, textless: p.t === 0 }

@@ -109,6 +109,8 @@ export function Composer({ place }: { place: Place }) {
   }, [])
   const removeAttachment = (aid: string): void => setAttachments((cur) => cur.filter((a) => a.id !== aid))
   const count = (kind: Attachment['kind']): number => attachments.filter((a) => a.kind === kind).length
+  /** 「原图」勾选。只记在这一次输入里：它是对这几张图的决定，不是一个长期偏好 */
+  const [original, setOriginal] = useState(false)
   /** 不会被压缩的那部分：视频和文件。图片发之前会压，不算在里面 */
   const heavy = attachments.reduce((n, a) => n + (a.kind === 'image' ? 0 : a.bytes), 0)
 
@@ -148,13 +150,21 @@ export function Composer({ place }: { place: Place }) {
     setSegments([])
     drafts.delete(id)
     setAttachments([])
+    const wantOriginal = original
+    setOriginal(false)
     if (quoteId) setQuote(id, null)
     const s = useSession.getState()
     const opts = { quote: quoteId ?? undefined, mentions: composed.mentions.length ? composed.mentions : undefined, draftToken: token }
-    if (batch.length) { void s.sendRich(id, text, { ...opts, attachments: batch }); return }
+    if (batch.length) {
+      void s.sendRich(id, text, {
+        ...opts,
+        attachments: batch.map((a) => (a.kind === 'image' ? { ...a, wantOriginal } : a)),
+      })
+      return
+    }
     setSending(true)
     void s.send(id, text, opts).finally(() => setSending(false))
-  }, [attachments, sending, id, quoteId, setQuote])
+  }, [attachments, sending, id, quoteId, setQuote, original])
 
   const attach = async (kind: 'image' | 'any'): Promise<void> => {
     const paths = await window.desktop.files.pick(kind)
@@ -214,6 +224,14 @@ export function Composer({ place }: { place: Place }) {
               ].filter(Boolean).join(' · ')}
               {' · 和文字一起发'}
             </span>
+            {/* 图片默认压到长边 2048。勾了「原图」会另外把原文件也传一份，接收端点「查看原图」
+                才下——纯粹的增量字节，所以不默认开。设计稿和截图要看细节时才用得上。 */}
+            {count('image') > 0 && (
+              <label className={styles.trayToggle}>
+                <input type="checkbox" checked={original} onChange={(e) => setOriginal(e.target.checked)} />
+                原图
+              </label>
+            )}
             {/* 出口只有 260 KB/s，而且是所有人共用的：大文件发出去之前让发的人知道对面要等多久 */}
             {heavy > WARN_BYTES && <span className={styles.trayWarn}>共 {fmtBytes(heavy)}，每个接收的人下载约需 {waitFor(heavy)}</span>}
           </div>

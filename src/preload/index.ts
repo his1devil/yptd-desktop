@@ -49,9 +49,16 @@ const bridge: DesktopBridge = {
     pathFor: (file) => webUtils.getPathForFile(file),
     thumbnail: (path) => ipcRenderer.invoke(IPC.fileThumbnail, path),
     prepare: (path, mode) => ipcRenderer.invoke(IPC.filePrepare, path, mode),
+    thumb: (path) => ipcRenderer.invoke(IPC.fileThumb, path),
     discard: (path) => ipcRenderer.send(IPC.fileDiscard, path),
     expose: (path) => ipcRenderer.invoke(IPC.fileExpose, path),
     download: (url, name) => ipcRenderer.send(IPC.fileDownload, url, name),
+  },
+  media: {
+    adopt: (userID, server) => ipcRenderer.invoke(IPC.mediaAdopt, userID, server),
+    usage: () => ipcRenderer.invoke(IPC.mediaUsage),
+    clear: (pool) => ipcRenderer.invoke(IPC.mediaClear, pool),
+    prefetch: (url) => ipcRenderer.invoke(IPC.mediaPrefetch, url),
   },
   clipboard: {
     readText: () => ipcRenderer.invoke(IPC.clipboardReadText),

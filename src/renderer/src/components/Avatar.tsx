@@ -1,5 +1,5 @@
 import { useState, type CSSProperties } from 'react'
-import { avatarSized } from '../im/files'
+import { avatarSized, viaMain } from '../im/files'
 import { agentColor, useFace } from './identity'
 import { Mark } from './Mark'
 import styles from './Avatar.module.css'
@@ -46,7 +46,9 @@ export function Avatar({ glyph, pair, size, kind = 'human', id, src, presence, r
   const [ready, setReady] = useState<string | null>(null)
   const [failed, setFailed] = useState<string | null>(null)
   const source = src ?? known
-  const want = source ? avatarSized(source, Math.round(size * DPR)) : null
+  // 头像有自己的缓存池，一屏图片再多也挤不掉它——一个 20 人的频道里同一张脸要画十几次
+  const tier = Math.round(size * DPR)
+  const want = source ? viaMain(avatarSized(source, tier), 'avatars', `a${tier}`) : null
   const face = want && want !== failed ? want : null
   return (
     <span

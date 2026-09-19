@@ -24,10 +24,20 @@ export const IPC = {
   fileThumbnail: 'file:thumbnail',
   /** 发图前的压缩（attachment）和头像的裁切压缩（avatar），返回真正要上传的那个文件 */
   filePrepare: 'file:prepare',
+  /** 发图时顺手产出缩略档和模糊占位 */
+  fileThumb: 'file:thumb',
   /** 发完把临时文件删掉 */
   fileDiscard: 'file:discard',
   /** 让渲染进程能用 <video> 读一个用户选中的本机文件（量时长、取封面） */
   fileExpose: 'file:expose',
+  /** 媒体缓存归到哪个账号名下 */
+  mediaAdopt: 'media:adopt',
+  /** 各池子占了多少（存储页） */
+  mediaUsage: 'media:usage',
+  /** 清一个池子，或者这个账号的全部 */
+  mediaClear: 'media:clear',
+  /** 把一个对象整个拿到本地（视频播放前） */
+  mediaPrefetch: 'media:prefetch',
   /** 把一个网络地址交给 Chromium 下载：它自己弹保存对话框、进下载列表 */
   fileDownload: 'file:download',
   /** 登录页：剪贴板里有邀请码就预填 */
@@ -116,12 +126,23 @@ export interface DesktopBridge {
     thumbnail(path: string): Promise<{ dataURL: string; width: number; height: number; bytes: number } | null>
     /** 发之前处理一下：图片按 shared/prepare 的规则缩放重编码，头像裁方形压到 640。返回真正要上传的文件；avatar 解不开返回 null */
     prepare(path: string, mode: 'attachment' | 'avatar'): Promise<{ path: string; ext: string; mime: string; width: number; height: number; bytes: number; original: boolean } | null>
+    /** 缩略档（长边 720 的 JPEG）和 ThumbHash。生成不出来返回 null */
+    thumb(path: string): Promise<{ thumb: { path: string; ext: string; mime: string; width: number; height: number; bytes: number; original: boolean }; blur: string } | null>
     /** 上传完了，把 prepare 产生的临时文件删掉（只删自己目录里的） */
     discard(path: string): void
     /** 给一个用户选中的本机文件一个能放进 <video src> 的地址。只有经过这里登记的路径才读得到 */
     expose(path: string): Promise<string>
     /** 另存为：交给 Chromium 走系统下载，渲染进程里 `<a download>` 对跨域地址没用 */
     download(url: string, name?: string): void
+  }
+  /** 媒体缓存。字节由主进程管：按账号分目录、有上限能清、以后加鉴权头 */
+  media: {
+    /** 登录/退出时调。退出传 null——之后什么都不再落盘 */
+    adopt(userID: string | null, server: string): Promise<void>
+    usage(): Promise<{ avatars: number; images: number; files: number; limits: Record<string, number> }>
+    clear(pool: 'avatars' | 'images' | 'files' | 'all'): Promise<void>
+    /** 视频播放前整个拿到本地，返回本地路径；没登录或中途换了账号返回 null */
+    prefetch(url: string): Promise<string | null>
   }
   clipboard: {
     /** 剪贴板里的文字。只在登录页读一次，用来预填邀请码 */

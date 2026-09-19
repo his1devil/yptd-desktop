@@ -1,6 +1,7 @@
 import { app, BrowserWindow, clipboard, dialog, ipcMain, nativeImage, net, protocol, safeStorage, screen, session, shell } from 'electron'
 import { pathToFileURL } from 'node:url'
-import { prepareAvatar, prepareImage } from './prepare'
+import * as media from './mediaStore'
+import { prepareAvatar, prepareImage, prepareThumb } from './prepare'
 import { mkdirSync, readFileSync, statSync, unlinkSync, writeFileSync, existsSync } from 'node:fs'
 import { join, sep } from 'node:path'
 import { IPC, type HttpRequest, type HttpResponse, type StreamBatch } from '../shared/ipc'
@@ -147,12 +148,24 @@ ipcMain.handle(IPC.fileThumbnail, (_e, path: string) => {
 // http://localhost 或 file://，webSecurity 不放行）。这里开一个自定义协议，**只放行登记过的
 // 路径**：登记发生在用户亲手选中/拖入文件的那一刻，渲染进程拿一个路径来问是读不到东西的。
 const exposed = new Set<string>()
+// 渲染进程告诉主进程「现在是谁」：媒体缓存按账号分目录，没有这条线主进程无从知道。
+ipcMain.handle(IPC.mediaAdopt, (_e, userID: string | null, server: string) => media.adopt(userID, server))
+ipcMain.handle(IPC.mediaUsage, () => ({
+  avatars: media.usage('avatars'), images: media.usage('images'), files: media.usage('files'),
+  limits: media.limits,
+}))
+ipcMain.handle(IPC.mediaClear, (_e, pool: media.Pool | 'all') => {
+  if (pool === 'all') media.purge()
+  else media.clear(pool)
+})
+ipcMain.handle(IPC.mediaPrefetch, (_e, url: string) => media.prefetch(url, 'files'))
 ipcMain.handle(IPC.fileExpose, (_e, path: string) => {
   exposed.add(path)
   return `yptd-local://f/${encodeURIComponent(path)}`
 })
 ipcMain.handle(IPC.filePrepare, (_e, path: string, mode: 'attachment' | 'avatar') =>
   mode === 'avatar' ? prepareAvatar(path) : prepareImage(path))
+ipcMain.handle(IPC.fileThumb, (_e, path: string) => prepareThumb(path))
 // 只删自己产生的临时文件：渲染进程传什么路径来都不能变成一个任意删文件的口子
 ipcMain.on(IPC.fileDiscard, (_e, path: string) => {
   const box = join(app.getPath('temp'), 'yptd-outbox') + sep
@@ -315,7 +328,11 @@ ipcMain.on(IPC.windowToggleMaximize, (e) => {
 })
 ipcMain.on(IPC.windowClose, (e) => BrowserWindow.fromWebContents(e.sender)?.close())
 
-protocol.registerSchemesAsPrivileged([{ scheme: 'yptd-local', privileges: { stream: true, supportFetchAPI: true } }])
+protocol.registerSchemesAsPrivileged([
+  { scheme: 'yptd-local', privileges: { stream: true, supportFetchAPI: true } },
+  // 媒体走自己的协议，字节由主进程管（mediaStore）：按账号分目录、有上限能清、以后加鉴权头。
+  { scheme: 'yptd-media', privileges: { stream: true, supportFetchAPI: true, bypassCSP: false } },
+])
 
 void app.whenReady().then(() => {
   protocol.handle('yptd-local', (req) => {
@@ -324,6 +341,18 @@ void app.whenReady().then(() => {
     // 头原样转过去：视频要靠 Range 才能拖动和取中间的帧
     return net.fetch(pathToFileURL(path).toString(), { headers: req.headers })
   })
+  // yptd-media://o/<pool>/<variant>/<原地址 encodeURIComponent 之后>
+  protocol.handle('yptd-media', async (req) => {
+    try {
+      const path = new URL(req.url).pathname.replace(/^\/+/, '').split('/')
+      const [pool, variant, ...rest] = path
+      const target = decodeURIComponent(rest.join('/'))
+      if (!target.startsWith('https://')) return new Response('bad target', { status: 400 })
+      return await media.serve(req, target, (pool as media.Pool) ?? 'images', variant === '-' ? '' : (variant ?? ''))
+    } catch (e) {
+      return new Response(String(e), { status: 502 })
+    }
+  })
   // CSP 只在打包后注入：开发时 Vite 和 React Refresh 要注入内联脚本，
   // 一条严格的 script-src 会把渲染层整个拦成白屏。
   if (app.isPackaged) {
@@ -331,9 +360,14 @@ void app.whenReady().then(() => {
       callback({
         responseHeaders: {
           ...details.responseHeaders,
+          // media-src 一定要显式写：没有它就按规范回落到 default-src 'self'，https 的视频
+          // 和自定义协议全被拦掉——而视频播放和量封面都靠它们。img-src 同理要带上自定义协议。
           'Content-Security-Policy': [
             "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; " +
-              "font-src 'self' data:; img-src 'self' data: https:; connect-src 'self' https: wss:",
+              "font-src 'self' data:; " +
+              "img-src 'self' data: blob: https: yptd-local: yptd-media:; " +
+              "media-src 'self' blob: https: yptd-local: yptd-media:; " +
+              "connect-src 'self' https: wss: yptd-media:",
           ],
         },
       })

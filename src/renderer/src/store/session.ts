@@ -179,6 +179,9 @@ export const useSession = create<SessionState>()((set, get) => ({
     for (const u of unsubscribe) u()
     unsubscribe = []
     try { await im.logout() } catch { /* 已经断了也无妨 */ }
+    // 交回作用域：之后还没结束的下载都不会再往这个账号的目录里写东西。
+    // 缓存本身不删——规格定的是「退出登录保留，下次登录秒开」。
+    await window.desktop.media.adopt(null, '')
     await clearCredential()
     timelines.clear()
     firstPage.clear()
@@ -268,6 +271,9 @@ export const useSession = create<SessionState>()((set, get) => ({
         // 图片先压一遍再传（规则见 shared/prepare）：出口只有 260 KB/s，原文件直传的话一张
         // 5 MB 的图每个接收者要等 20 秒。消息里的宽高和字节数描述的是**传上去的那个文件**。
         const ready = a.kind === 'image' ? await window.desktop.files.prepare(a.path, 'attachment') : null
+        // 缩略档和模糊占位一起产：消息流里显示的是缩略档，它到达之前显示的是那二三十个
+        // 字节解出来的模糊图。生成不出来就都没有，接收端退回按需缩图和一块底色。
+        const small = a.kind === 'image' ? await window.desktop.files.thumb(ready?.path ?? a.path) : null
         try {
           const ext = ready?.ext ?? a.name.split('.').pop() ?? ''
           // 视频的封面是单独的一个对象：接收端先画它，点了才去拉视频本体
@@ -276,16 +282,31 @@ export const useSession = create<SessionState>()((set, get) => ({
             poster = (await im.upload(a.posterPath, randomObjectName('jpg'), 'image/jpeg', 'attachment')).url
             if (a.preview) rememberPreview(poster, a.preview)
           }
+          let thumb: string | null = null
+          if (small) thumb = (await im.upload(small.thumb.path, randomObjectName('jpg'), 'image/jpeg', 'attachment')).url
           const { url } = await im.upload(ready?.path ?? a.path, randomObjectName(ext), ready?.mime ?? a.mime, 'attachment')
-          rememberPreview(url, a.preview)
+          // 勾了「原图」才多传一份原文件。这一份是纯粹的增量字节（好几 MB），所以只在
+          // 明确要的时候传，接收端也只在点了「查看原图」时才下。
+          let original: string | null = null
+          if (a.wantOriginal && ready && !ready.original) {
+            original = (await im.upload(a.path, randomObjectName(a.name.split('.').pop() ?? ''), a.mime, 'attachment')).url
+          }
+          // 垫底图按「这一屏实际会放进 img src 的那个地址」记，不是主图地址——不然自己刚
+          // 发出去的图回显时查不到垫底图，会闪一下空白
+          const shown = thumb ?? url
+          rememberPreview(shown, a.preview)
           return {
             kind: a.kind, url, name: a.name,
             bytes: ready?.bytes ?? a.bytes,
             natural: ready && ready.width > 0 ? { width: ready.width, height: ready.height } : a.natural,
             mime: ready?.mime ?? a.mime, poster, duration: a.duration ?? null,
+            thumb, blur: small?.blur ?? null,
+            thumbSize: small ? { width: small.thumb.width, height: small.thumb.height } : null,
+            original, originalBytes: original ? a.bytes : null,
           }
         } finally {
           if (ready && !ready.original) window.desktop.files.discard(ready.path)
+          if (small) window.desktop.files.discard(small.thumb.path)
         }
       })
       created.ex = richEx(uploaded, hasText)
@@ -555,6 +576,9 @@ async function connect(set: Set, get: Get, authenticate: () => Promise<{ userID:
     // 不占住的话开机这一下白拉两遍。
     rosterAt = Date.now()
     set({ me: auth.userID, myName: auth.nickname })
+    // 媒体缓存归到这个账号名下。必须在拉名册和头像之前——晚了这一轮下来的图就落进
+    // 上一个账号的目录里了。
+    await window.desktop.media.adopt(auth.userID, cfg.api)
 
     set({ phase: { kind: 'connecting', what: '正在连接…' } })
     if (!(await im.loggedIn())) {

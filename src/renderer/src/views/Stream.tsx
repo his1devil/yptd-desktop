@@ -4,8 +4,10 @@ import type { Attachment, Message, MessageId, PixelSize, QuotePreview } from '..
 import { summarize } from '../../../shared/model'
 import { Avatar, glyphOf, pairOf } from '../components/Avatar'
 import { IconCopy, IconEmoji, IconFile, IconHandoff, IconMore, IconQuote, IconUndo } from '../components/Icons'
-import { previewFor, rememberThumb, sized } from '../im/files'
+import { previewFor, rememberThumb, sized, streamSrc, viaMain } from '../im/files'
+import { inLane, laneFor } from '../im/queue'
 import { clock } from '../im/video'
+import { toDataURL } from '../../../shared/thumbhash'
 import { visible } from '../im/timeline'
 import { flyEmoji } from '../motion/fly'
 import { reduceMotion } from '../motion/transition'
@@ -72,6 +74,20 @@ function attachmentsHeight(a: readonly Attachment[], available: number): number 
   const files = a.filter((x) => x.kind === 'file').length
   if (files) h += files * 58
   return h
+}
+
+/**
+ * 发送端带来的模糊占位（ThumbHash，二三十个字节）解成一张能放进 `background-image` 的图。
+ * 一个附件只解一次：解码本身不贵（零点几毫秒），但一屏九张图每次重渲染都解一遍就不必要了。
+ */
+const blurs = new Map<string, string | null>()
+function blurOf(a: Attachment): string | null {
+  if (!a.blur) return null
+  const hit = blurs.get(a.blur)
+  if (hit !== undefined) return hit
+  const url = toDataURL(a.blur)
+  blurs.set(a.blur, url)
+  return url
 }
 
 /** 视频格子：按像素尺寸缩进 360×280；发送端没报尺寸就给一个 16:9 */
@@ -566,7 +582,10 @@ function Body({ message: m, onImage, large }: { message: Message; onImage: OpenI
     case 'picture': {
       const box = fit(b.natural) ?? { width: 320, height: 240 }
       const one = [{ url: b.url, name: b.name, natural: b.natural, bytes: b.bytes }]
-      return <Shot url={b.url} name={b.name} box={{ w: box.width, h: box.height }} busy={m.sendState === 'sending'} group={one} onImage={onImage} />
+      // OpenIM 原生的图片消息（102）根本不走 rich ex，所以永远没有 th / b。显式写出来，
+      // 免得看起来像是忘了传——它走的是按需缩图那条退路，那条路要永远留着。
+      const att: Attachment = { kind: 'image', url: b.url, name: b.name, bytes: b.bytes, natural: b.natural, thumb: null, blur: null }
+      return <Shot att={att} box={{ w: box.width, h: box.height }} busy={m.sendState === 'sending'} group={one} onImage={onImage} />
     }
     case 'file':
       return (
@@ -600,7 +619,7 @@ function Attachments({ message: m, onImage }: { message: Message; onImage: OpenI
       {imgs.length > 0 && (
         <div className={styles.gallery}>
           {imgs.map((a, i) => (
-            <Shot key={a.url} url={a.url} name={a.name} box={boxes[i]!} busy={sending} group={imgs} onImage={onImage} />
+            <Shot key={a.url} att={a} box={boxes[i]!} busy={sending} group={imgs} onImage={onImage} />
           ))}
         </div>
       )}
@@ -633,16 +652,31 @@ function Attachments({ message: m, onImage }: { message: Message; onImage: OpenI
  */
 function Clip({ video: a, busy }: { video: Attachment; busy: boolean }) {
   const [playing, setPlaying] = useState(false)
+  const [src, setSrc] = useState<string | null>(null)
+  const [failed, setFailed] = useState(false)
   const box = videoBox(a)
-  const under = a.poster ? previewFor(a.poster) : previewFor(a.url)
+  // 点了才下，下完再播。直接把远程地址塞进 `<video>` 的话，每看一次就重下一次——线上那条
+  // 13.8 MB 的视频每看一次就是 55 秒全站的出口带宽。和 iOS 是同一套做法。
+  const play = (): void => {
+    if (busy) return
+    setPlaying(true)
+    setFailed(false)
+    void window.desktop.media.prefetch(a.url).then(
+      (local) => setSrc(local ? `yptd-local://f/${encodeURIComponent(local)}` : viaMain(a.url)),
+      () => setFailed(true),
+    )
+  }
+  const under = (a.poster ? previewFor(a.poster) : null) ?? previewFor(a.url) ?? blurOf(a)
   return (
     <div className={`${styles.clip} ${busy ? styles.shotBusy : ''}`} style={{ width: box.width, height: box.height }}>
-      {playing ? (
-        <video className={styles.clipVideo} src={a.url} poster={a.poster ? sized(a.poster, box.width * 2) : undefined} controls autoPlay playsInline />
+      {playing && src ? (
+        <video className={styles.clipVideo} src={src} poster={a.poster ? streamSrc(a.poster, box.width * 2) : undefined} controls autoPlay playsInline />
+      ) : playing && !failed ? (
+        <span className={styles.clipLoading}>正在下载…</span>
       ) : (
-        <button className={styles.clipCover} onClick={() => !busy && setPlaying(true)} title={busy ? '上传中…' : `播放 ${a.name}`} disabled={busy}>
+        <button className={styles.clipCover} onClick={play} title={busy ? '上传中…' : failed ? '没下下来，点一下重试' : `播放 ${a.name}`} disabled={busy}>
           {under && <img className={styles.clipUnder} src={under} alt="" draggable={false} />}
-          {a.poster && <img className={styles.clipPoster} src={sized(a.poster, box.width * 2)} alt="" draggable={false} loading="lazy" />}
+          {a.poster && <img className={styles.clipPoster} src={streamSrc(a.poster, box.width * 2)} alt="" draggable={false} loading="lazy" />}
           <span className={styles.clipPlay} aria-hidden="true">▶</span>
           <span className={`${styles.clipMeta} mono`}>
             {typeof a.duration === 'number' ? clock(a.duration) : '视频'}{a.bytes > 0 ? ` · ${bytes(a.bytes)}` : ''}
@@ -661,7 +695,10 @@ function Gallery({ messages, onImage }: { messages: Message[]; onImage: OpenImag
   return (
     <div className={styles.gallery}>
       {pics.map((p, i) => (
-        <Shot key={p.url} url={p.url} name={p.name} box={boxes[i]!} busy={false} group={pics} onImage={onImage} />
+        <Shot
+          key={p.url}
+          att={{ kind: 'image', url: p.url, name: p.name, bytes: p.bytes, natural: p.natural, thumb: null, blur: null }}
+          box={boxes[i]!} busy={false} group={pics} onImage={onImage} />
       ))}
     </div>
   )
@@ -678,11 +715,38 @@ const retryOf = (url: string, n: number): string => (n === 0 ? url : `${url}${ur
  * 框的尺寸在图到之前就定下来——发送时量过原始尺寸，收到的消息里也带着——所以图加载完不会把列表推开。
  * 列表里请求的是按槽位裁过的尺寸，点开才取原图；裁过的地址取不到就退回原图，再取不到就地给重试。
  */
-function Shot({ url, name, box, busy, group, onImage }: { url: string; name: string; box: Box; busy: boolean; group: readonly Pic[]; onImage: OpenImage }) {
+function Shot({ att, box, busy, group, onImage }: { att: Attachment; box: Box; busy: boolean; group: readonly Pic[]; onImage: OpenImage }) {
+  const { url, name } = att
   const [state, setState] = useState<'loading' | 'ok' | 'failed'>('loading')
-  const [src, setSrc] = useState(() => sized(url, Math.max(box.w, box.h) * DPR))
+  // 发送端给了缩略档就直接用它，没给才按槽位问服务端要。服务端按需缩图这条路要**永远**
+  // 留着：线上已有的老消息、没更新的客户端、OpenIM 自己的图片消息，都不会有 th。
+  const wanted = streamSrc(url, Math.max(box.w, box.h) * DPR, att.thumb)
+  // 排到队才把地址交给 `<img>`——浏览器什么时候发请求我们插不上手，但给不给它地址可以。
+  // 一屏九张图同时去拿，在 260 KB/s 的管子上就是九张一起慢；排队之后是一张张出来。
+  const [src, setSrc] = useState<string | null>(null)
   const [nonce, setNonce] = useState(0)
-  const under = previewFor(url)
+  const done = useRef<(() => void) | null>(null)
+  const settle = (): void => { done.current?.(); done.current = null }
+  useEffect(() => {
+    let alive = true
+    void inLane(laneFor(att.bytes, att.thumb ? 'thumb' : 'main'), async () => {
+      if (!alive) return
+      setSrc(wanted)
+      // 占着位置直到图真的加载完或者失败。`<img>` 没有 await，只能等状态回来；
+      // 兜一个 15 秒的上限，免得一个永远不回调的地址把整条道堵死。
+      await new Promise<void>((resolve) => {
+        done.current = resolve
+        setTimeout(resolve, 15000)
+      })
+    })
+    return () => { alive = false; settle() }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- settle 是稳定的
+  }, [wanted, att.bytes, att.thumb, nonce])
+  // 垫底的顺序：自己刚发出去的本机预览 > 发送端带的模糊占位 > 空。都没有就是一块底色，
+  // 而在 260 KB/s 的管子上那是好几秒的空白。
+  // 键用「这一屏实际会放进 img src 的那个地址」——发送端记的也是这个（session.ts 的
+  // rememberPreview），两边对不上的话自己刚发出去的图回显时会闪一下空白
+  const under = previewFor(wanted) ?? previewFor(url) ?? blurOf(att)
   return (
     <button
       className={`${styles.shot} ${busy ? styles.shotBusy : ''}`}
@@ -696,12 +760,18 @@ function Shot({ url, name, box, busy, group, onImage }: { url: string; name: str
         onImage({ items: [...group], index: i < 0 ? 0 : i }, e.currentTarget)
       }}
     >
-      <img
-        src={retryOf(src, nonce)} alt={name} draggable={false} loading="lazy"
-        className={state === 'ok' ? styles.shotIn : styles.shotOut}
-        onLoad={() => { setState('ok'); rememberThumb(url, src) }}
-        onError={() => { if (src !== url) { setSrc(url); setState('loading') } else setState('failed') }}
-      />
+      {src && (
+        <img
+          src={retryOf(src, nonce)} alt={name} draggable={false}
+          className={state === 'ok' ? styles.shotIn : styles.shotOut}
+          onLoad={() => { setState('ok'); if (src) rememberThumb(url, src); settle() }}
+          onError={() => {
+            settle()
+            const raw = viaMain(url)
+            if (src !== raw) { setSrc(raw); setState('loading') } else setState('failed')
+          }}
+        />
+      )}
       {state === 'failed' && <span className={styles.shotFail}>图片没加载出来<br />点一下重试</span>}
     </button>
   )

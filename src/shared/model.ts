@@ -90,6 +90,23 @@ export interface Attachment {
   duration?: number | null
   /** 发送端报的 mime。没有就按扩展名猜 */
   mime?: string | null
+  /**
+   * 发送端生成的缩略档地址（协议里的 `th.u`）和它的尺寸。消息流里显示的就是它，不再由
+   * 接收端去猜 `?type=image&width=` —— 那套要靠 URL 长什么样来判断能不能缩，换个对象存储
+   * 或者加个 CDN 前缀就静默失效，而且服务端的缩图是 q75 加最近邻。
+   *
+   * 老消息、没更新的客户端、OpenIM 自己的图片消息都不会有它，所以按需缩图那条退路要永远留着。
+   */
+  thumb?: string | null
+  thumbSize?: PixelSize | null
+  /**
+   * ThumbHash（协议里的 `b`）：二三十个字节的模糊占位，跟着消息体走，不产生任何额外请求。
+   * 在 260 KB/s 的管子上，一张图到达之前的那几秒原本是一块空白。
+   */
+  blur?: string | null
+  /** 原图（协议里的 `o`）：发的人勾了「原图」才有 */
+  original?: string | null
+  originalBytes?: number | null
 }
 
 /** 输入框里还没发出去的附件：有本机路径（交给 SDK 上传）和一张缩略图（发出去之前先显示它） */
@@ -104,6 +121,8 @@ export interface OutgoingAttachment {
   /** 视频：本机封面图的路径（单独上传成一个对象）和时长 */
   posterPath?: string | null
   duration?: number | null
+  /** 发这张图时要不要连原文件一起传（输入框里的「原图」勾选） */
+  wantOriginal?: boolean
 }
 
 export interface Message {

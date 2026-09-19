@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { MessageItem } from '@openim/wasm-client-sdk'
 import { summarize, type Attachment } from '../../../shared/model'
 import { Translator, conversationOf, dayIndex, dayLabel, directId, isTransient, parseRich, placeholderFor, reactionData, richEx } from './translate'
+import { streamSrc, viaMain } from './files'
 
 /**
  * 从上一版 Swift 客户端移植过来的用例。每一条都对应真实部署上踩过的一个坑，
@@ -256,5 +257,60 @@ describe('视频附件（2026-09-19 补的 k:v）', () => {
   it('没打字时的占位：[视频]', () => {
     expect(placeholderFor([{ kind: 'video', name: 'a.mp4' }])).toBe('[视频]')
     expect(placeholderFor([{ kind: 'image', name: 'a.png' }, { kind: 'video', name: 'a.mp4' }, { kind: 'video', name: 'b.mp4' }])).toBe('[图片] [视频]×2')
+  })
+})
+
+describe('缩略档、原图、模糊占位（C3 的 th / o / b）', () => {
+  const base = 'https://im.example.com/object/u1/'
+  it('往返：th / o / b 写得出也读得回', () => {
+    const a = {
+      kind: 'image' as const, url: base + 'main.jpg', name: '设计稿.png', bytes: 213004,
+      natural: { width: 2048, height: 1365 }, mime: 'image/jpeg',
+      thumb: base + 'th.jpg', thumbSize: { width: 720, height: 480 },
+      blur: '1QcSHQRnh493V4dIh4eXh1h4kJUI',
+      original: base + 'orig.png', originalBytes: 5127557,
+    }
+    const raw = JSON.parse(richEx([a], true)).a[0]
+    expect(raw.th).toEqual({ u: base + 'th.jpg', w: 720, h: 480 })
+    expect(raw.o).toEqual({ u: base + 'orig.png', s: 5127557 })
+    expect(raw.b).toBe('1QcSHQRnh493V4dIh4eXh1h4kJUI')
+    const back = parseRich(richEx([a], true))!.attachments[0]!
+    expect(back.thumb).toBe(a.thumb)
+    expect(back.thumbSize).toEqual(a.thumbSize)
+    expect(back.original).toBe(a.original)
+    expect(back.originalBytes).toBe(a.originalBytes)
+    expect(back.blur).toBe(a.blur)
+  })
+  it('老消息没有这些字段：读出来是 undefined，不是崩', () => {
+    const old = `{"yptd":"rich","t":1,"a":[{"k":"i","u":"${base}a.jpg","n":"a.jpg","s":9,"w":100,"h":100}]}`
+    const a = parseRich(old)!.attachments[0]!
+    expect(a.thumb).toBeUndefined()
+    expect(a.blur).toBeUndefined()
+    expect(a.url).toBe(base + 'a.jpg')
+  })
+  it('超长的 b 当没有：协议上限 40 个字符，实测最长的 hash 是 36，余量只剩 4', () => {
+    const bad = `{"yptd":"rich","t":1,"a":[{"k":"i","u":"${base}a.jpg","n":"a","s":1,"b":"${'x'.repeat(41)}"}]}`
+    expect(parseRich(bad)!.attachments[0]!.blur).toBeUndefined()
+  })
+  it('th 里没有地址就当没有缩略档，不会产出一个空地址', () => {
+    const bad = `{"yptd":"rich","t":1,"a":[{"k":"i","u":"${base}a.jpg","n":"a","s":1,"th":{"w":720,"h":480}}]}`
+    expect(parseRich(bad)!.attachments[0]!.thumb).toBeUndefined()
+  })
+})
+
+describe('媒体地址走主进程', () => {
+  it('https 的换成自定义协议，本机地址原样', () => {
+    expect(viaMain('https://im.example.com/object/u/a.jpg', 'avatars', 'a64'))
+      .toBe('yptd-media://o/avatars/a64/' + encodeURIComponent('https://im.example.com/object/u/a.jpg'))
+    expect(viaMain('data:image/png;base64,xx')).toBe('data:image/png;base64,xx')
+    expect(viaMain('yptd-local://f/tmp')).toBe('yptd-local://f/tmp')
+  })
+  it('有缩略档就用它，没有才按槽位问服务端要', () => {
+    const u = 'https://im.example.com/object/u/a.jpg'
+    const th = 'https://im.example.com/object/u/th.jpg'
+    expect(streamSrc(u, 400, th)).toContain(encodeURIComponent(th))
+    expect(streamSrc(u, 400, th)).toContain('/images/th/')
+    // 没有 th：退回按需缩图那条路，它要永远留着（老消息、老客户端、OpenIM 原生图片消息）
+    expect(decodeURIComponent(streamSrc(u, 400, null))).toContain('type=image&width=480')
   })
 })

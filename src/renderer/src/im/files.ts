@@ -117,3 +117,24 @@ export async function mapLimit<T, R>(items: readonly T[], limit: number, fn: (it
   }))
   return out
 }
+
+// ---- 媒体走主进程 ----------------------------------------------------------
+
+/**
+ * 把一个服务端地址换成走主进程的地址。
+ *
+ * 以前渲染进程直接把 https 塞进 `<img src>`，字节归 Chromium 管——全账号共用一份缓存、
+ * 没有上限、没有清理入口，而且这些正是只有在主进程那一层才做得到的事（以后要加的鉴权头
+ * 也一样）。协议实现在 src/main/mediaStore.ts。
+ *
+ * 本机地址（data:、file:、blob:）原样返回：它们本来就不走网络。
+ */
+export function viaMain(url: string, pool: 'avatars' | 'images' | 'files' = 'images', variant = ''): string {
+  if (!url.startsWith('https://')) return url
+  return `yptd-media://o/${pool}/${variant || '-'}/${encodeURIComponent(url)}`
+}
+
+/** 消息流里一张图最终用的地址：优先发送端给的缩略档，没有就按槽位问服务端要 */
+export function streamSrc(url: string, px: number, thumb?: string | null): string {
+  return viaMain(thumb || sized(url, px), 'images', thumb ? 'th' : `w${px}`)
+}

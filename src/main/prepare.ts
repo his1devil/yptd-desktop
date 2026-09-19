@@ -1,7 +1,8 @@
 import { app, nativeImage } from 'electron'
 import { mkdirSync, statSync, writeFileSync } from 'node:fs'
 import { extname, join } from 'node:path'
-import { avatarPlan, planImage, pngFallback, PNG_LIMIT, type Plan } from '../shared/prepare'
+import { avatarPlan, planImage, pngFallback, BLUR_EDGE, PNG_LIMIT, THUMB_EDGE, type Plan } from '../shared/prepare'
+import { encode as encodeThumbHash, toBase64 } from '../shared/thumbhash'
 
 /** 准备好的、真正要上传的那个文件 */
 export interface Prepared {
@@ -67,6 +68,52 @@ export function prepareImage(path: string): Prepared {
     return { path: file, ext, mime: MIME[ext]!, width: size.width, height: size.height, bytes: done.data.length, original: false }
   } catch {
     return asIs(path, 0, 0)
+  }
+}
+
+/**
+ * 一张图的缩略档和它的模糊占位。
+ *
+ * 为什么发送端生成而不是让接收端问服务端要：服务端的按需缩图是 q75 加最近邻，而且不带
+ * `format` 就一律出 PNG（实测 102 KB 的 JPEG，960 档的 PNG 缩图 873 KB，是原图的 8.5 倍）；
+ * 更要紧的是接收端得靠 URL 长什么样来判断「能不能缩」，换个对象存储就静默失效。
+ * 上行比下行快 12.5 倍，多传一张几十 KB 的缩略图对发的人几乎免费。
+ */
+export function prepareThumb(path: string): { thumb: Prepared; blur: string } | null {
+  try {
+    const img = nativeImage.createFromPath(path)
+    if (img.isEmpty()) return null
+    const { width, height } = img.getSize()
+    const long = Math.max(width, height)
+    const scaled = long > THUMB_EDGE
+      ? img.resize({ width: Math.round(width * THUMB_EDGE / long), height: Math.round(height * THUMB_EDGE / long), quality: 'best' })
+      : img
+    const data = scaled.toJPEG(72)
+    const size = scaled.getSize()
+    const file = join(outbox(), `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}-th.jpg`)
+    writeFileSync(file, data)
+
+    // ThumbHash 要非预乘的 RGBA，且长边不超过 100——这两条都是它的硬要求，超了 encode 直接拒绝
+    const tiny = img.resize({
+      width: Math.max(1, Math.round(width * BLUR_EDGE / long)),
+      height: Math.max(1, Math.round(height * BLUR_EDGE / long)),
+      quality: 'good',
+    })
+    const t = tiny.getSize()
+    // Electron 给的是 BGRA，ThumbHash 要 RGBA
+    const bgra = tiny.toBitmap()
+    const rgba = new Uint8Array(bgra.length)
+    for (let i = 0; i < bgra.length; i += 4) {
+      rgba[i] = bgra[i + 2]!; rgba[i + 1] = bgra[i + 1]!; rgba[i + 2] = bgra[i]!; rgba[i + 3] = bgra[i + 3]!
+    }
+    const blur = toBase64(encodeThumbHash(rgba, t.width, t.height))
+    return {
+      thumb: { path: file, ext: 'jpg', mime: 'image/jpeg', width: size.width, height: size.height, bytes: data.length, original: false },
+      blur,
+    }
+  } catch {
+    // 生成不出来就没有——接收端退回按需缩图和一块底色，不该因此发不出图
+    return null
   }
 }
 

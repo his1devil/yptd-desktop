@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Avatar, glyphOf, pairOf } from '../components/Avatar'
-import { errorClass, ghostClass, inputClass, primaryClass } from '../components/Dialog'
+import { dangerClass, errorClass, ghostClass, inputClass, primaryClass } from '../components/Dialog'
 import { api, type Invite } from '../im/api'
 import { DOWNLOADS } from '../im/auth'
 import { describe, useSession } from '../store/session'
@@ -124,12 +124,66 @@ function Profile() {
         {err && <div className={errorClass}>{err}</div>}
       </Section>
       <Password />
+      <Storage />
       <Section title="这台机器" desc="退出后这台机器的登录凭据会被清掉。设过密码就能用账号密码再进来，否则要一个新邀请码。">
         <button className={ghostClass} disabled={busy === 'out'} onClick={() => { setBusy('out'); void useSession.getState().signOut() }}>退出登录</button>
       </Section>
     </>
   )
 }
+
+/**
+ * 这台机器上存着什么、占了多少、怎么清掉。
+ *
+ * 全都是服务器上也有的副本，所以每个按钮都是安全的——最坏的结果是下次重新下一遍。这句话
+ * 要写在页面上：在一个聊天应用里，「清除」看起来很像「我的消息没了」。
+ */
+function Storage() {
+  const [usage, setUsage] = useState<{ avatars: number; images: number; files: number; limits: Record<string, number> } | null>(null)
+  const [busy, setBusy] = useState(false)
+  const measure = (): void => { void window.desktop.media.usage().then(setUsage) }
+  useEffect(measure, [])
+  const clear = async (pool: 'avatars' | 'images' | 'files' | 'all'): Promise<void> => {
+    setBusy(true)
+    await window.desktop.media.clear(pool)
+    measure()
+    setBusy(false)
+  }
+  const rows = [
+    { key: 'avatars' as const, name: '头像', note: '各个尺寸档；单独一个池子，图片再多也挤不掉它' },
+    { key: 'images' as const, name: '图片', note: '缩略图、大图、原图' },
+    { key: 'files' as const, name: '视频与文件', note: '最大也最容易重新拿到，超了先清它' },
+  ]
+  const total = usage ? usage.avatars + usage.images + usage.files : 0
+  return (
+    <Section title="存储空间" desc="这些都是本机的副本，服务器上都有。清掉只会让它们下次重新下一遍。">
+      <div className={styles.storage}>
+        {rows.map((r) => (
+          <div key={r.key} className={styles.storageRow}>
+            <span className={styles.storageText}>
+              <span className={styles.label}>{r.name}</span>
+              <span className={styles.storageNote}>{r.note}</span>
+            </span>
+            <span className={`${styles.storageSize} mono`}>{usage ? bytes(usage[r.key]) : '…'}</span>
+            <button className={ghostClass} disabled={busy || !usage || usage[r.key] === 0} onClick={() => void clear(r.key)}>清除</button>
+          </div>
+        ))}
+        <div className={styles.storageRow}>
+          <span className={styles.storageText}>
+            <span className={styles.label}>合计</span>
+            <span className={styles.storageNote}>退出登录不会清这些——共用一台电脑时用右边这个</span>
+          </span>
+          <span className={`${styles.storageSize} mono`}>{usage ? bytes(total) : '…'}</span>
+          <button className={dangerClass} disabled={busy || total === 0} onClick={() => void clear('all')}>全部清除</button>
+        </div>
+      </div>
+    </Section>
+  )
+}
+
+const bytes = (n: number): string =>
+  n < 1024 ? `${n} B` : n < 1024 * 1024 ? `${Math.round(n / 1024)} KB`
+    : n < 1024 * 1024 * 1024 ? `${(n / 1048576).toFixed(1)} MB` : `${(n / 1073741824).toFixed(2)} GB`
 
 /** 设置或修改密码。有了密码，换一台机器或退出之后就不用再要邀请码。 */
 function Password() {

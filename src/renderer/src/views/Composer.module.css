@@ -61,3 +61,8 @@
 .thumbClock { position: absolute; right: 3px; bottom: 3px; padding: 0 4px; border-radius: 4px; background: rgba(0, 0, 0, .6); color: #fff; font-size: 9.5px; line-height: 14px; }
 /* 大文件的提醒：出口是所有人共用的，发之前让人知道对面要等多久 */
 .trayWarn { flex-basis: 100%; font-size: 11px; color: var(--warn); padding: 2px 2px 0; }
+
+/* 「原图」勾选：和栏里那行提示排在一起，不抢位置 */
+.trayToggle { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; color: var(--ink3); cursor: pointer; user-select: none; }
+.trayToggle input { width: 12px; height: 12px; accent-color: var(--accent); cursor: pointer; }
+.trayToggle:hover { color: var(--ink2); }
