@@ -99,6 +99,8 @@ export const im = {
   invite: (groupID: string, userIDs: string[], reason = '') =>
     unwrap(sdk.inviteUserToGroup({ groupID, userIDList: userIDs, reason })),
   quitGroup: (groupID: string) => unwrap(sdk.quitGroup(groupID)),
+  kickGroupMember: (groupID: string, userIDs: string[]) =>
+    unwrap(sdk.kickGroupMember({ groupID, userIDList: userIDs, reason: '' })),
   /** 自己申请加入。频道设了「不开放」时服务端会拒，错误里说明原因。 */
   joinGroup: (groupID: string, reqMsg = '') =>
     unwrap(sdk.joinGroup({ groupID, reqMsg, joinSource: 3 })),

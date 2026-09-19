@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
 import type { Theme } from '../../../shared/ipc'
+import type { Member } from '../../../shared/model'
 import { transition } from '../motion/transition'
 
 /**
@@ -18,6 +19,7 @@ export type DialogState =
   | { kind: 'invite'; groupID: string }
   | { kind: 'rename'; groupID: string; current: string }
   | { kind: 'leave'; groupID: string; owner: boolean; title: string }
+  | { kind: 'remove'; groupID: string; member: Member }
 
 interface UIState {
   theme: Theme

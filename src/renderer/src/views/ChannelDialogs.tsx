@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import type { Person } from '../../../shared/model'
+import type { Member, Person } from '../../../shared/model'
 import { Avatar, glyphOf, pairOf } from '../components/Avatar'
 import { Dialog, Field, dangerClass, errorClass, ghostClass, inputClass, primaryClass } from '../components/Dialog'
 import { knownPeople } from '../store/mentions'
@@ -20,6 +20,7 @@ export function Dialogs() {
     case 'invite': return <Invite groupID={dialog.groupID} onClose={close} />
     case 'rename': return <Rename groupID={dialog.groupID} current={dialog.current} onClose={close} />
     case 'leave': return <Leave groupID={dialog.groupID} owner={dialog.owner} title={dialog.title} onClose={close} />
+    case 'remove': return <Remove groupID={dialog.groupID} member={dialog.member} onClose={close} />
   }
 }
 
@@ -186,6 +187,32 @@ function Leave({ groupID, owner, title, onClose }: { groupID: string; owner: boo
         {owner
           ? '你是群主。群主不能直接退出：要么解散这个频道（所有人都会失去它，消息不可恢复），要么先在成员里转让群主。'
           : `退出后这个频道会从你的侧栏消失，之前的消息你也看不到了。别人再拉你进来就能回来。`}
+      </p>
+      {err && <div className={errorClass}>{err}</div>}
+    </Dialog>
+  )
+}
+
+/** 把一个成员移出频道。agent 和人走的是两条路，说的话也不一样。 */
+function Remove({ groupID, member, onClose }: { groupID: string; member: Member; onClose(): void }) {
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState<string | null>(null)
+  const go = async (): Promise<void> => {
+    setBusy(true); setErr(null)
+    try {
+      await useSession.getState().removeMember(groupID, member)
+      onClose()
+    } catch (e) { setErr(describe(e)); setBusy(false) }
+  }
+  return (
+    <Dialog title={`移除 ${member.name}`} onClose={onClose} footer={<>
+      <button className={ghostClass} onClick={onClose}>取消</button>
+      <button className={dangerClass} disabled={busy} onClick={() => void go()}>移出频道</button>
+    </>}>
+      <p className={styles.para}>
+        {member.isAgent
+          ? `${member.name} 会在频道里说一声再走。它在这个频道里的盯盘和新闻设置会一起清掉；想让它回来，再邀请一次就行。`
+          : `${member.name} 不会收到通知，但会发现自己不在这个频道里了。别人再拉就能回来。`}
       </p>
       {err && <div className={errorClass}>{err}</div>}
     </Dialog>

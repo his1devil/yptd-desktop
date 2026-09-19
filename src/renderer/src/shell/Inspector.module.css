@@ -125,6 +125,10 @@
 .mMe { color: var(--ink3); font-weight: 400; }
 .mRole { font-size: 9.5px; font-weight: 600; letter-spacing: .05em; color: var(--ink2); border: 1px solid var(--line2); border-radius: 4px; padding: 1px 5px; }
 .mEmpty { font-size: 11.5px; color: var(--ink3); padding: 4px 6px; }
+/* 移除：平时不占视线，鼠标到了这一行才出来。键盘聚焦时也得看得见 */
+.mRemove { height: 22px; padding: 0 8px; border-radius: 6px; font-size: 11px; font-weight: 500; color: var(--danger); opacity: 0; transition: opacity .12s ease-out; }
+.mRow:hover .mRemove, .mRemove:focus-visible { opacity: 1; }
+.mRemove:hover { background: var(--dtint); }
 
 .mActions { display: flex; gap: 6px; padding: 0 6px 12px; }
 .mBtn { height: 26px; padding: 0 10px; border-radius: 7px; border: 1px solid var(--line2); font-size: 11.5px; font-weight: 500; color: var(--ink2); }

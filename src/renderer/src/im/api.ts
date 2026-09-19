@@ -86,6 +86,9 @@ export const api = {
     const r = await call<{ invites: RawInvite[] }>('/v1/invites', { method: 'POST', body: { note, count } })
     return r.invites.map(fromInvite)
   },
+  /** 把 agent 移出频道。服务端验资格（群主或邀请人）、让它在群里道个别、清掉它在这个频道的配置 */
+  removeAgent: (groupID: string, agentID: string) =>
+    call<{ ok: boolean }>(`/v1/groups/${encodeURIComponent(groupID)}/agents/${encodeURIComponent(agentID)}`, { method: 'DELETE' }),
   rename: (nickname: string) => call<{ user_id: string; nickname: string }>('/v1/me', { method: 'PATCH', body: { nickname } }),
   /** 我是谁，以及这个账号有没有设过密码 */
   me: () => call<{ user_id: string; nickname: string; disabled: boolean; has_password: boolean; discoverable: boolean; joinable: boolean }>('/v1/me'),

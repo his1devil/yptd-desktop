@@ -80,6 +80,8 @@ interface SessionState {
   inviteToChannel(groupID: string, userIDs: string[]): Promise<void>
   /** 自己走进一个公开频道。没开放自由加入的话服务端会拒，错误里说得清原因。 */
   joinChannel(groupID: string): Promise<ConversationId>
+  /** 把一个成员移出频道：agent 走 yptd-server，人走 OpenIM。资格见 shared/model 的 canRemove */
+  removeMember(groupID: string, member: Member): Promise<void>
   leaveChannel(groupID: string): Promise<void>
   dismissChannel(groupID: string): Promise<void>
   updateNickname(nickname: string): Promise<void>
@@ -342,6 +344,7 @@ export const useSession = create<SessionState>()((set, get) => ({
         id: m.userID, name: m.nickname || m.userID, avatar: m.faceURL || null,
         role: m.roleLevel >= 100 ? 'owner' : m.roleLevel >= 60 ? 'admin' : 'member',
         isAgent: agents.has(m.userID),
+        inviter: m.inviterUserID || null,
       })
       let got = 0
       try {
@@ -406,6 +409,13 @@ export const useSession = create<SessionState>()((set, get) => ({
   async inviteToChannel(groupID, userIDs) {
     await im.invite(groupID, userIDs)
     await get().loadMembers(groupID)
+  },
+  async removeMember(groupID, member) {
+    if (member.isAgent) await api.removeAgent(groupID, member.id)
+    else await im.kickGroupMember(groupID, [member.id])
+    // 先从手上这份里拿掉，界面立刻有反应；再向 SDK 要一次权威的
+    set((s) => ({ members: { ...s.members, [groupID]: (s.members[groupID] ?? []).filter((m) => m.id !== member.id) } }))
+    void get().loadMembers(groupID)
   },
   async leaveChannel(groupID) {
     await im.quitGroup(groupID)

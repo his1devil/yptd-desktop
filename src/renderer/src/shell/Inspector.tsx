@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef } from 'react'
-import type { Member } from '../../../shared/model'
+import { canRemove, type Member } from '../../../shared/model'
 import { Avatar, glyphOf, pairOf } from '../components/Avatar'
 import { IconCloseSmall, IconPanel } from '../components/Icons'
 import { usePlace, type Place } from '../store/selectors'
@@ -155,6 +155,7 @@ function Members({ place }: { place: Place }) {
   const openDialog = useUI((s) => s.openDialog)
   const bios = useSession((s) => s.bios)
   const owner = place.members.some((m) => m.id === me && m.role === 'owner')
+  const self = place.members.find((m) => m.id === me)
   const agents = place.members.filter((m) => m.isAgent)
   const humans = place.members.filter((m) => !m.isAgent)
   const row = (m: Member) => {
@@ -168,6 +169,11 @@ function Members({ place }: { place: Place }) {
           {bio && <span className={styles.mBio}>{bio}</span>}
         </span>
         {m.role !== 'member' && <span className={`${styles.mRole} mono`}>{m.role === 'owner' ? '群主' : '管理员'}</span>}
+        {/* 只有点得动的人才看得到：规则和服务端、iOS 是同一套（shared/model 的 canRemove） */}
+        {place.groupID && canRemove(m, self) && (
+          <button className={styles.mRemove} title={`把 ${m.name} 移出频道`}
+            onClick={() => openDialog({ kind: 'remove', groupID: place.groupID!, member: m })}>移除</button>
+        )}
       </div>
     )
   }

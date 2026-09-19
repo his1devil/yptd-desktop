@@ -31,6 +31,23 @@ export interface Member {
   avatar: string | null
   role: 'owner' | 'admin' | 'member'
   isAgent: boolean
+  /** 谁把这个人拉进频道的。移除 agent 的资格要看它（见 canRemove） */
+  inviter: string | null
+}
+
+/**
+ * 能不能把 target 移出频道。和服务端（yptd-serve 的 mayRemoveAgent）、OpenIM 自己的踢人
+ * 校验、iOS 的 Membership 是同一套规则——按钮显示出来就该点得动。
+ *
+ * agent 走 yptd-server：群主可以，当初把它拉进来的人也可以。只靠 OpenIM 的话只有群主能踢，
+ * 而线上所有频道都没有管理员，于是每个频道只有一个人动得了 agent——把一个吵人的机器人
+ * 请出去，不该比请进来难。人走 OpenIM，只有群主能踢。谁也移不走群主，谁也不在这里移自己
+ * （那是退出）。
+ */
+export function canRemove(target: Member, me: Member | undefined): boolean {
+  if (!me || me.id === target.id || target.role === 'owner') return false
+  if (me.role === 'owner') return true
+  return target.isAgent && !!target.inviter && target.inviter === me.id
 }
 
 export interface Reaction {

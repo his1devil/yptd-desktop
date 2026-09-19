@@ -6,7 +6,7 @@ import type { Place } from './selectors'
 const person = (id: string, name: string, isAgent = false): Person =>
   ({ userID: id, nickname: name, isAgent, tag: isAgent ? '热点' : null, color: null, joinable: true })
 const member = (id: string, name: string, isAgent = false): Member =>
-  ({ id, name, avatar: null, role: 'member', isAgent })
+  ({ id, name, avatar: null, role: 'member', isAgent , inviter: null })
 
 const ROSTER = [
   person('me', '我'),
@@ -121,7 +121,7 @@ describe('从 @ 后面认名字', () => {
 })
 
 describe('你能看见的人', () => {
-  const hidden: Member = { id: 'quiet', name: '安静', avatar: null, role: 'member', isAgent: false }
+  const hidden: Member = { id: 'quiet', name: '安静', avatar: null, role: 'member', isAgent: false, inviter: null }
 
   it('名册之外，群里见过的人也算见过', () => {
     // 他关了被搜索，所以不在名册里；但你们同群，不该因此在选人和 ⌘K 里消失
