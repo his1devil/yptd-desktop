@@ -1,6 +1,7 @@
 import { app, BrowserWindow, clipboard, dialog, ipcMain, nativeImage, net, safeStorage, screen, session, shell } from 'electron'
+import { prepareAvatar, prepareImage } from './prepare'
 import { mkdirSync, readFileSync, statSync, unlinkSync, writeFileSync, existsSync } from 'node:fs'
-import { join } from 'node:path'
+import { join, sep } from 'node:path'
 import { IPC, type HttpRequest, type HttpResponse, type StreamBatch } from '../shared/ipc'
 import { attachOpenIM, disposeOpenIM } from './openim'
 import { setupUpdater } from './updater'
@@ -140,6 +141,15 @@ ipcMain.handle(IPC.fileThumbnail, (_e, path: string) => {
     const small = scale < 1 ? img.resize({ width: Math.round(width * scale), height: Math.round(height * scale), quality: 'good' }) : img
     return { dataURL: small.toDataURL(), width, height, bytes: statSync(path).size }
   } catch { return null }
+})
+ipcMain.handle(IPC.filePrepare, (_e, path: string, mode: 'attachment' | 'avatar') =>
+  mode === 'avatar' ? prepareAvatar(path) : prepareImage(path))
+// 只删自己产生的临时文件：渲染进程传什么路径来都不能变成一个任意删文件的口子
+ipcMain.on(IPC.fileDiscard, (_e, path: string) => {
+  const box = join(app.getPath('temp'), 'yptd-outbox') + sep
+  if (typeof path === 'string' && path.startsWith(box) && !path.includes('..')) {
+    try { unlinkSync(path) } catch { /* 已经没了 */ }
+  }
 })
 ipcMain.handle(IPC.fileStash, (_e, name: string, bytes: ArrayBuffer | Uint8Array) => {
   const dir = join(app.getPath('temp'), 'yptd-stash')

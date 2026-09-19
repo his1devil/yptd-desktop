@@ -8,7 +8,8 @@ import { tidyError } from '../im/errors'
 import { Translator, directId, placeholderFor, reactionData, richEx } from '../im/translate'
 import { Timeline } from '../im/timeline'
 import { step } from '../im/paging'
-import { mapLimit, objectName, rememberPreview } from '../im/files'
+import { mapLimit, rememberPreview } from '../im/files'
+import { randomObjectName } from '../../../shared/prepare'
 import { setAgentColors, setFaces } from '../components/identity'
 import { composerBus } from '../views/composerBus'
 import { transition } from '../motion/transition'
@@ -264,9 +265,21 @@ export const useSession = create<SessionState>()((set, get) => ({
       // 地址回来了才能写进消息。三个一起传：串行发三张图要等三倍时间，全开又互相抢上行带宽。
       // 对象名带唯一前缀，同名文件不会互相覆盖；mapLimit 保证回来的顺序还是栏里的顺序。
       const uploaded: Attachment[] = await mapLimit(opts.attachments, 3, async (a) => {
-        const { url } = await im.upload(a.path, objectName(a.name), a.mime, 'attachment')
-        rememberPreview(url, a.preview)
-        return { kind: a.kind, url, name: a.name, bytes: a.bytes, natural: a.natural }
+        // 图片先压一遍再传（规则见 shared/prepare）：出口只有 260 KB/s，原文件直传的话一张
+        // 5 MB 的图每个接收者要等 20 秒。消息里的宽高和字节数描述的是**传上去的那个文件**。
+        const ready = a.kind === 'image' ? await window.desktop.files.prepare(a.path, 'attachment') : null
+        try {
+          const ext = ready?.ext ?? a.name.split('.').pop() ?? ''
+          const { url } = await im.upload(ready?.path ?? a.path, randomObjectName(ext), ready?.mime ?? a.mime, 'attachment')
+          rememberPreview(url, a.preview)
+          return {
+            kind: a.kind, url, name: a.name,
+            bytes: ready?.bytes ?? a.bytes,
+            natural: ready && ready.width > 0 ? { width: ready.width, height: ready.height } : a.natural,
+          }
+        } finally {
+          if (ready && !ready.original) window.desktop.files.discard(ready.path)
+        }
       })
       created.ex = richEx(uploaded, hasText)
       const echo = await im.send(created, recipientOf(get, id))
@@ -441,8 +454,16 @@ export const useSession = create<SessionState>()((set, get) => ({
     set((s) => ({ myBio: next, bios: { ...s.bios, [s.me]: next } }))
   },
   async updateAvatar(path) {
-    const name = path.split('/').pop() ?? 'avatar.png'
-    const { url } = await im.upload(path, name)
+    // 裁成方形、压到 640（和 iOS 一致）。以前原图直传，线上最大的一个头像 2.36 MB；
+    // 对象名也不再用裸文件名——那样地址猜得到，同名重传还会让各端缓存永久停在旧头像上。
+    const ready = await window.desktop.files.prepare(path, 'avatar')
+    if (!ready) throw new Error('这张图打不开，换一张试试')
+    let url: string
+    try {
+      ({ url } = await im.upload(ready.path, `avatar-${randomObjectName(ready.ext)}`, ready.mime))
+    } finally {
+      window.desktop.files.discard(ready.path)
+    }
     await im.setSelf({ faceURL: url })
     set((s) => ({ myAvatar: url, avatars: { ...s.avatars, [s.me]: url } }))
   },
