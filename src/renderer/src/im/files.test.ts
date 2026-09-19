@@ -109,3 +109,16 @@ describe('本机预览缓存', () => {
     expect(previewFor('u-none')).toBeUndefined()
   })
 })
+
+describe('缩图的格式跟源文件走', () => {
+  const base = 'https://im.example.com/object/u1/'
+  it('照片要 jpeg：服务端不带 format 就出 PNG，102KB 的 JPEG 在 960 档会变成 873KB', () => {
+    expect(sized(base + 'photo.jpg', 300)).toBe(base + 'photo.jpg?type=image&width=320&height=320&format=jpeg')
+    expect(avatarSized(base + 'avatar-1.JPEG', 52)).toContain('&format=jpeg')
+    expect(sized(base + 'IMG_0001.heic', 300)).toContain('&format=jpeg')
+  })
+  it('截图和像素头像保持 PNG：服务端的 JPEG 是 q75 加最近邻，字会糊、透明底变黑', () => {
+    expect(sized(base + 'screenshot.png', 300)).toBe(base + 'screenshot.png?type=image&width=320&height=320')
+    expect(avatarSized(base + 'avatar-12b156c2ebe7.png', 52)).not.toContain('format=')
+  })
+})

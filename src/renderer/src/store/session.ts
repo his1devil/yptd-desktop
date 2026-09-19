@@ -3,13 +3,13 @@ import type { Attachment, Conversation, ConversationId, ConversationKind, Member
 import { summarize } from '../../../shared/model'
 import { DEFAULT_SERVER, clearCredential, loadCredential, login, loginWithPassword, register, roster, saveCredential, serverAuth, setServerAuth, AuthError, type ServerConfig } from '../im/auth'
 import { api } from '../im/api'
-import { setAgentColors } from '../components/identity'
 import { im, SdkEvent, type ConversationItem, type GroupMemberItem, type MessageItem } from '../im/client'
 import { tidyError } from '../im/errors'
 import { Translator, directId, placeholderFor, reactionData, richEx } from '../im/translate'
 import { Timeline } from '../im/timeline'
 import { step } from '../im/paging'
 import { mapLimit, objectName, rememberPreview } from '../im/files'
+import { setAgentColors, setFaces } from '../components/identity'
 import { composerBus } from '../views/composerBus'
 import { transition } from '../motion/transition'
 import { useUI } from './ui'
@@ -441,6 +441,9 @@ export const useSession = create<SessionState>()((set, get) => ({
     await refreshConversations(set, get)
   },
 }))
+
+// 头像地址变了就告诉 Avatar 组件（它按 id 自己查，见 components/identity.ts）。
+useSession.subscribe((s, prev) => { if (s.avatars !== prev.avatars) setFaces(s.avatars) })
 
 function recipientOf(get: Get, id: ConversationId): { groupID?: string; userID?: string } {
   const c = get().conversations.find((x) => x.id === id)

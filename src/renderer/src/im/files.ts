@@ -47,7 +47,15 @@ const MAX_STEPPED = Math.floor(MAX_THUMB / STEP) * STEP
 const resizable = (url: string): boolean =>
   url.startsWith('http') && !url.includes('?') && url.includes('/object/')
 
-const thumb = (url: string, n: number): string => `${url}?type=image&width=${n}&height=${n}`
+/**
+ * 缩图的格式跟源文件走。服务端不带 format 就一律出 PNG——对照片这是灾难：实测一张 102KB 的
+ * JPEG，960 档的 PNG 缩图 873KB，是原图的 8.5 倍；带上 format=jpeg 同一档只有几十 KB。
+ * 反过来不能全用 jpeg：服务端的 JPEG 是 q75 加最近邻缩放，截图和设计稿（PNG）转过去字会糊、
+ * 透明底会变黑。所以只有源本来就是有损格式的才要 jpeg，其余保持服务端默认的 PNG。
+ */
+const lossy = (url: string): boolean => /\.(jpe?g|heic|heif)$/i.test(url)
+const thumb = (url: string, n: number): string =>
+  `${url}?type=image&width=${n}&height=${n}${lossy(url) ? '&format=jpeg' : ''}`
 
 /**
  * 列表里按槽位取裁过的图。对象存储认 `?type=image&width=&height=`，只给宽高不带 type 会返回原图。

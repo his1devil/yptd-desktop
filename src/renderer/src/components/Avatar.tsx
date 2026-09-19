@@ -1,6 +1,6 @@
 import { useState, type CSSProperties } from 'react'
 import { avatarSized } from '../im/files'
-import { agentColor } from './identity'
+import { agentColor, useFace } from './identity'
 import { Mark } from './Mark'
 import styles from './Avatar.module.css'
 
@@ -9,10 +9,13 @@ const DPR = typeof window === 'undefined' ? 1 : Math.min(2, window.devicePixelRa
 
 /**
  * 头像 = 一个字 + 一对色块（--a1bg/--a1fg … --a5bg/--a5fg），有真头像图就贴图。
- * 人是圆的，agent 是方角的（size 的 23%）——这个形状差异是主要的人机区分手段。
  *
- * agent 不画字，画 yptd 的标记，颜色用它自己的身份色（名册里的 color，服务端按位次分配）；
- * 没给色就退回统一的 --agent。四个 agent 长得一样、只靠颜色分，这是刻意的。
+ * 人和 agent 都是圆的，都优先显示服务端给的那张图（2026-09-19 三端统一）：以前桌面端给
+ * agent 画 yptd 的标记、方角，iOS 画像素人像、圆的，同一个 HALX 在两台设备上认不出来。
+ * 现在 agent 的脸是 agents.json 里的 avatar，三端和推送通知显示同一张。人机区分交给名字
+ * 旁边的 AGENT 标签，不再靠形状。
+ *
+ * 图到之前（或者取不到）铺在底下的：人是名字首字，agent 是 yptd 的标记配身份色。
  */
 export interface AvatarProps {
   glyph: string
@@ -20,8 +23,9 @@ export interface AvatarProps {
   pair: number
   size: number
   kind?: 'human' | 'agent'
-  /** 这个人的账号。agent 用它查身份色；不给或查不到就用统一的 --agent */
+  /** 这个人的账号。查头像和 agent 的身份色都靠它 */
   id?: string | null
+  /** 头像地址。不给就按 id 去名册里查——大多数调用点手上只有 id */
   src?: string | null
   presence?: 'online' | 'busy' | 'offline'
   /** 在线点描边用的底色（跟随所在容器的背景） */
@@ -33,14 +37,16 @@ export function Avatar({ glyph, pair, size, kind = 'human', id, src, presence, r
   const n = (Math.abs(pair) % 5) + 1
   const agent = kind === 'agent'
   const color = agent ? agentColor(id) : null
-  const radius = agent ? Math.max(4, Math.round(size * 0.23)) : 99
+  const radius = 99
+  const known = useFace(id)
   const font = Math.round(size * 0.42)
   const dot = Math.round(size / 3)
   // 按槽位挑一档，不下原图：右栏 26px 的槽原来在下最高 1200px、1MB 多的原文件，
   // 实测三个头像 2.95MB，换成 64 档合计 22KB
   const [ready, setReady] = useState<string | null>(null)
   const [failed, setFailed] = useState<string | null>(null)
-  const want = src ? avatarSized(src, Math.round(size * DPR)) : null
+  const source = src ?? known
+  const want = source ? avatarSized(source, Math.round(size * DPR)) : null
   const face = want && want !== failed ? want : null
   return (
     <span
