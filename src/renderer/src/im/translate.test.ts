@@ -232,3 +232,29 @@ describe('文字 + 附件一条消息', () => {
     expect(placeholderFor([])).toBe('[附件]')
   })
 })
+
+describe('视频附件（2026-09-19 补的 k:v）', () => {
+  it('iOS 发来的视频认成视频：封面、时长、尺寸、mime 都读出来', () => {
+    const ex = '{"yptd":"rich","t":0,"a":[{"k":"v","u":"https://im/object/u/a.mp4","n":"1EF6.mp4","s":2100000,"w":588,"h":1280,"p":"https://im/object/u/p.jpg","d":12.4,"m":"video/mp4"}]}'
+    const a = parseRich(ex)!.attachments[0]!
+    expect(a.kind).toBe('video')
+    expect(a.poster).toBe('https://im/object/u/p.jpg')
+    expect(a.duration).toBe(12.4)
+    expect(a.natural).toEqual({ width: 588, height: 1280 })
+    expect(a.mime).toBe('video/mp4')
+  })
+  it('发出去的也是 k:v，带 p / d / m；往返一致', () => {
+    const v = { kind: 'video' as const, url: 'https://im/object/u/a.mp4', name: 'a.mp4', bytes: 9, natural: { width: 1280, height: 720 }, poster: 'https://im/object/u/p.jpg', duration: 3.14159, mime: 'video/mp4' }
+    const raw = JSON.parse(richEx([v], false)).a[0]
+    expect(raw).toMatchObject({ k: 'v', p: 'https://im/object/u/p.jpg', d: 3.1, m: 'video/mp4', w: 1280, h: 720 })
+    expect(parseRich(richEx([v], false))!.attachments[0]!.kind).toBe('video')
+  })
+  it('不认识的键忽略：iOS 以后加 th / o / b 不该让这边出错', () => {
+    const ex = '{"yptd":"rich","t":1,"a":[{"k":"i","u":"https://im/object/u/a.jpg","n":"a.jpg","s":1,"w":2,"h":2,"th":{"u":"x"},"b":"abc","o":{"u":"y"}}]}'
+    expect(parseRich(ex)!.attachments[0]!.kind).toBe('image')
+  })
+  it('没打字时的占位：[视频]', () => {
+    expect(placeholderFor([{ kind: 'video', name: 'a.mp4' }])).toBe('[视频]')
+    expect(placeholderFor([{ kind: 'image', name: 'a.png' }, { kind: 'video', name: 'a.mp4' }, { kind: 'video', name: 'b.mp4' }])).toBe('[图片] [视频]×2')
+  })
+})

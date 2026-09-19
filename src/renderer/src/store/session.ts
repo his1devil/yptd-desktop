@@ -270,12 +270,19 @@ export const useSession = create<SessionState>()((set, get) => ({
         const ready = a.kind === 'image' ? await window.desktop.files.prepare(a.path, 'attachment') : null
         try {
           const ext = ready?.ext ?? a.name.split('.').pop() ?? ''
+          // 视频的封面是单独的一个对象：接收端先画它，点了才去拉视频本体
+          let poster: string | null = null
+          if (a.kind === 'video' && a.posterPath) {
+            poster = (await im.upload(a.posterPath, randomObjectName('jpg'), 'image/jpeg', 'attachment')).url
+            if (a.preview) rememberPreview(poster, a.preview)
+          }
           const { url } = await im.upload(ready?.path ?? a.path, randomObjectName(ext), ready?.mime ?? a.mime, 'attachment')
           rememberPreview(url, a.preview)
           return {
             kind: a.kind, url, name: a.name,
             bytes: ready?.bytes ?? a.bytes,
             natural: ready && ready.width > 0 ? { width: ready.width, height: ready.height } : a.natural,
+            mime: ready?.mime ?? a.mime, poster, duration: a.duration ?? null,
           }
         } finally {
           if (ready && !ready.original) window.desktop.files.discard(ready.path)

@@ -26,6 +26,8 @@ export const IPC = {
   filePrepare: 'file:prepare',
   /** 发完把临时文件删掉 */
   fileDiscard: 'file:discard',
+  /** 让渲染进程能用 <video> 读一个用户选中的本机文件（量时长、取封面） */
+  fileExpose: 'file:expose',
   /** 把一个网络地址交给 Chromium 下载：它自己弹保存对话框、进下载列表 */
   fileDownload: 'file:download',
   /** 登录页：剪贴板里有邀请码就预填 */
@@ -116,6 +118,8 @@ export interface DesktopBridge {
     prepare(path: string, mode: 'attachment' | 'avatar'): Promise<{ path: string; ext: string; mime: string; width: number; height: number; bytes: number; original: boolean } | null>
     /** 上传完了，把 prepare 产生的临时文件删掉（只删自己目录里的） */
     discard(path: string): void
+    /** 给一个用户选中的本机文件一个能放进 <video src> 的地址。只有经过这里登记的路径才读得到 */
+    expose(path: string): Promise<string>
     /** 另存为：交给 Chromium 走系统下载，渲染进程里 `<a download>` 对跨域地址没用 */
     download(url: string, name?: string): void
   }

@@ -78,23 +78,32 @@ export type SendState = 'sending' | 'sent' | 'failed'
  * 而不是各发一条——渲染成一段：文字、并排的图、文件卡。
  */
 export interface Attachment {
-  kind: 'image' | 'file'
+  /** video 是 2026-09-19 补的：以前桌面只有 image / file，iOS 发来的视频在这边是一张文件卡 */
+  kind: 'image' | 'video' | 'file'
   url: string
   name: string
   bytes: number
-  /** 图片的原始尺寸。发送前就量好放进消息里，收到的一端不用等图片加载就能排版 */
+  /** 图片/视频的像素尺寸。发送前就量好放进消息里，收到的一端不用等加载就能排版 */
   natural: PixelSize | null
+  /** 视频的封面图地址和时长（秒） */
+  poster?: string | null
+  duration?: number | null
+  /** 发送端报的 mime。没有就按扩展名猜 */
+  mime?: string | null
 }
 
 /** 输入框里还没发出去的附件：有本机路径（交给 SDK 上传）和一张缩略图（发出去之前先显示它） */
 export interface OutgoingAttachment {
-  kind: 'image' | 'file'
+  kind: 'image' | 'video' | 'file'
   name: string
   path: string
   bytes: number
   mime: string
   natural: PixelSize | null
   preview: string | null
+  /** 视频：本机封面图的路径（单独上传成一个对象）和时长 */
+  posterPath?: string | null
+  duration?: number | null
 }
 
 export interface Message {

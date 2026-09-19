@@ -1,4 +1,5 @@
-import { app, BrowserWindow, clipboard, dialog, ipcMain, nativeImage, net, safeStorage, screen, session, shell } from 'electron'
+import { app, BrowserWindow, clipboard, dialog, ipcMain, nativeImage, net, protocol, safeStorage, screen, session, shell } from 'electron'
+import { pathToFileURL } from 'node:url'
 import { prepareAvatar, prepareImage } from './prepare'
 import { mkdirSync, readFileSync, statSync, unlinkSync, writeFileSync, existsSync } from 'node:fs'
 import { join, sep } from 'node:path'
@@ -141,6 +142,14 @@ ipcMain.handle(IPC.fileThumbnail, (_e, path: string) => {
     const small = scale < 1 ? img.resize({ width: Math.round(width * scale), height: Math.round(height * scale), quality: 'good' }) : img
     return { dataURL: small.toDataURL(), width, height, bytes: statSync(path).size }
   } catch { return null }
+})
+// 渲染进程要给视频量时长、取封面，只能靠 <video> 元素——而它读不了本机路径（页面的源是
+// http://localhost 或 file://，webSecurity 不放行）。这里开一个自定义协议，**只放行登记过的
+// 路径**：登记发生在用户亲手选中/拖入文件的那一刻，渲染进程拿一个路径来问是读不到东西的。
+const exposed = new Set<string>()
+ipcMain.handle(IPC.fileExpose, (_e, path: string) => {
+  exposed.add(path)
+  return `yptd-local://f/${encodeURIComponent(path)}`
 })
 ipcMain.handle(IPC.filePrepare, (_e, path: string, mode: 'attachment' | 'avatar') =>
   mode === 'avatar' ? prepareAvatar(path) : prepareImage(path))
@@ -306,7 +315,15 @@ ipcMain.on(IPC.windowToggleMaximize, (e) => {
 })
 ipcMain.on(IPC.windowClose, (e) => BrowserWindow.fromWebContents(e.sender)?.close())
 
+protocol.registerSchemesAsPrivileged([{ scheme: 'yptd-local', privileges: { stream: true, supportFetchAPI: true } }])
+
 void app.whenReady().then(() => {
+  protocol.handle('yptd-local', (req) => {
+    const path = decodeURIComponent(new URL(req.url).pathname.slice(1))
+    if (!exposed.has(path)) return new Response('forbidden', { status: 403 })
+    // 头原样转过去：视频要靠 Range 才能拖动和取中间的帧
+    return net.fetch(pathToFileURL(path).toString(), { headers: req.headers })
+  })
   // CSP 只在打包后注入：开发时 Vite 和 React Refresh 要注入内联脚本，
   // 一条严格的 script-src 会把渲染层整个拦成白屏。
   if (app.isPackaged) {

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { summarize, type OutgoingAttachment } from '../../../shared/model'
 import { Avatar, glyphOf, pairOf } from '../components/Avatar'
 import { IconClose, IconFile, IconImage, IconPaperclip } from '../components/Icons'
+import { MAX_VIDEO_BYTES, WARN_BYTES, clock, probeVideo, waitFor } from '../im/video'
 import { mimeOf } from '../im/files'
 import { mentionables } from '../store/mentions'
 import type { Place } from '../store/selectors'
@@ -60,8 +61,29 @@ export function Composer({ place }: { place: Place }) {
 
   // ---- 附件：先进栏，看一眼、配上字再发 ----
   // 主进程量一次：图给缩略图和原始尺寸，文件给大小。缩略图既是栏里的预览，也是发出去那一刻消息里先显示的图
+  /**
+   * 太大的视频不收。桌面端不转码（不引 ffmpeg），只能靠上限兜住：100 MB 的视频，每个接收的
+   * 人要下 6 分多钟，而且这 6 分钟里全站的图片都在跟它抢那条 260 KB/s 的出口。
+   */
+  const admit = (items: Attachment[]): Attachment[] => {
+    const big = items.filter((a) => a.mime.startsWith('video/') && a.bytes > MAX_VIDEO_BYTES)
+    if (big.length) useSession.setState({ notice: `${big[0]!.name} 超过 100 MB，没加进来——对面每个人要下 ${waitFor(big[0]!.bytes)}。先压一压，或者用别的方式传。` })
+    return items.filter((a) => !big.includes(a))
+  }
   const probe = async (path: string, name: string, mime: string): Promise<Attachment> => {
     const info = await window.desktop.files.thumbnail(path)
+    // 视频：量时长、取一帧当封面。以前一律当文件发，对面看到的是一张文件卡。
+    // 解不开（编码不认识）就还是当文件，和以前一样。
+    if (mime.startsWith('video/')) {
+      const v = await probeVideo(path)
+      if (v) {
+        const posterPath = await window.desktop.files.stash(`poster-${Date.now()}.jpg`, await v.poster.arrayBuffer())
+        return {
+          id: `a${nextAttachment++}`, kind: 'video', name, path, mime, bytes: info?.bytes ?? 0,
+          natural: { width: v.width, height: v.height }, preview: v.preview, posterPath, duration: v.duration,
+        }
+      }
+    }
     const image = !!info?.dataURL
     return {
       id: `a${nextAttachment++}`, kind: image ? 'image' : 'file', name, path, mime,
@@ -71,7 +93,7 @@ export function Composer({ place }: { place: Place }) {
   const addPaths = useCallback(async (paths: string[]) => {
     const items: Attachment[] = []
     for (const path of paths) items.push(await probe(path, path.split('/').pop() ?? path, mimeOf(path.split('/').pop() ?? path)))
-    setAttachments((cur) => [...cur, ...items])
+    setAttachments((cur) => [...cur, ...admit(items)])
   }, [])
   const addFiles = useCallback(async (files: File[]) => {
     const items: Attachment[] = []
@@ -83,9 +105,12 @@ export function Composer({ place }: { place: Place }) {
       const item = await probe(path, name, f.type || mimeOf(name))
       items.push(f.size && !item.bytes ? { ...item, bytes: f.size } : item)
     }
-    setAttachments((cur) => [...cur, ...items])
+    setAttachments((cur) => [...cur, ...admit(items)])
   }, [])
   const removeAttachment = (aid: string): void => setAttachments((cur) => cur.filter((a) => a.id !== aid))
+  const count = (kind: Attachment['kind']): number => attachments.filter((a) => a.kind === kind).length
+  /** 不会被压缩的那部分：视频和文件。图片发之前会压，不算在里面 */
+  const heavy = attachments.reduce((n, a) => n + (a.kind === 'image' ? 0 : a.bytes), 0)
 
   useEffect(() => composerBus.onAttach((files) => { void addFiles(files) }), [addFiles])
   useEffect(() => composerBus.subscribe((text) => (text ? editor.current?.insert(text) : editor.current?.focus())), [])
@@ -163,9 +188,12 @@ export function Composer({ place }: { place: Place }) {
         {attachments.length > 0 && (
           <div className={styles.tray}>
             {attachments.map((a) => (
-              <div key={a.id} className={a.kind === 'image' ? styles.thumb : styles.fileChip} title={a.name}>
-                {a.kind === 'image' && a.preview ? (
-                  <img src={a.preview} alt={a.name} draggable={false} />
+              <div key={a.id} className={a.kind !== 'file' && a.preview ? styles.thumb : styles.fileChip} title={a.name}>
+                {a.kind !== 'file' && a.preview ? (
+                  <>
+                    <img src={a.preview} alt={a.name} draggable={false} />
+                    {a.kind === 'video' && <span className={`${styles.thumbClock} mono`}>{clock(a.duration ?? 0)}</span>}
+                  </>
                 ) : (
                   <>
                     <span className={styles.fileIcon}><IconFile size={16} /></span>
@@ -179,10 +207,15 @@ export function Composer({ place }: { place: Place }) {
               </div>
             ))}
             <span className={styles.trayHint}>
-              {attachments.filter((a) => a.kind === 'image').length ? `${attachments.filter((a) => a.kind === 'image').length} 张图` : ''}
-              {attachments.some((a) => a.kind === 'file') ? `${attachments.filter((a) => a.kind === 'image').length ? ' · ' : ''}${attachments.filter((a) => a.kind === 'file').length} 个文件` : ''}
+              {[
+                count('image') ? `${count('image')} 张图` : '',
+                count('video') ? `${count('video')} 个视频` : '',
+                count('file') ? `${count('file')} 个文件` : '',
+              ].filter(Boolean).join(' · ')}
               {' · 和文字一起发'}
             </span>
+            {/* 出口只有 260 KB/s，而且是所有人共用的：大文件发出去之前让发的人知道对面要等多久 */}
+            {heavy > WARN_BYTES && <span className={styles.trayWarn}>共 {fmtBytes(heavy)}，每个接收的人下载约需 {waitFor(heavy)}</span>}
           </div>
         )}
 

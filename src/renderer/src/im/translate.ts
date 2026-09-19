@@ -234,13 +234,22 @@ function parseEx(ex: string | undefined): Ex | null {
 //   {"yptd":"rich","a":[{"k":"i","u":url,"n":name,"s":bytes,"w":W,"h":H},{"k":"f",…}],"t":1}
 // t=0 表示发的人没打字，正文是给不认识 ex 的端看的占位（"[图片]"），认识的端把它藏掉。
 
-/** ex 里一个附件：k 类型（i 图 / f 文件），u 地址，n 名字，s 字节，w/h 图片原始尺寸 */
-interface RichAtt { k: 'i' | 'f'; u: string; n: string; s: number; w?: number; h?: number }
+/**
+ * ex 里一个附件：k 类型（i 图 / v 视频 / f 文件），u 地址，n 名字，s 字节，w/h 像素尺寸，
+ * m mime，p 视频封面地址，d 时长（秒）。规格见 yptd-serve docs/media-pipeline.md §2。
+ * 不认识的键一律忽略——iOS 以后加 th / o / b，这里读不懂也不该出错。
+ */
+interface RichAtt { k: 'i' | 'v' | 'f'; u: string; n: string; s: number; w?: number; h?: number; m?: string; p?: string; d?: number }
+
+const KIND: Record<Attachment['kind'], RichAtt['k']> = { image: 'i', video: 'v', file: 'f' }
 
 export function richEx(attachments: Attachment[], hasText: boolean): string {
   const a: RichAtt[] = attachments.map((x) => ({
-    k: x.kind === 'image' ? 'i' : 'f', u: x.url, n: x.name, s: x.bytes,
+    k: KIND[x.kind], u: x.url, n: x.name, s: x.bytes,
     ...(x.natural ? { w: x.natural.width, h: x.natural.height } : {}),
+    ...(x.mime ? { m: x.mime } : {}),
+    ...(x.poster ? { p: x.poster } : {}),
+    ...(typeof x.duration === 'number' && x.duration > 0 ? { d: Math.round(x.duration * 10) / 10 } : {}),
   }))
   return JSON.stringify({ yptd: 'rich', a, t: hasText ? 1 : 0 })
 }
@@ -251,9 +260,14 @@ export function parseRich(ex: string | undefined): { attachments: Attachment[]; 
   const attachments: Attachment[] = []
   for (const x of p.a) {
     if (!x || typeof x.u !== 'string' || !x.u) continue
+    const kind: Attachment['kind'] = x.k === 'i' ? 'image' : x.k === 'v' ? 'video' : 'file'
     attachments.push({
-      kind: x.k === 'i' ? 'image' : 'file', url: x.u, name: typeof x.n === 'string' && x.n ? x.n : '文件', bytes: typeof x.s === 'number' ? x.s : 0,
-      natural: x.k === 'i' && typeof x.w === 'number' && typeof x.h === 'number' && x.w > 0 && x.h > 0 ? { width: x.w, height: x.h } : null,
+      kind, url: x.u, name: typeof x.n === 'string' && x.n ? x.n : kind === 'video' ? '视频' : '文件', bytes: typeof x.s === 'number' ? x.s : 0,
+      natural: kind !== 'file' && typeof x.w === 'number' && typeof x.h === 'number' && x.w > 0 && x.h > 0 ? { width: x.w, height: x.h } : null,
+      // 有才带：绝大多数附件是图片，没必要每个都挂三个空字段
+      ...(kind === 'video' && typeof x.p === 'string' && x.p ? { poster: x.p } : {}),
+      ...(typeof x.d === 'number' && x.d > 0 ? { duration: x.d } : {}),
+      ...(typeof x.m === 'string' && x.m ? { mime: x.m } : {}),
     })
   }
   return { attachments, textless: p.t === 0 }
@@ -264,6 +278,8 @@ export function placeholderFor(attachments: readonly Pick<Attachment, 'kind' | '
   const images = attachments.filter((a) => a.kind === 'image').length
   const parts: string[] = []
   if (images) parts.push(images > 1 ? `[图片]×${images}` : '[图片]')
+  const videos = attachments.filter((a) => a.kind === 'video').length
+  if (videos) parts.push(videos > 1 ? `[视频]×${videos}` : '[视频]')
   for (const a of attachments) if (a.kind === 'file') parts.push(`[文件] ${a.name}`)
   return parts.join(' ') || '[附件]'
 }

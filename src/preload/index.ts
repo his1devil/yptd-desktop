@@ -50,6 +50,7 @@ const bridge: DesktopBridge = {
     thumbnail: (path) => ipcRenderer.invoke(IPC.fileThumbnail, path),
     prepare: (path, mode) => ipcRenderer.invoke(IPC.filePrepare, path, mode),
     discard: (path) => ipcRenderer.send(IPC.fileDiscard, path),
+    expose: (path) => ipcRenderer.invoke(IPC.fileExpose, path),
     download: (url, name) => ipcRenderer.send(IPC.fileDownload, url, name),
   },
   clipboard: {

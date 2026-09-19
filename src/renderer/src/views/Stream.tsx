@@ -5,6 +5,7 @@ import { summarize } from '../../../shared/model'
 import { Avatar, glyphOf, pairOf } from '../components/Avatar'
 import { IconCopy, IconEmoji, IconFile, IconHandoff, IconMore, IconQuote, IconUndo } from '../components/Icons'
 import { previewFor, rememberThumb, sized } from '../im/files'
+import { clock } from '../im/video'
 import { visible } from '../im/timeline'
 import { flyEmoji } from '../motion/fly'
 import { reduceMotion } from '../motion/transition'
@@ -65,9 +66,17 @@ function attachmentsHeight(a: readonly Attachment[], available: number): number 
   const imgs = a.filter((x) => x.kind === 'image')
   let h = 0
   if (imgs.length) h += galleryLayout(imgs, available).height + 6
-  const files = a.length - imgs.length
+  // 视频格子的高度由消息里带的像素尺寸算出来，和渲染用的是同一个 videoBox——估高和实高
+  // 对不上，虚拟列表就会跳
+  for (const v of a) if (v.kind === 'video') h += videoBox(v).height + 6
+  const files = a.filter((x) => x.kind === 'file').length
   if (files) h += files * 58
   return h
+}
+
+/** 视频格子：按像素尺寸缩进 360×280；发送端没报尺寸就给一个 16:9 */
+function videoBox(a: Attachment): PixelSize {
+  return fit(a.natural) ?? { width: 320, height: 180 }
 }
 
 /** 图片框：360×280 以内按比例缩，不放大 */
@@ -582,6 +591,7 @@ function Body({ message: m, onImage, large }: { message: Message; onImage: OpenI
  */
 function Attachments({ message: m, onImage }: { message: Message; onImage: OpenImage }) {
   const imgs = m.attachments.filter((a) => a.kind === 'image')
+  const videos = m.attachments.filter((a) => a.kind === 'video')
   const files = m.attachments.filter((a) => a.kind === 'file')
   const sending = m.sendState === 'sending'
   const { boxes } = galleryLayout(imgs)
@@ -594,6 +604,7 @@ function Attachments({ message: m, onImage }: { message: Message; onImage: OpenI
           ))}
         </div>
       )}
+      {videos.map((a) => <Clip key={a.url} video={a} busy={sending} />)}
       {files.map((a, i) => {
         const inner = (
           <>
@@ -613,6 +624,35 @@ function Attachments({ message: m, onImage }: { message: Message; onImage: OpenI
 }
 
 /** 同一个人连着发的几张图并排成一行。宽高在图到之前就定好，点开看原图。 */
+/**
+ * 一个视频：先是封面加播放键，点了才在**同一个格子里**换成播放器。
+ *
+ * 不自动加载视频本体：出口只有 260 KB/s 而且所有人共用，一屏里躺着三个视频就各拉各的，
+ * 谁的图都别想出来。封面是单独的一个小对象（长边 720 的 JPEG），走缩图那条路。
+ * 原地播放而不是弹层，是因为格子大小不变——虚拟列表的估高不会因为点了一下就失效。
+ */
+function Clip({ video: a, busy }: { video: Attachment; busy: boolean }) {
+  const [playing, setPlaying] = useState(false)
+  const box = videoBox(a)
+  const under = a.poster ? previewFor(a.poster) : previewFor(a.url)
+  return (
+    <div className={`${styles.clip} ${busy ? styles.shotBusy : ''}`} style={{ width: box.width, height: box.height }}>
+      {playing ? (
+        <video className={styles.clipVideo} src={a.url} poster={a.poster ? sized(a.poster, box.width * 2) : undefined} controls autoPlay playsInline />
+      ) : (
+        <button className={styles.clipCover} onClick={() => !busy && setPlaying(true)} title={busy ? '上传中…' : `播放 ${a.name}`} disabled={busy}>
+          {under && <img className={styles.clipUnder} src={under} alt="" draggable={false} />}
+          {a.poster && <img className={styles.clipPoster} src={sized(a.poster, box.width * 2)} alt="" draggable={false} loading="lazy" />}
+          <span className={styles.clipPlay} aria-hidden="true">▶</span>
+          <span className={`${styles.clipMeta} mono`}>
+            {typeof a.duration === 'number' ? clock(a.duration) : '视频'}{a.bytes > 0 ? ` · ${bytes(a.bytes)}` : ''}
+          </span>
+        </button>
+      )}
+    </div>
+  )
+}
+
 function Gallery({ messages, onImage }: { messages: Message[]; onImage: OpenImage }) {
   const pics = messages.flatMap((m) => (m.body.kind === 'picture'
     ? [{ id: m.id, url: m.body.url, name: m.body.name, natural: m.body.natural, bytes: m.body.bytes }]
