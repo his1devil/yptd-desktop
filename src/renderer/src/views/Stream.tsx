@@ -182,7 +182,14 @@ export function Stream({ place }: { place: Place }) {
 
   // 第一页：点会话打开的路径已经在拉了，这里兜住另一条——重启后从上次的会话直接挂上来，
   // 没人点过它。ensure 是幂等的，拉过就不会再拉。
-  useEffect(() => { void useSession.getState().ensure(id) }, [id])
+  //
+  // 标已读也要兜同一条。上次停在哪个会话是存在 localStorage 里的，重开就直接渲染出来——
+  // 离线期间进来的消息全在屏幕上，你全看见了，而侧栏、Dock 角标、托盘的「N 条待处理」
+  // 一个都不会掉，除非你切走再切回来。markRead 是幂等的。
+  useEffect(() => {
+    void useSession.getState().ensure(id)
+    void useSession.getState().markRead(id)
+  }, [id])
 
   // 进场动效。第一批到屏幕上的行按从上到下的次序错开 22ms 依次浮起——"瀑布"；
   // 之后新来的消息各自浮起一次；往上翻出来的历史不动（它不是新东西）。

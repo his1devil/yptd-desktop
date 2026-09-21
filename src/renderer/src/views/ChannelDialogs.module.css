@@ -16,3 +16,7 @@
 .closed { font-size: 10.5px; color: var(--ink3); background: var(--surface2); border-radius: 4px; padding: 1px 6px; flex: none; }
 .person:disabled { opacity: .55; cursor: default; }
 .person:disabled:hover { background: transparent; }
+
+/* 建频道时的公开/私密选择。默认公开，但要人自己看一眼 */
+.openRow { display: flex; align-items: center; gap: 9px; font-size: 12.5px; font-weight: 500; cursor: pointer; min-height: 28px; }
+.openNote { margin: 4px 0 0; font-size: 11.5px; line-height: 1.6; color: var(--ink3); }

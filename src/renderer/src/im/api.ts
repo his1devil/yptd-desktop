@@ -104,6 +104,20 @@ export const api = {
   saveAgentConfig: (agentID: string, groupID: string, value: Record<string, unknown>) =>
     call<{ ok: boolean }>(`/v1/agents/${encodeURIComponent(agentID)}/config?group=${encodeURIComponent(groupID)}`,
       { method: 'PUT', body: value }),
+  /**
+   * 频道的两个开关。**写必须走服务端，不要自己 setGroupInfo 写 `ex`。**
+   *
+   * 要守的不变量是 `ex.join=1` 必须配 `needVerification=Directly`：前者管目录和入群钩子，
+   * 后者管「放进来的请求到底插不插人」。两者脱钩的后果是静默的——按钮在、请求成功、
+   * 人不出现，哪里都不报错。服务端一次写完两个字段，这条规律就只有一处实现。
+   *
+   * 读还是客户端自己做（`parsePolicy(group.ex)`），那边没有不变量问题。
+   */
+  channelPolicy: (groupID: string) =>
+    call<{ findable: boolean; joinable: boolean }>(`/v1/groups/${encodeURIComponent(groupID)}/channel`),
+  setChannelPolicy: (groupID: string, p: { findable: boolean; joinable: boolean }) =>
+    call<{ findable: boolean; joinable: boolean }>(
+      `/v1/groups/${encodeURIComponent(groupID)}/channel`, { method: 'PUT', body: p }),
   /** 频道目录。客户端 SDK 的 searchGroups 只搜本地库，找没加入的频道只能走这里。 */
   channels: (q: string) =>
     call<{ channels: { group_id: string; name: string; members: number; joinable: boolean }[] }>(

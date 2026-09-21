@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Avatar, glyphOf } from '../components/Avatar'
 import { api, type AgentProfile as Profile, type RunSummary } from '../im/api'
-import { CLOSED, encodePolicy, parsePolicy, verificationFor, type ChannelPolicy } from '../im/channel'
+import { CLOSED, parsePolicy, type ChannelPolicy } from '../im/channel'
 import { im } from '../im/client'
 import { loadAgents } from '../store/agents'
 import type { Place } from '../store/selectors'
@@ -98,9 +98,12 @@ const when = (ms: number): string => {
 /**
  * 频道设置：两个开关。
  *
- * 只有群主和管理员改得动——OpenIM 的 setGroupInfo 本来就只让他们写，所以这里
- * 不用再造一套权限。但**所有人都看得见**：知道自己待的这个频道是公开的还是私密的，
- * 本身就是有用的信息，藏起来只会让人以为它不存在。
+ * 只有群主和管理员改得动。这里的判断只管要不要把开关画成禁用的；真正拦住它的是
+ * 服务端（`PUT /v1/groups/{id}/channel` 自己验角色）——它用管理员身份去写，不受
+ * OpenIM 自己那条「只有群主管理员能写 ex」的限制，所以那道门必须它自己守。
+ *
+ * 但**所有人都看得见**：知道自己待的这个频道是公开的还是私密的，本身就是有用的
+ * 信息，藏起来只会让人以为它不存在。
  */
 export function ChannelSettings({ place }: { place: Place }): React.ReactElement {
   const me = useSession((s) => s.me)
@@ -133,9 +136,10 @@ export function ChannelSettings({ place }: { place: Place }): React.ReactElement
     setBusy(key)
     setLoaded({ groupID, policy: next, err: '' }) // 先画出来，失败再退回去
     try {
-      // ex 和 needVerification 必须一起写：只改 ex 的话，一个「可加入」的频道
-      // 仍然停在「要验证」上，每次加入都变成一条没人会批的挂起申请。
-      await im.setGroupInfo(groupID, { ex: encodePolicy(next), needVerification: verificationFor(next) })
+      // 走服务端，不自己写 `ex`。ex 和 needVerification 必须一起写——只改 ex 的话，一个
+      // 「可加入」的频道仍然停在「要验证」上，每次加入都变成一条没人会批的挂起申请。
+      // 这条规律现在只在服务端实现一次，两个客户端都调它，省得三份代码各自抄一遍。
+      await api.setChannelPolicy(groupID, next)
     } catch (e) {
       // 回滚也要认准群：这次保存还没结束就切走的话，回滚不能落到新频道身上
       setLoaded((cur) => (cur?.groupID === groupID ? { groupID, policy: before, err: describe(e) } : cur))

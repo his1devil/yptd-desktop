@@ -13,6 +13,7 @@ import { randomObjectName } from '../../../shared/prepare'
 import { setAgentColors, setFaces } from '../components/identity'
 import { composerBus } from '../views/composerBus'
 import { transition } from '../motion/transition'
+import { isMention } from '../im/mention'
 import { useUI } from './ui'
 
 /**
@@ -76,7 +77,10 @@ interface SessionState {
   refreshRoster(): Promise<void>
   dismissNotice(): void
 
-  createChannel(name: string, memberIDs: string[]): Promise<ConversationId>
+  createChannel(
+    name: string, memberIDs: string[],
+    policy?: { findable: boolean; joinable: boolean },
+  ): Promise<ConversationId>
   renameChannel(groupID: string, name: string): Promise<void>
   inviteToChannel(groupID: string, userIDs: string[]): Promise<void>
   /** 自己走进一个公开频道。没开放自由加入的话服务端会拒，错误里说得清原因。 */
@@ -220,7 +224,7 @@ export const useSession = create<SessionState>()((set, get) => ({
     // 右栏的头像要等历史回来才开始下——在 2Mbps 的出口上这一等就是好几秒。
     if (c?.groupID && !get().members[c.groupID]?.length) void get().loadMembers(c.groupID)
     // 还没聊过的会话（从名册点开的 agent）在 SDK 里不存在，标已读会报错
-    if (c) void im.markRead(id).then(() => refreshConversations(set, get)).catch(() => {})
+    if (c) void get().markRead(id)
     await get().ensure(id)
   },
 
@@ -229,8 +233,19 @@ export const useSession = create<SessionState>()((set, get) => ({
     if (t.status === 'idle' || t.status === 'failed') await loadPage(set, get, id, '')
   },
 
+  /**
+   * 「这个会话我看过了」——在 OpenIM 里是**两件事**，不是一件。
+   *
+   * `markRead` 只清未读数。「@我」是另一列 `group_at_type`，有自己的写法，而且 SDK 在
+   * unread 已经是 0 时会提前返回，所以不能指望标已读顺手把它带掉。两个调用各自 try，
+   * 一个失败不该让另一个也不做——「只有 @ 没未读」正是标已读必然失败、而清 @ 才是
+   * 重点的那种情况。
+   */
   async markRead(id) {
-    try { await im.markRead(id); await refreshConversations(set, get) } catch { /* 标不上就等下次 */ }
+    const c = get().conversations.find((x) => x.id === id)
+    try { if (!c || c.unread > 0) await im.markRead(id) } catch { /* 标不上就等下次 */ }
+    try { if (!c || c.mentioned) await im.resetAt(id) } catch { /* 同上 */ }
+    await refreshConversations(set, get)
   },
 
   async loadOlder(id) {
@@ -448,9 +463,24 @@ export const useSession = create<SessionState>()((set, get) => ({
   dismissNotice: () => set({ notice: null }),
 
   // ---- 频道管理：都是 SDK 一句话，加上把列表和成员刷新 ----
-  async createChannel(name, memberIDs) {
+  /**
+   * 建频道，然后**立刻把它的两个开关写下去**。
+   *
+   * 不写的后果是这个功能到今天为止的状态：OpenIM 建群时 `ex` 是空的、`needVerification`
+   * 是默认的 0（申请需同意），于是新频道既不出现在目录里，也不能自助加入——线上 27 个
+   * 群全都停在这儿，`GET /v1/channels` 一直返回空。
+   *
+   * 写失败不回滚建群：频道已经建好了，人也拉进来了，为了两个开关把它删掉是更坏的结果。
+   * 右栏的频道设置随时能再改一次。
+   */
+  async createChannel(name, memberIDs, policy = { findable: true, joinable: true }) {
     const group = await im.createGroup(name, memberIDs)
     const id: ConversationId = `sg_${group.groupID}`
+    try {
+      await api.setChannelPolicy(group.groupID, policy)
+    } catch (e) {
+      set({ notice: `频道建好了，但公开设置没写上：${describe(e)}。可以到右栏的频道设置里再试一次。` })
+    }
     await refreshConversations(set, get)
     await get().open(id)
     return id
@@ -515,8 +545,15 @@ export const useSession = create<SessionState>()((set, get) => ({
     await im.setSelf({ faceURL: url })
     set((s) => ({ myAvatar: url, avatars: { ...s.avatars, [s.me]: url } }))
   },
+  /**
+   * 全部标记已读。SDK 的 markAll 只是循环调 mark-read，一样不碰「@我」，所以被 @ 过的
+   * 频道点完这个按钮还是留在待处理里。挨个把标记清掉，一个失败不影响其余。
+   */
   async markAllRead() {
-    await im.markAllRead()
+    try { await im.markAllRead() } catch { /* 下面逐个再试一次 */ }
+    for (const c of get().conversations) {
+      if (c.mentioned) { try { await im.resetAt(c.id) } catch { /* 跳过它 */ } }
+    }
     await refreshConversations(set, get)
   },
 }))
@@ -753,7 +790,7 @@ async function refreshConversations(set: Set, get: Get): Promise<void> {
         title: c.showName || (isGroup ? c.groupID : c.userID),
         avatar: c.faceURL || null,
         unread: c.unreadCount,
-        mentioned: c.groupAtType > 0,
+        mentioned: isMention(c.groupAtType),
         pinned: c.isPinned,
         preview,
         lastAt: c.latestMsgSendTime,
@@ -839,8 +876,13 @@ function absorb(set: Set, get: Get, msgs: Message[], into?: ConversationId): voi
     if (fresh && !into) maybeNotify(get, m)
   }
   if (changed) bump(set)
-  // 正看着的会话来了新消息，顺手标已读——但窗口不在前台时不标，那是没看到
-  if (seenHere && current && typeof document !== 'undefined' && document.hasFocus()) scheduleRead(set, get, current)
+  // 正看着的会话来了新消息，顺手标已读——但要真的在看：窗口在前台**而且**主区渲染的
+  // 是消息流。切到收件箱或设置页时 conversationId 是留着的（回来还要用），只看它就会
+  // 把一条你从没见过的消息悄悄标成已读，它从未读、收件箱、待处理里一起消失。
+  const onScreen = useUI.getState().section === 'chat'
+  if (seenHere && current && onScreen && typeof document !== 'undefined' && document.hasFocus()) {
+    scheduleRead(set, get, current)
+  }
 }
 
 /** 窗口不在前台、有人 @ 我或私聊我：弹一条系统通知。只对现在到的消息，历史和离线补发不算。 */
@@ -857,13 +899,16 @@ function maybeNotify(get: Get, m: Message): void {
   n.onclick = () => { window.focus(); void get().open(m.conversation) }
 }
 
-let readTimer: ReturnType<typeof setTimeout> | null = null
+// 一个会话一个定时器。原来是模块级单例，于是「A 来消息 → 200ms 后切到 B → B 来消息」
+// 会把 A 那次待发的标已读 clearTimeout 掉：A 里那条你明明看见了的消息，一直挂着未读。
+const readTimers = new Map<ConversationId, ReturnType<typeof setTimeout>>()
 function scheduleRead(set: Set, get: Get, id: ConversationId): void {
-  if (readTimer) clearTimeout(readTimer)
-  readTimer = setTimeout(() => {
-    readTimer = null
-    im.markRead(id).then(() => refreshConversations(set, get)).catch(() => { /* 标不上就等下次 */ })
-  }, 400)
+  const pending = readTimers.get(id)
+  if (pending) clearTimeout(pending)
+  readTimers.set(id, setTimeout(() => {
+    readTimers.delete(id)
+    void get().markRead(id)
+  }, 400))
 }
 
 function applyReactionChanges(set: Set, get: Get): void {

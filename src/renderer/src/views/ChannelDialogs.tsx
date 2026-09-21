@@ -80,6 +80,9 @@ function NewChannel({ onClose }: { onClose(): void }) {
   const [name, setName] = useState('')
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<string | null>(null)
+  // 默认公开，但**要人自己看一眼**，不是静默默认。「就我们几个」的频道不该因为建的时候
+  // 没注意，就躺进了所有人都搜得到的目录里。
+  const [open, setOpen] = useState(true)
   const { picked, toggle } = usePicked()
   const people = roster.filter((p) => p.userID !== me)
   const ok = name.trim().length > 0 && !busy
@@ -88,7 +91,7 @@ function NewChannel({ onClose }: { onClose(): void }) {
     if (!ok) return
     setBusy(true); setErr(null)
     try {
-      await useSession.getState().createChannel(name.trim(), [...picked])
+      await useSession.getState().createChannel(name.trim(), [...picked], { findable: open, joinable: open })
       onClose()
     } catch (e) { setErr(describe(e)) } finally { setBusy(false) }
   }
@@ -103,6 +106,17 @@ function NewChannel({ onClose }: { onClose(): void }) {
       </Field>
       <Field label="拉谁进来" hint="agent 也能拉，进了群就能 @ 它派活；之后随时能再加人">
         <Picker people={people} picked={picked} onToggle={toggle} />
+      </Field>
+      <Field label="谁能进来" hint="建完之后在右栏的频道设置里随时能改">
+        <label className={styles.openRow}>
+          <input type="checkbox" checked={open} onChange={(e) => setOpen(e.target.checked)} />
+          <span>公开：别人搜得到，也能自己走进来</span>
+        </label>
+        <p className={styles.openNote}>
+          {open
+            ? '这个频道会出现在 ⌘K 的搜索结果里，看到的人可以直接加入。'
+            : '只有被拉进来的人知道它存在——搜不到，也没法自己申请。'}
+        </p>
       </Field>
       {err && <div className={errorClass}>{err}</div>}
     </Dialog>

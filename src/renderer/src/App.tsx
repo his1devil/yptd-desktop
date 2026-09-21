@@ -51,8 +51,15 @@ export function App() {
 
   // 回到窗口时补一次花名册：新注册的人没有任何推送会告诉我们，只能自己再问一次。
   // 切回 app 就是要干事了，正是最该有一份新名单的时刻；store 那边有 30 秒的节流。
+  //
+  // 顺手补一次标已读：窗口失焦期间到的消息不会被自动标（那时候确实没看到），但切回来
+  // 之后它们就在屏幕上了。没有这一下，读完的消息会一直挂着未读，直到换个会话再换回来。
   useEffect(() => {
-    const again = (): void => { void useSession.getState().refreshRoster() }
+    const again = (): void => {
+      void useSession.getState().refreshRoster()
+      const ui = useUI.getState()
+      if (ui.section === 'chat' && ui.conversationId) void useSession.getState().markRead(ui.conversationId)
+    }
     // 最小化再打开只发 visibilitychange，切别的 app 再回来只发 focus，两个都要听
     const shown = (): void => { if (!document.hidden) again() }
     window.addEventListener('focus', again)

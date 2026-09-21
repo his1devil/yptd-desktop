@@ -54,6 +54,19 @@ export const im = {
     unwrap(sdk.getAdvancedHistoryMessageList({ conversationID, startClientMsgID: before, count, viewType: 0 })),
   markRead: (conversationID: string) => unwrap(sdk.markConversationMessageAsRead(conversationID)),
   markAllRead: () => unwrap(sdk.markAllConversationMessageAsRead()),
+  /**
+   * 清掉「@我」标记。**这是一件和标已读完全分开的事**，必须单独调。
+   *
+   * SDK 的 mark-read 只写 `unread_count: 0`（core 的 read_drawing.go:98），碰都不碰
+   * `group_at_type`；而且 unread 本来就是 0 时它直接 return，连试都不试。所以一个频道
+   * @ 过你一次之后，那个位就永远留着：侧栏一直显示红色的「@N」、收件箱一直算进「提及
+   * 我的」、托盘一直写着「N 条待处理」——哪怕后来的未读全是普通消息。它还存在本地
+   * SQLite 里，重启重装都在。
+   *
+   * 这个版本的 SDK 没有 `resetConversationGroupAtType`，等价写法是 setConversation。
+   * 要走它而不是本地改一个值：它会打服务端，本地单改会被下一次增量同步覆盖。
+   */
+  resetAt: (conversationID: string) => unwrap(sdk.setConversation({ conversationID, groupAtType: 0 })),
   /** 本地全文搜索（所有会话），给 ⌘K 用 */
   searchMessages: (keyword: string, count = 30) =>
     unwrap(sdk.searchLocalMessages({
@@ -105,8 +118,6 @@ export const im = {
   joinGroup: (groupID: string, reqMsg = '') =>
     unwrap(sdk.joinGroup({ groupID, reqMsg, joinSource: 3 })),
   /** 改群设置。Partial：只传要改的字段，别的不动。 */
-  setGroupInfo: (groupID: string, patch: { ex?: string; needVerification?: number }) =>
-    unwrap(sdk.setGroupInfo({ groupID, ...patch } as Parameters<typeof sdk.setGroupInfo>[0])),
   /** 读一个群的完整信息（ex、needVerification 这些会话列表里没有的字段） */
   groupInfo: (groupID: string) =>
     unwrap(sdk.getSpecifiedGroupsInfo([groupID])).then((list) => list[0] ?? null),

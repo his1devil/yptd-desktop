@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { CLOSED, encodePolicy, parsePolicy, VERIFY_ALL, VERIFY_DIRECT, verificationFor } from './channel'
+import { CLOSED, parsePolicy } from './channel'
 
 describe('频道开关', () => {
   it('没设过的一律算两个都关', () => {
@@ -9,19 +9,12 @@ describe('频道开关', () => {
     }
   })
 
-  it('存完再读还是原样', () => {
-    for (const p of [CLOSED, { findable: true, joinable: false }, { findable: false, joinable: true }, { findable: true, joinable: true }]) {
-      expect(parsePolicy(encodePolicy(p))).toEqual(p)
-    }
-  })
-
   it('和服务端是同一套字节', () => {
-    // server/internal/channel 的 TestEncodeKeepsTheTag 断言的是同一个字符串
-    expect(encodePolicy({ findable: true, joinable: false })).toBe('{"yptd":"channel","find":1,"join":0}')
-  })
-
-  it('needVerification 跟着可加入走', () => {
-    expect(verificationFor({ findable: true, joinable: true })).toBe(VERIFY_DIRECT)
-    expect(verificationFor({ findable: true, joinable: false })).toBe(VERIFY_ALL)
+    // 服务端 server/internal/channel 的 Encode 产出的就是这些字符串，它的测试
+    // 断言的是同一个字面量。写入侧现在只有服务端一份，这里只要读得懂。
+    expect(parsePolicy('{"yptd":"channel","find":1,"join":0}')).toEqual({ findable: true, joinable: false })
+    expect(parsePolicy('{"yptd":"channel","find":0,"join":1}')).toEqual({ findable: false, joinable: true })
+    expect(parsePolicy('{"yptd":"channel","find":1,"join":1}')).toEqual({ findable: true, joinable: true })
+    expect(parsePolicy('{"yptd":"channel","find":0,"join":0}')).toEqual(CLOSED)
   })
 })

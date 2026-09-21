@@ -1,6 +1,13 @@
 /**
- * 频道自己的两个开关。存在 OpenIM 群的 `ex` 里，和服务端 internal/channel 是同一套约定
- * ——两边都要能读懂，改了这里记得改那边。
+ * 频道自己的两个开关，**只读**。
+ *
+ * 它们存在 OpenIM 群的 `ex` 里，和服务端 `internal/channel` 是同一套约定。读在这边做，
+ * 因为群信息本来就在手上，不值得再问服务端一次。
+ *
+ * **写不在这里**，走 `api.setChannelPolicy`。写的时候 `ex` 必须和 OpenIM 的
+ * `needVerification` 一起改，而那条规律只在服务端实现一次——这里曾经有过一份
+ * `encodePolicy` / `verificationFor` 的镜像，删掉了：多一份就多一个会悄悄漂移的地方，
+ * 而漂移的表现是「加入按钮在、请求成功、人不出现」，哪里都不报错。
  *
  * 没设过（`ex` 为空、不是 JSON、或者是别人的载荷）一律算**两个都关**。这个功能之前
  * 建的群 `ex` 都是空的，它们必须保持私密，而不是因为上线就突然人人可搜可进。
@@ -22,17 +29,3 @@ export function parsePolicy(ex: string | undefined): ChannelPolicy {
     return { findable: p.find === 1, joinable: p.join === 1 }
   } catch { return CLOSED }
 }
-
-export function encodePolicy(p: ChannelPolicy): string {
-  return JSON.stringify({ yptd: 'channel', find: p.findable ? 1 : 0, join: p.joinable ? 1 : 0 })
-}
-
-/** OpenIM 的 needVerification：2 直接进，1 要验证 */
-export const VERIFY_ALL = 1
-export const VERIFY_DIRECT = 2
-
-/**
- * 和开关配套的 needVerification。必须跟着一起写：可加入的频道要是留在「要验证」上，
- * 每一次被允许的加入都会变成一条没人会去批的挂起申请——我们没有审批界面。
- */
-export const verificationFor = (p: ChannelPolicy): number => (p.joinable ? VERIFY_DIRECT : VERIFY_ALL)
